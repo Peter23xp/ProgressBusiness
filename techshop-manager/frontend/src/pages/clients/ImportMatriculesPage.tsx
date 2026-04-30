@@ -1,236 +1,388 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Upload, FileText, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import {
+  ArrowLeft, CheckCircle2, XCircle, AlertCircle, Download,
+  AlertTriangle, Loader2,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api, getErrorMessage } from '@/lib/api';
+import { cn } from '@/lib/utils';
+import { CsvDropzone } from '@/components/ui/CsvDropzone';
+import { useAuthStore } from '@/store/auth.store';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type Phase = 'upload' | 'preview' | 'result';
 
 interface PreviewRow {
   ligne: number;
-  nom: string;
-  telephone: string;
   matricule: string;
-  statut: 'OK' | 'DOUBLON' | 'ERREUR';
-  message?: string;
+  telephone: string;
+  clientId: string | null;
+  clientNom: string | null;
+  statut: 'TROUVE' | 'INTROUVABLE' | 'ERREUR_FORMAT';
+  raisonErreur: string | null;
 }
 
-interface ImportReport {
-  success: number;
-  errors: number;
-  doublons: number;
-  details: Array<{ ligne: number; message: string }>;
+interface PreviewResponse {
+  preview: PreviewRow[];
+  total: number;
+  resume: { trouves: number; introuvables: number; erreurs: number };
 }
+
+interface ImportDetail {
+  matricule: string;
+  telephone: string;
+  statut: 'IMPORTE' | 'INTROUVABLE' | 'ERREUR';
+  raisonErreur: string | null;
+}
+
+interface ImportResponse {
+  imported: number;
+  notFound: number;
+  errors: number;
+  details: ImportDetail[];
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function downloadCsv(content: string, filename: string) {
+  const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8;' }));
+  const a   = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadTemplate() {
+  const csv = 'matricule,telephone\nNK-GOM-001-0001,+243812345678\nNK-GOM-001-0002,+243991234567\n';
+  downloadCsv(csv, 'modele_import_techshop.csv');
+}
+
+function downloadErrorReport(details: ImportDetail[]) {
+  const errors = details.filter(d => d.statut === 'ERREUR' || d.statut === 'INTROUVABLE');
+  if (!errors.length) return;
+  const header = 'matricule,telephone,raison\n';
+  const rows   = errors.map(d =>
+    `${d.matricule},${d.telephone},${d.raisonErreur ?? d.statut}`,
+  ).join('\n');
+  downloadCsv(header + rows, 'rapport_erreurs_import.csv');
+}
+
+// ── Badges statut ─────────────────────────────────────────────────────────────
+
+function StatutBadge({ statut, raison }: { statut: PreviewRow['statut']; raison: string | null }) {
+  if (statut === 'TROUVE') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-success">
+        <CheckCircle2 size={11} aria-hidden /> Trouvé
+      </span>
+    );
+  }
+  if (statut === 'INTROUVABLE') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-warning">
+        <AlertCircle size={11} aria-hidden /> Introuvable
+      </span>
+    );
+  }
+  return (
+    <div>
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-danger">
+        <XCircle size={11} aria-hidden /> Erreur format
+      </span>
+      {raison && <p className="text-[10px] text-danger mt-0.5">{raison}</p>}
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ImportMatriculesPage() {
-  const [file, setFile] = useState<File | null>(null);
-  const [previewData, setPreviewData] = useState<PreviewRow[] | null>(null);
-  const [importReport, setImportReport] = useState<ImportReport | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const { hasRole } = useAuthStore();
+  const [file,     setFile]     = useState<File | null>(null);
+  const [phase,    setPhase]    = useState<Phase>('upload');
+  const [preview,  setPreview]  = useState<PreviewResponse | null>(null);
+  const [result,   setResult]   = useState<ImportResponse | null>(null);
+
+  // Accès refusé pour AGENT
+  if (!hasRole('GERANT')) {
+    return (
+      <div className="max-w-lg mx-auto py-20 text-center space-y-3">
+        <AlertTriangle size={36} className="text-warning mx-auto opacity-60" aria-hidden />
+        <h2 className="text-[16px] font-bold text-primary">Accès refusé</h2>
+        <p className="text-[13px] text-text-muted">
+          Cette page est réservée aux Gérants et Super-Admins.
+        </p>
+        <Link to="/clients" className="text-[13px] text-primary-accent hover:underline">
+          ← Retour à la liste
+        </Link>
+      </div>
+    );
+  }
 
   const previewMutation = useMutation({
     mutationFn: (f: File) => {
       const form = new FormData();
       form.append('file', f);
-      return api.post('/clients/import/preview', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+      return api.post<PreviewResponse>('/clients/import/preview', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
     },
-    onSuccess: (res) => setPreviewData(res.data.rows || []),
-    onError: (error) => toast.error(getErrorMessage(error) || 'Erreur de prévisualisation.'),
+    onSuccess: (res) => {
+      setPreview(res.data);
+      setPhase('preview');
+    },
+    onError: (err) => toast.error(getErrorMessage(err) || 'Erreur de prévisualisation.'),
   });
 
   const importMutation = useMutation({
     mutationFn: (f: File) => {
       const form = new FormData();
       form.append('file', f);
-      return api.post('/clients/import/execute', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+      return api.post<ImportResponse>('/clients/import/execute', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
     },
     onSuccess: (res) => {
-      setImportReport(res.data);
-      toast.success(`Import terminé: ${res.data.success} succès, ${res.data.errors} erreurs.`);
+      setResult(res.data);
+      setPhase('result');
+      toast.success(`Import terminé : ${res.data.imported} importé(s).`);
     },
-    onError: (error) => toast.error(getErrorMessage(error) || 'Erreur d\'import.'),
+    onError: (err) => toast.error(getErrorMessage(err) || "Erreur d'import."),
   });
 
-  const handleFileSelect = (f: File) => {
-    if (!f.name.endsWith('.csv')) {
-      toast.error('Seuls les fichiers CSV sont acceptés.');
-      return;
-    }
-    setFile(f);
-    setPreviewData(null);
-    setImportReport(null);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const f = e.dataTransfer.files[0];
-    if (f) handleFileSelect(f);
-  };
+  const isWorking = previewMutation.isPending || importMutation.isPending;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Import de matricules</h1>
-        <p className="text-gray-500 text-sm">Importer des clients via fichier CSV</p>
+    <div className="max-w-3xl mx-auto space-y-5">
+
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Link
+          to="/clients"
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border text-text-muted hover:border-border-strong hover:text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent"
+          aria-label="Retour à la liste des clients"
+        >
+          <ArrowLeft size={17} aria-hidden />
+        </Link>
+        <div>
+          <h1 className="text-[18px] font-extrabold text-primary">Import de matricules externes</h1>
+          <p className="text-[12px] text-text-muted">Association des matricules à des clients existants via CSV</p>
+        </div>
       </div>
 
-      <div className="card">
-        <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <Upload size={18} className="text-blue-500" />
-          Upload du fichier CSV
-        </h2>
+      {/* ── PHASE 1 — Upload ──────────────────────────────────────── */}
+      {phase === 'upload' && (
+        <div className="rounded-xl border border-border bg-white shadow-sm p-5 space-y-4">
+          <CsvDropzone
+            onFileSelected={(f) => setFile(f)}
+            maxSizeMB={5}
+            disabled={isWorking}
+          />
 
-        <div
-          onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${
-            isDragging ? 'border-blue-500 bg-blue-50' : file ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
-          }`}
-        >
-          <input ref={inputRef} type="file" accept=".csv" className="hidden" onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0]); }} />
-          {file ? (
-            <div className="flex flex-col items-center gap-2">
-              <FileText size={40} className="text-green-500" />
-              <p className="font-semibold text-green-700">{file.name}</p>
-              <p className="text-sm text-gray-500">{(file.size / 1024).toFixed(1)} KB — Cliquez pour changer</p>
+          {/* Format hint */}
+          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+            <AlertCircle size={14} className="text-warning flex-shrink-0 mt-0.5" aria-hidden />
+            <div>
+              <p className="text-[12px] font-semibold text-warning mb-1">Format attendu :</p>
+              <code className="text-[11px] font-mono text-text bg-amber-100 px-2 py-0.5 rounded block">
+                matricule,telephone
+              </code>
+              <p className="text-[11px] text-text-muted mt-1">
+                Encodage UTF-8 · Séparateur virgule · Première ligne = en-têtes
+              </p>
             </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              <Upload size={40} className="text-gray-400" />
-              <p className="font-medium text-gray-700">Glisser-déposer votre fichier CSV ici</p>
-              <p className="text-sm text-gray-400">ou cliquez pour sélectionner</p>
-              <p className="text-xs text-gray-400 mt-2">Format: nom, prénom, téléphone, matricule (max 10MB)</p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={downloadTemplate}
+              className="flex items-center gap-1.5 text-[12px] font-medium text-primary-accent hover:underline focus-visible:outline-none"
+            >
+              <Download size={13} aria-hidden />
+              Télécharger le modèle CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => file && previewMutation.mutate(file)}
+              disabled={!file || isWorking}
+              className="btn-primary text-[13px] flex items-center gap-2"
+            >
+              {previewMutation.isPending && <Loader2 size={14} className="animate-spin" aria-hidden />}
+              Prévisualiser →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── PHASE 2 — Prévisualisation ────────────────────────────── */}
+      {phase === 'preview' && preview && (
+        <div className="rounded-xl border border-border bg-white shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h2 className="text-[15px] font-bold text-primary">
+              Prévisualisation
+              <span className="text-[13px] font-normal text-text-muted ml-2">
+                (10 premières lignes sur {preview.total} total)
+              </span>
+            </h2>
+            <button
+              type="button"
+              onClick={() => { setPhase('upload'); setPreview(null); setFile(null); }}
+              className="btn-secondary text-[12px]"
+            >
+              ← Changer de fichier
+            </button>
+          </div>
+
+          {/* Résumé */}
+          <div className="flex flex-wrap gap-3">
+            {[
+              { label: 'Trouvés',      count: preview.resume.trouves,      classes: 'bg-green-100 text-success border-green-200' },
+              { label: 'Introuvables', count: preview.resume.introuvables, classes: 'bg-amber-100 text-warning border-amber-200' },
+              { label: 'Erreurs',      count: preview.resume.erreurs,      classes: 'bg-red-100 text-danger border-red-200' },
+            ].map((s) => (
+              <div key={s.label} className={cn('flex items-center gap-2 rounded-lg border px-4 py-2', s.classes)}>
+                <span className="text-[20px] font-extrabold font-mono">{s.count}</span>
+                <span className="text-[12px] font-semibold">{s.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Alertes */}
+          {preview.resume.trouves === 0 && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+              <AlertTriangle size={14} className="text-warning flex-shrink-0 mt-0.5" aria-hidden />
+              <p className="text-[12px] text-warning font-medium">
+                Aucun client trouvé dans ce fichier. Vérifiez le format ou les numéros de téléphone.
+              </p>
             </div>
           )}
-        </div>
+          {preview.resume.erreurs > 0 && (
+            <div className="flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3">
+              <AlertCircle size={14} className="text-yellow-600 flex-shrink-0 mt-0.5" aria-hidden />
+              <p className="text-[12px] text-yellow-700 font-medium">
+                {preview.resume.erreurs} ligne{preview.resume.erreurs > 1 ? 's' : ''} ignorée{preview.resume.erreurs > 1 ? 's' : ''} en raison d'erreurs de format.
+              </p>
+            </div>
+          )}
 
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
-          <p className="text-xs font-semibold text-yellow-800 flex items-center gap-2 mb-1">
-            <AlertCircle size={14} /> Format CSV attendu
-          </p>
-          <code className="text-xs text-yellow-700 bg-yellow-100 px-2 py-1 rounded block">
-            nom,prenom,telephone,matricule,site
-          </code>
-        </div>
-
-        <div className="flex gap-3 mt-5">
-          <button
-            onClick={() => file && previewMutation.mutate(file)}
-            disabled={!file || previewMutation.isLoading}
-            className="btn-secondary flex items-center gap-2"
-          >
-            {previewMutation.isLoading ? (
-              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-            ) : <FileText size={16} />}
-            Prévisualiser
-          </button>
-          <button
-            onClick={() => file && importMutation.mutate(file)}
-            disabled={!file || !previewData || importMutation.isLoading}
-            className="btn-primary flex items-center gap-2"
-          >
-            {importMutation.isLoading ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : <Upload size={16} />}
-            Importer
-          </button>
-        </div>
-      </div>
-
-      {previewData && (
-        <div className="card">
-          <h2 className="font-semibold text-gray-800 mb-4">
-            Prévisualisation ({previewData.length} lignes détectées)
-          </h2>
-          <div className="table-container">
-            <table className="w-full text-sm">
+          {/* Tableau prévisualisation */}
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="w-full text-sm" aria-label="Prévisualisation du fichier CSV">
               <thead>
-                <tr className="text-left text-gray-500 border-b text-xs uppercase">
-                  <th className="pb-3 font-semibold">#</th>
-                  <th className="pb-3 font-semibold">Nom</th>
-                  <th className="pb-3 font-semibold">Téléphone</th>
-                  <th className="pb-3 font-semibold">Matricule</th>
-                  <th className="pb-3 font-semibold">Statut</th>
+                <tr className="bg-slate-50">
+                  <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-widest text-text-muted">#</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-widest text-text-muted">Matricule</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-widest text-text-muted hidden sm:table-cell">Téléphone</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-widest text-text-muted hidden md:table-cell">Client trouvé</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-widest text-text-muted">Statut</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
-                {previewData.slice(0, 10).map(row => (
-                  <tr key={row.ligne} className={
-                    row.statut === 'ERREUR' ? 'bg-red-50' :
-                    row.statut === 'DOUBLON' ? 'bg-yellow-50' : ''
-                  }>
-                    <td className="py-2 text-gray-400">{row.ligne}</td>
-                    <td className="py-2 font-medium text-gray-800">{row.nom}</td>
-                    <td className="py-2 font-mono text-gray-600">{row.telephone}</td>
-                    <td className="py-2 font-mono text-gray-600">{row.matricule}</td>
-                    <td className="py-2">
-                      <div className="flex items-center gap-2">
-                        {row.statut === 'OK' && <CheckCircle size={14} className="text-green-500" />}
-                        {row.statut === 'DOUBLON' && <AlertCircle size={14} className="text-yellow-500" />}
-                        {row.statut === 'ERREUR' && <XCircle size={14} className="text-red-500" />}
-                        <span className={`badge text-xs ${
-                          row.statut === 'OK' ? 'badge-success' :
-                          row.statut === 'DOUBLON' ? 'badge-warning' : 'badge-danger'
-                        }`}>{row.statut}</span>
-                        {row.message && <span className="text-xs text-gray-500">{row.message}</span>}
-                      </div>
+              <tbody>
+                {preview.preview.map((row, i) => (
+                  <tr
+                    key={row.ligne}
+                    className={cn(
+                      'border-b border-border/60 last:border-b-0',
+                      row.statut === 'TROUVE'       ? (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50')
+                      : row.statut === 'INTROUVABLE' ? 'bg-amber-50/40'
+                                                     : 'bg-red-50/40',
+                    )}
+                  >
+                    <td className="px-4 py-2.5 text-[11px] text-text-muted font-mono">{row.ligne}</td>
+                    <td className="px-4 py-2.5 text-[12px] font-mono text-text">{row.matricule || '—'}</td>
+                    <td className="px-4 py-2.5 text-[12px] font-mono text-text-muted hidden sm:table-cell">{row.telephone || '—'}</td>
+                    <td className="px-4 py-2.5 text-[12px] text-text hidden md:table-cell">
+                      {row.clientNom ?? '—'}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <StatutBadge statut={row.statut} raison={row.raisonErreur} />
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {previewData.length > 10 && (
-            <p className="text-sm text-gray-400 mt-3 text-center">... et {previewData.length - 10} autres lignes</p>
+          {preview.total > 10 && (
+            <p className="text-[12px] text-text-muted text-center">
+              … et {(preview.total - 10).toLocaleString('fr')} autre{preview.total - 10 > 1 ? 's' : ''} ligne{preview.total - 10 > 1 ? 's' : ''}
+            </p>
           )}
-          <div className="flex gap-4 mt-4 p-3 bg-gray-50 rounded-lg">
+
+          {/* Lancer l'import */}
+          {importMutation.isPending ? (
+            <div className="space-y-2">
+              <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-full bg-primary-accent animate-pulse rounded-full w-full" aria-hidden />
+              </div>
+              <p className="text-[12px] text-text-muted text-center">
+                <Loader2 size={12} className="inline animate-spin mr-1" aria-hidden />
+                Import en cours… ({preview.total} lignes à traiter)
+              </p>
+            </div>
+          ) : (
+            <div className="flex justify-end pt-2 border-t border-border">
+              <button
+                type="button"
+                onClick={() => file && importMutation.mutate(file)}
+                disabled={!file || preview.resume.trouves === 0}
+                className="btn-primary text-[13px] flex items-center gap-2"
+              >
+                Lancer l'import complet →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── PHASE 3 — Résultat ────────────────────────────────────── */}
+      {phase === 'result' && result && (
+        <div className="rounded-xl border border-border bg-white shadow-sm p-5 space-y-5">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 size={20} className="text-success" aria-hidden />
+            <h2 className="text-[16px] font-bold text-success">Import terminé</h2>
+          </div>
+
+          {/* 3 stat cards */}
+          <div className="grid grid-cols-3 gap-3">
             {[
-              { label: 'OK', count: previewData.filter(r => r.statut === 'OK').length, color: 'text-green-600' },
-              { label: 'Doublons', count: previewData.filter(r => r.statut === 'DOUBLON').length, color: 'text-yellow-600' },
-              { label: 'Erreurs', count: previewData.filter(r => r.statut === 'ERREUR').length, color: 'text-red-600' },
-            ].map(s => (
-              <div key={s.label} className="text-center flex-1">
-                <p className={`text-xl font-bold ${s.color}`}>{s.count}</p>
-                <p className="text-xs text-gray-500">{s.label}</p>
+              { label: 'Importés',      value: result.imported, classes: 'border-green-200 bg-green-50',  text: 'text-success' },
+              { label: 'Introuvables',  value: result.notFound,  classes: 'border-amber-200 bg-amber-50', text: 'text-warning' },
+              { label: 'Erreurs',       value: result.errors,    classes: 'border-red-200 bg-red-50',     text: 'text-danger' },
+            ].map((s) => (
+              <div key={s.label} className={cn('rounded-xl border px-4 py-4 text-center', s.classes)}>
+                <p className={cn('text-[28px] font-extrabold font-mono', s.text)}>{s.value}</p>
+                <p className="text-[11px] text-text-muted mt-0.5">{s.label}</p>
               </div>
             ))}
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-between gap-3 flex-wrap pt-2 border-t border-border">
+            <div className="flex items-center gap-3 flex-wrap">
+              {(result.errors > 0 || result.notFound > 0) && (
+                <button
+                  type="button"
+                  onClick={() => downloadErrorReport(result.details)}
+                  className="flex items-center gap-1.5 text-[12px] font-medium text-danger hover:underline"
+                >
+                  <Download size={13} aria-hidden />
+                  Télécharger le rapport d'erreurs (.csv)
+                </button>
+              )}
+            </div>
+            <Link to="/clients" className="btn-secondary text-[13px]">
+              ← Retour à la liste des clients
+            </Link>
           </div>
         </div>
       )}
 
-      {importReport && (
-        <div className="card bg-green-50 border-green-200">
-          <h2 className="font-semibold text-green-800 mb-4 flex items-center gap-2">
-            <CheckCircle size={18} />
-            Rapport d'import
-          </h2>
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="bg-white rounded-lg p-4 text-center border border-green-200">
-              <p className="text-2xl font-black text-green-600">{importReport.success}</p>
-              <p className="text-xs text-gray-500">Importés avec succès</p>
-            </div>
-            <div className="bg-white rounded-lg p-4 text-center border border-yellow-200">
-              <p className="text-2xl font-black text-yellow-600">{importReport.doublons}</p>
-              <p className="text-xs text-gray-500">Doublons ignorés</p>
-            </div>
-            <div className="bg-white rounded-lg p-4 text-center border border-red-200">
-              <p className="text-2xl font-black text-red-600">{importReport.errors}</p>
-              <p className="text-xs text-gray-500">Erreurs</p>
-            </div>
-          </div>
-          {importReport.details?.length > 0 && (
-            <div className="space-y-1 max-h-40 overflow-y-auto">
-              {importReport.details.map((d, i) => (
-                <p key={i} className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
-                  Ligne {d.ligne}: {d.message}
-                </p>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

@@ -1,161 +1,321 @@
 import { useForm } from 'react-hook-form';
-import { useParams, useNavigate } from 'react-router-dom';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { ArrowLeft, CheckCircle2, Clock, Loader2, AlertTriangle } from 'lucide-react';
 import { api, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
-import { formatDate } from '@/lib/utils';
-import { ArrowLeft } from 'lucide-react';
+import { cn, initials, formatDate } from '@/lib/utils';
+import { OnboardingStepper } from '@/components/clients/OnboardingStepper';
+import { ClientStatusBadge } from '@/components/clients/ClientStatusBadge';
 
-interface FormationFormData {
-  nomFormateur: string;
-  dateFormation: string;
-  notes?: string;
-  certificationRequise: boolean;
-}
+// ── Schema Zod ────────────────────────────────────────────────────────────────
 
-interface ClientBasic {
+const today = new Date();
+const thirtyDaysAgo = new Date(Date.now() - 30 * 86400 * 1000);
+
+const schema = z.object({
+  formateurId:   z.string().min(1),
+  dateFormation: z
+    .string()
+    .min(1, 'Date requise')
+    .refine((d) => new Date(d) <= today, { message: 'Date future interdite' })
+    .refine((d) => new Date(d) >= thirtyDaysAgo, { message: 'Date trop ancienne (max 30 jours)' }),
+  dureeMinutes: z.number().min(1).max(480).optional().or(z.literal(NaN)).transform((v) =>
+    Number.isNaN(v) ? undefined : v,
+  ),
+  notes:     z.string().max(300).optional(),
+  confirmed: z.literal(true, { errorMap: () => ({ message: 'Certification requise' }) }),
+});
+
+type FormValues = z.infer<typeof schema>;
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface ClientForFormation {
   id: string;
   prenom: string;
   nom: string;
   telephone: string;
-  site: { nom: string };
   statut: string;
+  site: { nom: string };
+  onboardingEtapes: Array<{ etape: string; statut: string; completeeAt?: string | null }>;
 }
 
-export default function OnboardingFormationPage() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { user } = useAuthStore();
+// ── Page ──────────────────────────────────────────────────────────────────────
 
-  const { data: client } = useQuery<ClientBasic>({
+export default function OnboardingFormationPage() {
+  const { id }   = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user, hasRole } = useAuthStore();
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Bloquer l'accès AGENT
+  const canAccess = hasRole('FORMATEUR');
+
+  const { data: client, isLoading } = useQuery<ClientForFormation>({
     queryKey: ['client-basic', id],
     queryFn: () => api.get(`/clients/${id}`).then(r => r.data),
+    enabled: !!id && canAccess,
   });
 
-  const today = new Date().toISOString().split('T')[0];
+  const recitEtape = client?.onboardingEtapes?.find((e) => e.etape === 'RECIT');
+  const recitDone  = recitEtape?.statut === 'COMPLETE';
+  const canSubmit  = canAccess && recitDone && client?.statut === 'EN_COURS';
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormationFormData>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
     defaultValues: {
-      nomFormateur: user ? `${user.prenom} ${user.nom}` : '',
-      dateFormation: today,
-      certificationRequise: true,
+      formateurId:   user?.id ?? '',
+      dateFormation: todayStr,
+      confirmed: undefined as unknown as true,
     },
   });
 
   const mutation = useMutation({
-    mutationFn: (data: FormationFormData) => api.post(`/clients/${id}/onboarding/formation`, data),
+    mutationFn: (data: FormValues) =>
+      api.post(`/clients/${id}/onboarding/formation`, {
+        formateurId:   data.formateurId,
+        dateFormation: data.dateFormation,
+        dureeMinutes:  data.dureeMinutes,
+        notes:         data.notes,
+      }),
     onSuccess: () => {
-      toast.success('Formation enregistrée !');
+      toast.success('Formation validée.');
       navigate(`/clients/${id}/fiche`);
     },
-    onError: (error) => toast.error(getErrorMessage(error) || 'Erreur lors de l\'enregistrement.'),
+    onError: (error: any) => {
+      const msg = getErrorMessage(error) || 'Erreur lors de l\'enregistrement.';
+      toast.error(msg);
+    },
   });
 
-  const stepperSteps = ['Récit de vente', 'Formation', 'Fiche client', 'Activation'];
+  const fieldCls = (hasErr: boolean) => cn(
+    'w-full px-3 py-2.5 rounded-lg border border-border text-[13px] text-text bg-white',
+    'focus:outline-none focus:ring-2 focus:ring-primary-accent/30 focus:border-primary-accent transition-colors',
+    hasErr && 'border-danger focus:ring-danger/30 focus:border-danger',
+  );
+
+  const disabled = isSubmitting || mutation.isPending;
+
+  // ── Accès refusé ─────────────────────────────────────────────────
+  if (!canAccess) {
+    return (
+      <div className="max-w-lg mx-auto py-20 text-center space-y-3">
+        <AlertTriangle size={36} className="text-warning mx-auto opacity-60" aria-hidden />
+        <h2 className="text-[16px] font-bold text-primary">Accès refusé</h2>
+        <p className="text-[13px] text-text-muted">
+          Cette page est réservée aux Formateurs, Gérants et Super-Admins.
+        </p>
+        <Link to="/clients" className="text-[13px] text-primary-accent hover:underline">
+          ← Retour à la liste
+        </Link>
+      </div>
+    );
+  }
+
+  // ── Chargement ───────────────────────────────────────────────────
+  if (isLoading || !client) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-5 animate-pulse">
+        <div className="skeleton h-9 w-48 rounded-lg" />
+        <div className="skeleton h-12 w-full rounded-xl" />
+        <div className="skeleton h-40 w-full rounded-xl" />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-5">
+
+      {/* Header */}
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate(`/clients/${id}/recit`)} className="btn-secondary p-2">
-          <ArrowLeft size={18} />
+        <button
+          type="button"
+          onClick={() => navigate(`/clients/${id}`)}
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border text-text-muted hover:border-border-strong hover:text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent"
+          aria-label="Retour à la fiche client"
+        >
+          <ArrowLeft size={17} aria-hidden />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Onboarding — Formation</h1>
-          <p className="text-gray-500 text-sm">Étape 2 sur 4</p>
+          <h1 className="text-[18px] font-extrabold text-primary leading-tight">Formation</h1>
+          <p className="text-[12px] text-text-muted">Étape 2 sur 4 — Validation de la formation</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        {stepperSteps.map((s, i) => (
-          <div key={i} className="flex items-center flex-1">
-            <div className="flex flex-col items-center w-full">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                i < 1 ? 'bg-green-500 text-white' : i === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
-              }`}>{i < 1 ? '✓' : i + 1}</div>
-              <span className={`text-xs mt-1 font-medium ${i === 1 ? 'text-blue-600' : i < 1 ? 'text-green-600' : 'text-gray-400'}`}>{s}</span>
+      {/* Stepper */}
+      <OnboardingStepper currentStep={2} clientId={id} />
+
+      {/* Carte client (lecture seule) */}
+      <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-4">
+        <div className="flex items-center gap-3">
+          <span
+            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-[13px] font-bold bg-primary-accent text-white select-none"
+            aria-hidden
+          >
+            {initials(client.nom, client.prenom)}
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[14px] font-bold text-primary truncate">
+              {client.prenom} {client.nom}
+            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-0.5">
+              <ClientStatusBadge statut={client.statut as any} size="sm" />
+              <span className="text-[11px] text-text-muted">{client.telephone}</span>
+              <span className="text-[11px] text-text-muted">· {client.site?.nom}</span>
             </div>
-            {i < stepperSteps.length - 1 && <div className={`h-0.5 flex-1 mb-4 ${i < 1 ? 'bg-green-400' : 'bg-gray-200'}`} />}
           </div>
-        ))}
+        </div>
+        {/* Confirmation récit */}
+        {recitDone && recitEtape?.completeeAt ? (
+          <div className="flex items-center gap-1.5 mt-3 text-[11px] text-success font-medium">
+            <CheckCircle2 size={12} aria-hidden />
+            Récit acheté le {formatDate(recitEtape.completeeAt)}
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 mt-3 text-[11px] text-warning font-medium">
+            <Clock size={12} aria-hidden />
+            Récit non complété
+          </div>
+        )}
       </div>
 
-      {client && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <p className="text-xs text-blue-500 font-semibold uppercase mb-2">Client en cours d'onboarding</p>
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-blue-200 flex items-center justify-center font-bold text-blue-700 text-lg">
-              {client.prenom[0]}{client.nom[0]}
-            </div>
-            <div>
-              <p className="font-bold text-gray-900">{client.prenom} {client.nom}</p>
-              <p className="text-sm text-gray-500">{client.telephone} · {client.site?.nom}</p>
-            </div>
+      {/* Bannière protection — récit non complété */}
+      {!canSubmit && (
+        <div
+          className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"
+          role="alert"
+        >
+          <AlertTriangle size={15} className="text-warning flex-shrink-0 mt-0.5" aria-hidden />
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] text-warning font-medium">
+              L'étape Récit doit être complétée avant de valider la formation.
+            </p>
+            <Link
+              to={`/clients/new/recit`}
+              className="text-[12px] font-semibold text-warning hover:underline mt-1 inline-block"
+            >
+              ← Reprendre depuis le Récit
+            </Link>
           </div>
         </div>
       )}
 
-      <div className="card">
-        <h2 className="text-lg font-semibold text-gray-800 mb-6">Informations de formation</h2>
-        <form onSubmit={handleSubmit(data => mutation.mutate(data))} className="space-y-5">
+      {/* Formulaire */}
+      <div className="rounded-xl border border-border bg-white shadow-sm p-6">
+        <h2 className="text-[15px] font-bold text-primary mb-5">Validation de la formation</h2>
+
+        <form onSubmit={handleSubmit((d) => mutation.mutate(d))} noValidate className="space-y-5">
+
+          {/* Formateur — pré-rempli non éditable */}
           <div className="form-group">
-            <label className="form-label">Nom du formateur *</label>
+            <label className="form-label">Formateur *</label>
             <input
-              className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.nomFormateur ? 'border-red-400' : 'border-gray-300'}`}
-              {...register('nomFormateur', { required: 'Nom du formateur requis' })}
+              value={[user?.prenom, user?.nom].filter(Boolean).join(' ') || user?.name || ''}
+              disabled
+              className={cn(fieldCls(false), 'opacity-60 cursor-not-allowed bg-slate-50')}
+              readOnly
             />
-            {errors.nomFormateur && <p className="form-error">{errors.nomFormateur.message}</p>}
+            <input type="hidden" {...register('formateurId')} />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Date de formation *</label>
-            <input
-              type="date"
-              max={today}
-              className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.dateFormation ? 'border-red-400' : 'border-gray-300'}`}
-              {...register('dateFormation', { required: 'Date requise' })}
-            />
-            {errors.dateFormation && <p className="form-error">{errors.dateFormation.message}</p>}
+          {/* Date + Durée */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="form-group">
+              <label htmlFor="dateFormation" className="form-label">Date de formation *</label>
+              <input
+                id="dateFormation"
+                type="date"
+                max={todayStr}
+                min={new Date(Date.now() - 30 * 86400 * 1000).toISOString().split('T')[0]}
+                disabled={disabled || !canSubmit}
+                className={fieldCls(!!errors.dateFormation)}
+                {...register('dateFormation')}
+              />
+              {errors.dateFormation && <p className="form-error">{errors.dateFormation.message}</p>}
+            </div>
+            <div className="form-group">
+              <label htmlFor="dureeMinutes" className="form-label">
+                Durée <span className="text-text-muted font-normal">(minutes, optionnel)</span>
+              </label>
+              <input
+                id="dureeMinutes"
+                type="number"
+                min={1}
+                max={480}
+                placeholder="ex: 45"
+                disabled={disabled || !canSubmit}
+                className={fieldCls(false)}
+                {...register('dureeMinutes', { valueAsNumber: true })}
+              />
+            </div>
           </div>
 
+          {/* Notes */}
           <div className="form-group">
-            <label className="form-label">Notes de formation (optionnel)</label>
+            <label htmlFor="notes" className="form-label">
+              Notes <span className="text-text-muted font-normal">(optionnel, max 300 caractères)</span>
+            </label>
             <textarea
-              rows={4}
-              placeholder="Observations, compétences évaluées, points à améliorer..."
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              id="notes"
+              rows={3}
+              maxLength={300}
+              placeholder="Observations, compétences évaluées…"
+              disabled={disabled || !canSubmit}
+              className={cn(fieldCls(false), 'resize-none')}
               {...register('notes')}
             />
           </div>
 
-          <div className="flex items-center gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          {/* Checkbox certification */}
+          <label className={cn(
+            'flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-colors',
+            'border-border bg-slate-50 hover:bg-primary-light/20',
+            !canSubmit && 'opacity-50 cursor-not-allowed',
+          )}>
             <input
               type="checkbox"
-              id="certificationRequise"
-              className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500"
-              {...register('certificationRequise')}
+              className="mt-0.5 h-4 w-4 rounded border-border text-primary-accent focus:ring-2 focus:ring-primary-accent"
+              disabled={disabled || !canSubmit}
+              {...register('confirmed')}
             />
             <div>
-              <label htmlFor="certificationRequise" className="font-medium text-gray-800 cursor-pointer">
-                Certification requise
-              </label>
-              <p className="text-xs text-gray-500 mt-0.5">Le client doit obtenir la certification pour être pleinement activé.</p>
+              <p className="text-[13px] font-semibold text-text">
+                Je certifie que ce client a bien suivi la formation *
+              </p>
+              <p className="text-[11px] text-text-muted mt-0.5">
+                Cette confirmation est requise pour passer à l'étape suivante.
+              </p>
             </div>
-          </div>
+          </label>
+          {errors.confirmed && (
+            <p className="form-error -mt-3">{errors.confirmed.message}</p>
+          )}
 
-          <div className="flex justify-between gap-3 pt-4 border-t">
-            <button type="button" onClick={() => navigate('/clients')} className="btn-secondary">
+          {/* Actions */}
+          <div className="flex items-center justify-between gap-3 pt-2 border-t border-border">
+            <button
+              type="button"
+              onClick={() => navigate(`/clients/${id}`)}
+              className="btn-secondary text-[13px]"
+            >
               Annuler
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || mutation.isLoading}
-              className="btn-primary flex items-center gap-2"
+              disabled={disabled || !canSubmit}
+              className="btn-primary text-[13px] flex items-center gap-2"
             >
-              {(isSubmitting || mutation.isLoading) && (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              )}
-              Suivant : Fiche client →
+              {disabled && <Loader2 size={14} className="animate-spin" aria-hidden />}
+              {disabled ? 'Validation…' : '✓ Valider la Formation →'}
             </button>
           </div>
         </form>

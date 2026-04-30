@@ -1,204 +1,179 @@
-import { useQuery } from '@tanstack/react-query';
-import { Building2, TrendingUp, Users, ShoppingCart, AlertTriangle, Award } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { RefreshCw, Download, ArrowLeft } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useRegionalDashboard } from '@/hooks/useRegionalDashboard';
+import { SitesComparisonTable } from '@/components/dashboard/SitesComparisonTable';
+import { RevenueLineChart } from '@/components/dashboard/RevenueLineChart';
+import { TopProductsList } from '@/components/dashboard/TopProductsList';
+import { TopParrainsList } from '@/components/dashboard/TopParrainsList';
 import { api } from '@/lib/api';
-import { formatCDF } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
-interface SiteStats {
-  id: string;
-  nom: string;
-  ville: string;
-  ca: number;
-  ventes: number;
-  clients: number;
-  alertes: number;
-}
+type Period = 'month' | 'quarter' | 'year';
 
-interface MonthlyCA {
-  mois: string;
-  total: number;
-  sites: Record<string, number>;
-}
-
-interface TopProduit {
-  id: string;
-  nom: string;
-  quantite: number;
-  ca: number;
-}
-
-interface TopParrain {
-  id: string;
-  nom: string;
-  filleuls: number;
-  gains: number;
-}
-
-interface RegionalData {
-  sites: SiteStats[];
-  casMensuel: MonthlyCA[];
-  topProduits: TopProduit[];
-  topParrains: TopParrain[];
-}
+const periodLabel: Record<Period, string> = {
+  month: 'Ce mois',
+  quarter: 'Ce trimestre',
+  year: 'Cette année',
+};
 
 export default function DashboardRegionalPage() {
-  const { data, isLoading } = useQuery<RegionalData>({
-    queryKey: ['dashboard-regional'],
-    queryFn: () => api.get('/dashboard/regional').then(r => r.data),
-    refetchInterval: 300000,
-  });
+  const navigate = useNavigate();
+  const [period, setPeriod] = useState<Period>('month');
+  const [isExporting, setIsExporting] = useState(false);
 
-  const maxCA = data ? Math.max(...(data.casMensuel || []).map(d => d.total), 1) : 1;
-  const maxProduit = data ? Math.max(...(data.topProduits || []).map(p => p.ca), 1) : 1;
+  const { comparison, revenueChart, topProducts, topParrains, isAnyLoading, refetchAll, error } =
+    useRegionalDashboard(period);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const { data: job } = await api.post('/rapports/export', {
+        type: 'DASHBOARD_REGIONAL',
+        format: 'PDF',
+        filtres: { period },
+      });
+      const jobId = job.id ?? job.jobId;
+
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        if (attempts > 30) {
+          clearInterval(poll);
+          setIsExporting(false);
+          toast.error('Erreur lors de la génération du rapport.');
+          return;
+        }
+        try {
+          const { data: status } = await api.get(`/rapports/export/${jobId}`);
+          if (status.statut === 'READY' || status.status === 'READY') {
+            clearInterval(poll);
+            setIsExporting(false);
+            window.open(status.downloadUrl, '_blank');
+            toast.success('Rapport PDF téléchargé avec succès.');
+          } else if (status.statut === 'ERROR' || status.status === 'ERROR') {
+            clearInterval(poll);
+            setIsExporting(false);
+            toast.error('Erreur lors de la génération du rapport.');
+          }
+        } catch {
+          clearInterval(poll);
+          setIsExporting(false);
+          toast.error('Erreur lors de la génération du rapport.');
+        }
+      }, 2000);
+    } catch {
+      setIsExporting(false);
+      toast.error('Erreur lors de la génération du rapport.');
+    }
+  };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <Building2 size={28} className="text-blue-600" />
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tableau de bord Régional</h1>
-          <p className="text-gray-500 text-sm">Comparatif de performance par site</p>
+          <h1 className="text-2xl font-bold text-primary">Vue Régionale</h1>
+          <p className="text-sm text-text-muted mt-1">Comparatif de performance par site</p>
         </div>
-      </div>
 
-      <div className="card">
-        <h2 className="font-semibold text-gray-900 mb-4">Performance par site</h2>
-        {isLoading ? (
-          <div className="space-y-2">
-            {[...Array(4)].map((_, i) => <div key={i} className="skeleton h-12 rounded" />)}
-          </div>
-        ) : (
-          <div className="table-container">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-500 border-b">
-                  <th className="pb-3 font-medium">Site</th>
-                  <th className="pb-3 font-medium">Ville</th>
-                  <th className="pb-3 font-medium">
-                    <span className="flex items-center gap-1"><TrendingUp size={14} /> CA Total</span>
-                  </th>
-                  <th className="pb-3 font-medium">
-                    <span className="flex items-center gap-1"><ShoppingCart size={14} /> Ventes</span>
-                  </th>
-                  <th className="pb-3 font-medium">
-                    <span className="flex items-center gap-1"><Users size={14} /> Clients</span>
-                  </th>
-                  <th className="pb-3 font-medium">
-                    <span className="flex items-center gap-1"><AlertTriangle size={14} /> Alertes</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {(data?.sites || []).map(site => (
-                  <tr key={site.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-3 font-semibold text-gray-900">{site.nom}</td>
-                    <td className="py-3 text-gray-600">{site.ville}</td>
-                    <td className="py-3 font-bold text-green-700">{formatCDF(site.ca)}</td>
-                    <td className="py-3 text-gray-700">{site.ventes}</td>
-                    <td className="py-3 text-gray-700">{site.clients}</td>
-                    <td className="py-3">
-                      <span className={`badge ${site.alertes > 0 ? 'badge-warning' : 'badge-success'}`}>
-                        {site.alertes}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                {(!data?.sites || data.sites.length === 0) && (
-                  <tr><td colSpan={6} className="py-8 text-center text-gray-400">Aucun site disponible</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <div className="card">
-        <h2 className="font-semibold text-gray-900 mb-5 flex items-center gap-2">
-          <TrendingUp size={18} className="text-blue-500" />
-          Évolution CA mensuel
-        </h2>
-        {isLoading ? (
-          <div className="flex items-end gap-3 h-48">
-            {[...Array(6)].map((_, i) => <div key={i} className="skeleton flex-1 rounded-t h-32" />)}
-          </div>
-        ) : (
-          <div className="flex items-end gap-3 h-48">
-            {(data?.casMensuel || []).map((d, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-xs text-gray-500 font-medium">{formatCDF(d.total)}</span>
-                <div
-                  className="w-full bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-md"
-                  style={{ height: `${(d.total / maxCA) * 160}px`, minHeight: '4px' }}
-                  title={formatCDF(d.total)}
-                />
-                <span className="text-xs text-gray-500 mt-1">{d.mois}</span>
-              </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Period selector */}
+          <div className="period-toggle" role="group" aria-label="Période">
+            {(['month', 'quarter', 'year'] as Period[]).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPeriod(p)}
+                className={cn('period-btn', period === p && 'active')}
+              >
+                {periodLabel[p]}
+              </button>
             ))}
-            {(!data?.casMensuel || data.casMensuel.length === 0) && (
-              <div className="w-full text-center text-gray-400 py-10">Aucune donnée mensuelle</div>
-            )}
           </div>
-        )}
+
+          <button
+            type="button"
+            onClick={refetchAll}
+            disabled={isAnyLoading}
+            className={cn(
+              'p-1.5 rounded-lg border border-border text-text-muted transition-colors',
+              'hover:border-border-strong hover:text-text',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+            )}
+            title="Actualiser"
+            aria-label="Actualiser les données"
+          >
+            <RefreshCw size={16} className={cn(isAnyLoading && 'animate-spin')} aria-hidden />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={isExporting}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150',
+              'bg-primary-accent text-white hover:bg-blue-700',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent focus-visible:ring-offset-2',
+              'disabled:opacity-60 disabled:cursor-not-allowed',
+            )}
+          >
+            {isExporting ? (
+              <>
+                <RefreshCw size={14} className="animate-spin" aria-hidden />
+                Génération...
+              </>
+            ) : (
+              <>
+                <Download size={14} aria-hidden />
+                Export PDF
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            className={cn(
+              'flex items-center gap-1.5 text-sm font-medium text-text-muted hover:text-primary transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent rounded',
+            )}
+            onClick={() => navigate('/dashboard')}
+          >
+            <ArrowLeft size={14} aria-hidden />
+            Vue principale
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="card">
-          <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Award size={18} className="text-yellow-500" />
-            Top 5 Produits
-          </h2>
-          {isLoading ? (
-            <div className="space-y-3">{[...Array(5)].map((_, i) => <div key={i} className="skeleton h-10 rounded" />)}</div>
-          ) : (
-            <div className="space-y-3">
-              {(data?.topProduits || []).map((p, idx) => (
-                <div key={p.id} className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">{idx + 1}</span>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-gray-700">{p.nom}</span>
-                      <span className="text-xs text-gray-500">{formatCDF(p.ca)}</span>
-                    </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${(p.ca / maxProduit) * 100}%` }} />
-                    </div>
-                  </div>
-                  <span className="text-xs text-gray-500 w-12 text-right">{p.quantite} vdus</span>
-                </div>
-              ))}
-              {(!data?.topProduits || data.topProduits.length === 0) && (
-                <p className="text-center text-gray-400 text-sm py-6">Aucune donnée</p>
-              )}
-            </div>
-          )}
+      {error && (
+        <div
+          className="flex items-center justify-between gap-4 rounded-xl border border-red-200 bg-red-50 px-5 py-4"
+          role="alert"
+          aria-live="assertive"
+        >
+          <p className="text-sm text-danger">Impossible de charger les données régionales.</p>
+          <button
+            type="button"
+            onClick={refetchAll}
+            className={cn(
+              'flex items-center gap-1.5 text-sm font-medium text-danger hover:underline',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger rounded',
+            )}
+          >
+            <RefreshCw size={14} aria-hidden />
+            Réessayer
+          </button>
         </div>
+      )}
 
-        <div className="card">
-          <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Users size={18} className="text-purple-500" />
-            Top 5 Parrains
-          </h2>
-          {isLoading ? (
-            <div className="space-y-3">{[...Array(5)].map((_, i) => <div key={i} className="skeleton h-10 rounded" />)}</div>
-          ) : (
-            <div className="space-y-3">
-              {(data?.topParrains || []).map((p, idx) => (
-                <div key={p.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
-                  <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                    idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-gray-400' : idx === 2 ? 'bg-amber-600' : 'bg-blue-400'
-                  }`}>{idx + 1}</span>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-800">{p.nom}</p>
-                    <p className="text-xs text-gray-500">{p.filleuls} filleuls</p>
-                  </div>
-                  <span className="text-sm font-bold text-green-700">{formatCDF(p.gains)}</span>
-                </div>
-              ))}
-              {(!data?.topParrains || data.topParrains.length === 0) && (
-                <p className="text-center text-gray-400 text-sm py-6">Aucune donnée</p>
-              )}
-            </div>
-          )}
-        </div>
+      <SitesComparisonTable data={comparison.data} isLoading={comparison.isLoading} />
+
+      <RevenueLineChart data={revenueChart.data} isLoading={revenueChart.isLoading} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <TopProductsList data={topProducts.data} isLoading={topProducts.isLoading} />
+        <TopParrainsList data={topParrains.data} isLoading={topParrains.isLoading} />
       </div>
     </div>
   );

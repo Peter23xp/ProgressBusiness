@@ -17,7 +17,7 @@ export class DashboardController {
     @Query('period') period?: string,
     @CurrentUser() user?: any,
   ) {
-    return this.dashboardService.getStats(siteId, period, user);
+    return this.dashboardService.getStats(siteId, period ?? 'today', user);
   }
 
   @Get('sales-chart')
@@ -25,7 +25,7 @@ export class DashboardController {
     @Query('siteId') siteId?: string,
     @Query('days') days?: string,
   ) {
-    return this.dashboardService.getSalesChart(siteId, days ? parseInt(days, 10) : 30);
+    return this.dashboardService.getSalesChart(siteId, days ? parseInt(days, 10) : 7);
   }
 
   @Get('recent-transactions')
@@ -33,10 +33,7 @@ export class DashboardController {
     @Query('siteId') siteId?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.dashboardService.getRecentTransactions(
-      siteId,
-      limit ? parseInt(limit, 10) : 10,
-    );
+    return this.dashboardService.getRecentTransactions(siteId, limit ? parseInt(limit, 10) : 5);
   }
 
   @Get('stock-alerts')
@@ -44,18 +41,17 @@ export class DashboardController {
     @Query('siteId') siteId?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.dashboardService.getStockAlerts(
-      siteId,
-      limit ? parseInt(limit, 10) : 10,
-    );
+    return this.dashboardService.getStockAlerts(siteId, limit ? parseInt(limit, 10) : 3);
   }
 
   @Get('regional')
-  @Roles(Role.DIRECTEUR_REGIONAL)
+  @Roles(Role.DIRECTEUR_REGIONAL, Role.SUPER_ADMIN)
   getRegionalDashboard(
     @Query('period') period?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
     @CurrentUser() user?: any,
   ) {
-    return this.dashboardService.getRegionalDashboard(period, user);
+    return this.dashboardService.getRegionalDashboard(period ?? 'month', dateFrom, dateTo, user);
   }
 }

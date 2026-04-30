@@ -1,163 +1,291 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { ArrowLeft, CheckCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, AlertTriangle, Clock } from 'lucide-react';
 import { api, getErrorMessage } from '@/lib/api';
-import { formatCDF } from '@/lib/utils';
+import { cn, formatDate, initials } from '@/lib/utils';
+import { OnboardingStepper } from '@/components/clients/OnboardingStepper';
+import { ClientStatusBadge } from '@/components/clients/ClientStatusBadge';
 
-interface FicheFormData {
-  montantFiche: number;
-  modePaiement: string;
-  numeroTransaction?: string;
-}
+// ── Schema Zod ────────────────────────────────────────────────────────────────
 
-interface ClientOnboardingState {
+const schema = z
+  .object({
+    montantFiche:      z.number({ invalid_type_error: 'Montant requis' }).positive('Montant requis'),
+    modePaiement:      z.enum(['CASH', 'MPESA', 'AIRTEL_MONEY', 'VIREMENT']),
+    numeroTransaction: z.string().optional(),
+  })
+  .refine(
+    (d) => d.modePaiement === 'CASH' || !!d.numeroTransaction,
+    { message: 'Numéro de transaction requis pour ce mode', path: ['numeroTransaction'] },
+  );
+
+type FormValues = z.infer<typeof schema>;
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface ClientForFiche {
   id: string;
   prenom: string;
   nom: string;
   telephone: string;
+  statut: string;
   site: { nom: string };
-  onboarding: {
-    recitDate?: string;
-    recitMontant?: number;
-    formationDate?: string;
-    formationNotes?: string;
-  };
+  onboardingEtapes: Array<{ etape: string; statut: string; completeeAt?: string | null; montant?: number | null }>;
 }
 
+const MODES = [
+  { value: 'CASH',         label: 'Cash' },
+  { value: 'MPESA',        label: 'M-Pesa' },
+  { value: 'AIRTEL_MONEY', label: 'Airtel Money' },
+  { value: 'VIREMENT',     label: 'Virement' },
+] as const;
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function OnboardingFichePage() {
-  const { id } = useParams<{ id: string }>();
+  const { id }   = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data: client } = useQuery<ClientOnboardingState>({
+  const { data: client, isLoading } = useQuery<ClientForFiche>({
     queryKey: ['client-basic', id],
     queryFn: () => api.get(`/clients/${id}`).then(r => r.data),
+    enabled: !!id,
   });
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FicheFormData>({
+  const { data: config } = useQuery<{ montantFiche: number }>({
+    queryKey: ['config'],
+    queryFn: () => api.get('/config').then(r => r.data),
+  });
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
     defaultValues: { modePaiement: 'CASH' },
   });
 
+  useEffect(() => {
+    if (config?.montantFiche) {
+      setValue('montantFiche', config.montantFiche, { shouldValidate: false });
+    }
+  }, [config, setValue]);
+
+  const recitEtape     = client?.onboardingEtapes.find(e => e.etape === 'RECIT');
+  const formationEtape = client?.onboardingEtapes.find(e => e.etape === 'FORMATION');
+  const recitDone      = recitEtape?.statut === 'COMPLETE';
+  const formationDone  = formationEtape?.statut === 'COMPLETE';
+  const canSubmit      = recitDone && formationDone;
+
   const mutation = useMutation({
-    mutationFn: (data: FicheFormData) => api.post(`/clients/${id}/onboarding/fiche`, data),
+    mutationFn: (data: FormValues) =>
+      api.post(`/clients/${id}/onboarding/fiche`, {
+        montantFiche:      data.montantFiche,
+        modePaiement:      data.modePaiement,
+        numeroTransaction: data.numeroTransaction || undefined,
+      }),
     onSuccess: () => {
-      toast.success('Fiche client enregistrée !');
+      toast.success('Fiche client enregistrée.');
       navigate(`/clients/${id}/activate`);
     },
-    onError: (error) => toast.error(getErrorMessage(error) || 'Erreur lors de l\'enregistrement.'),
+    onError: (error: any) => {
+      const msg = getErrorMessage(error) || "Erreur lors de l'enregistrement.";
+      toast.error(msg);
+    },
   });
 
-  const stepperSteps = ['Récit de vente', 'Formation', 'Fiche client', 'Activation'];
+  const fieldCls = (hasErr: boolean) => cn(
+    'w-full px-3 py-2.5 rounded-lg border border-border text-[13px] text-text bg-white',
+    'focus:outline-none focus:ring-2 focus:ring-primary-accent/30 focus:border-primary-accent transition-colors',
+    hasErr && 'border-danger focus:ring-danger/30 focus:border-danger',
+  );
+
+  const modePaiement = watch('modePaiement');
+  const needsRef     = modePaiement !== 'CASH';
+  const disabled     = isSubmitting || mutation.isPending;
+
+  if (isLoading) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-5 animate-pulse">
+        <div className="skeleton h-9 w-48 rounded-lg" />
+        <div className="skeleton h-12 w-full rounded-xl" />
+        <div className="skeleton h-36 w-full rounded-xl" />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-5">
+
+      {/* Header */}
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate(`/clients/${id}/formation`)} className="btn-secondary p-2">
-          <ArrowLeft size={18} />
+        <button
+          type="button"
+          onClick={() => navigate(`/clients/${id}`)}
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border text-text-muted hover:border-border-strong hover:text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent"
+          aria-label="Retour à la fiche client"
+        >
+          <ArrowLeft size={17} aria-hidden />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Onboarding — Fiche Client</h1>
-          <p className="text-gray-500 text-sm">Étape 3 sur 4</p>
+          <h1 className="text-[18px] font-extrabold text-primary leading-tight">Fiche client</h1>
+          <p className="text-[12px] text-text-muted">Étape 3 sur 4 — Achat de la fiche</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        {stepperSteps.map((s, i) => (
-          <div key={i} className="flex items-center flex-1">
-            <div className="flex flex-col items-center w-full">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                i < 2 ? 'bg-green-500 text-white' : i === 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
-              }`}>{i < 2 ? '✓' : i + 1}</div>
-              <span className={`text-xs mt-1 font-medium ${i === 2 ? 'text-blue-600' : i < 2 ? 'text-green-600' : 'text-gray-400'}`}>{s}</span>
-            </div>
-            {i < stepperSteps.length - 1 && <div className={`h-0.5 flex-1 mb-4 ${i < 2 ? 'bg-green-400' : 'bg-gray-200'}`} />}
-          </div>
-        ))}
-      </div>
+      {/* Stepper */}
+      <OnboardingStepper currentStep={3} clientId={id} />
 
+      {/* Carte client */}
       {client && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
-          <p className="text-xs text-blue-500 font-semibold uppercase mb-3">Résumé de l'onboarding</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                {client.onboarding?.recitDate && <CheckCircle size={16} className="text-green-500 mt-0.5 flex-shrink-0" />}
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">Récit de vente</p>
-                  <p className="text-sm font-semibold text-gray-800">
-                    {client.onboarding?.recitMontant ? formatCDF(client.onboarding.recitMontant) : '—'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                {client.onboarding?.formationDate && <CheckCircle size={16} className="text-green-500 mt-0.5 flex-shrink-0" />}
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">Formation</p>
-                  <p className="text-sm font-semibold text-gray-800">
-                    {client.onboarding?.formationDate ? 'Complétée' : '—'}
-                  </p>
-                </div>
+        <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-4">
+          <div className="flex items-center gap-3">
+            <span
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-[13px] font-bold bg-primary-accent text-white select-none"
+              aria-hidden
+            >
+              {initials(client.nom, client.prenom)}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[14px] font-bold text-primary truncate">
+                {client.prenom} {client.nom}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                <ClientStatusBadge statut={client.statut as any} size="sm" />
+                <span className="text-[11px] text-text-muted">{client.telephone} · {client.site?.nom}</span>
               </div>
             </div>
-            <div>
-              <p className="text-sm font-bold text-gray-900">{client.prenom} {client.nom}</p>
-              <p className="text-sm text-gray-500">{client.telephone}</p>
-              <p className="text-sm text-gray-500">{client.site?.nom}</p>
+          </div>
+          {/* Confirmation étapes précédentes */}
+          <div className="flex flex-wrap items-center gap-4 mt-3">
+            <div className="flex items-center gap-1.5 text-[11px]">
+              {recitDone
+                ? <CheckCircle2 size={12} className="text-success" aria-hidden />
+                : <Clock size={12} className="text-warning" aria-hidden />}
+              <span className={recitDone ? 'text-success font-medium' : 'text-warning'}>
+                Récit {recitDone && recitEtape?.completeeAt ? `acheté le ${formatDate(recitEtape.completeeAt)}` : 'non complété'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px]">
+              {formationDone
+                ? <CheckCircle2 size={12} className="text-success" aria-hidden />
+                : <Clock size={12} className="text-warning" aria-hidden />}
+              <span className={formationDone ? 'text-success font-medium' : 'text-warning'}>
+                Formation {formationDone ? 'validée' : 'non complétée'}
+              </span>
             </div>
           </div>
         </div>
       )}
 
-      <div className="card">
-        <h2 className="text-lg font-semibold text-gray-800 mb-6">Paiement de la fiche client</h2>
-        <form onSubmit={handleSubmit(data => mutation.mutate(data))} className="space-y-5">
+      {/* Bannière protection */}
+      {!canSubmit && client && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3" role="alert">
+          <AlertTriangle size={15} className="text-warning flex-shrink-0 mt-0.5" aria-hidden />
+          <div>
+            <p className="text-[13px] text-warning font-medium">
+              {!recitDone
+                ? "L'étape Récit doit être complétée avant la fiche."
+                : "L'étape Formation doit être complétée avant la fiche."}
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate(!recitDone ? '/clients/new/recit' : `/clients/${id}/formation`)}
+              className="text-[12px] font-semibold text-warning hover:underline mt-1"
+            >
+              ← Reprendre depuis {!recitDone ? 'le Récit' : 'la Formation'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Formulaire */}
+      <div className="rounded-xl border border-border bg-white shadow-sm p-6">
+        <h2 className="text-[15px] font-bold text-primary mb-5">Paiement de la fiche client</h2>
+
+        <form onSubmit={handleSubmit((d) => mutation.mutate(d))} noValidate className="space-y-5">
+
+          {/* Montant */}
           <div className="form-group">
-            <label className="form-label">Montant fiche (CDF) *</label>
+            <label htmlFor="montantFiche" className="form-label">Montant payé * (CDF)</label>
             <input
+              id="montantFiche"
               type="number"
-              min={0}
-              placeholder="ex: 25000"
-              className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.montantFiche ? 'border-red-400' : 'border-gray-300'}`}
-              {...register('montantFiche', { required: 'Montant requis', valueAsNumber: true, min: { value: 0, message: 'Montant positif requis' } })}
+              min={1}
+              placeholder="ex: 10 000"
+              disabled={disabled || !canSubmit}
+              className={fieldCls(!!errors.montantFiche)}
+              {...register('montantFiche', { valueAsNumber: true })}
             />
             {errors.montantFiche && <p className="form-error">{errors.montantFiche.message}</p>}
           </div>
 
+          {/* Mode paiement */}
           <div className="form-group">
-            <label className="form-label">Mode de paiement *</label>
-            <div className="grid grid-cols-3 gap-3">
-              {['CASH', 'MPESA', 'AIRTEL_MONEY'].map(mode => (
-                <label key={mode} className="relative flex items-center justify-center gap-2 p-3 border-2 rounded-xl cursor-pointer transition-all has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-                  <input type="radio" value={mode} className="sr-only" {...register('modePaiement', { required: true })} />
-                  <span className="font-medium text-sm text-gray-700">{mode === 'CASH' ? 'Cash' : mode === 'MPESA' ? 'M-Pesa' : 'Airtel Money'}</span>
+            <p className="form-label">Mode de paiement *</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {MODES.map((m) => (
+                <label
+                  key={m.value}
+                  className={cn(
+                    'flex items-center justify-center px-3 py-2.5 border-2 rounded-lg cursor-pointer text-[12px] font-semibold transition-colors',
+                    'has-[:checked]:border-primary-accent has-[:checked]:bg-primary-light/40 has-[:checked]:text-primary-accent',
+                    'border-border text-text-muted hover:border-border-strong',
+                    (disabled || !canSubmit) && 'opacity-50 cursor-not-allowed',
+                  )}
+                >
+                  <input
+                    type="radio"
+                    value={m.value}
+                    className="sr-only"
+                    disabled={disabled || !canSubmit}
+                    {...register('modePaiement')}
+                  />
+                  {m.label}
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">N° Transaction / Reçu (optionnel)</label>
-            <input
-              placeholder="ex: TXN-789012"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              {...register('numeroTransaction')}
-            />
-          </div>
+          {/* Numéro transaction — conditionnel */}
+          {needsRef && (
+            <div className="form-group">
+              <label htmlFor="numeroTransaction" className="form-label">Numéro de transaction *</label>
+              <input
+                id="numeroTransaction"
+                placeholder="ex: ATM-789012"
+                disabled={disabled || !canSubmit}
+                className={fieldCls(!!errors.numeroTransaction)}
+                {...register('numeroTransaction')}
+              />
+              {errors.numeroTransaction && <p className="form-error">{errors.numeroTransaction.message}</p>}
+            </div>
+          )}
 
-          <div className="flex justify-between gap-3 pt-4 border-t">
-            <button type="button" onClick={() => navigate('/clients')} className="btn-secondary">
+          {/* Actions */}
+          <div className="flex items-center justify-between gap-3 pt-2 border-t border-border">
+            <button
+              type="button"
+              onClick={() => navigate('/clients')}
+              className="btn-secondary text-[13px]"
+            >
               Annuler
             </button>
             <button
               type="submit"
-              disabled={mutation.isLoading}
-              className="btn-primary flex items-center gap-2"
+              disabled={disabled || !canSubmit}
+              className="btn-primary text-[13px] flex items-center gap-2"
             >
-              {mutation.isLoading && (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              )}
-              Suivant : Activation →
+              {disabled && <Loader2 size={14} className="animate-spin" aria-hidden />}
+              {disabled ? 'Enregistrement…' : '✓ Valider l\'achat de la Fiche →'}
             </button>
           </div>
         </form>

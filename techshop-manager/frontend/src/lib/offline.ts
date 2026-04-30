@@ -1,19 +1,27 @@
 import { openDB, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'techshop-offline';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let db: IDBPDatabase | null = null;
 
 export async function getDB() {
   if (db) return db;
   db = await openDB(DB_NAME, DB_VERSION, {
-    upgrade(database) {
-      if (!database.objectStoreNames.contains('pending-ventes')) {
-        database.createObjectStore('pending-ventes', { keyPath: 'localId' });
+    upgrade(database, oldVersion) {
+      if (oldVersion < 1) {
+        if (!database.objectStoreNames.contains('pending-ventes')) {
+          database.createObjectStore('pending-ventes', { keyPath: 'localId' });
+        }
+        if (!database.objectStoreNames.contains('cache')) {
+          database.createObjectStore('cache', { keyPath: 'key' });
+        }
       }
-      if (!database.objectStoreNames.contains('cache')) {
-        database.createObjectStore('cache', { keyPath: 'key' });
+      if (oldVersion < 2) {
+        if (!database.objectStoreNames.contains('dashboardCache')) {
+          const store = database.createObjectStore('dashboardCache', { keyPath: 'key' });
+          store.createIndex('cachedAt', 'cachedAt');
+        }
       }
     },
   });
@@ -45,4 +53,15 @@ export async function cacheData(key: string, data: unknown) {
 export async function getCachedData<T>(key: string): Promise<{ data: T; cachedAt: string } | null> {
   const database = await getDB();
   return database.get('cache', key);
+}
+
+// Dashboard cache helpers
+export async function saveDashboardCache(key: string, data: unknown) {
+  const database = await getDB();
+  return database.put('dashboardCache', { key, data, cachedAt: new Date().toISOString() });
+}
+
+export async function getDashboardCache<T>(key: string): Promise<{ data: T; cachedAt: string } | null> {
+  const database = await getDB();
+  return database.get('dashboardCache', key);
 }

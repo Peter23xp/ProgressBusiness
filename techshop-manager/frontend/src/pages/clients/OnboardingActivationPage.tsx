@@ -1,201 +1,496 @@
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  ArrowLeft, CheckCircle2, XCircle, Phone, MapPin, CreditCard,
+  Copy, UserCheck, AlertTriangle, Loader2, Zap, Users,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
-import { CheckCircle, User, Phone, MapPin, Gift, CreditCard, Zap } from 'lucide-react';
 import { api, getErrorMessage } from '@/lib/api';
-import { formatCDF, formatDate } from '@/lib/utils';
+import { cn, formatCDF, formatDate, initials } from '@/lib/utils';
+import { OnboardingStepper } from '@/components/clients/OnboardingStepper';
 
-interface ClientActivationData {
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface ClientActivation {
   id: string;
   prenom: string;
   nom: string;
   telephone: string;
-  site: { nom: string };
-  codeParrain: string;
   statut: string;
-  parrain?: { prenom: string; nom: string; codeParrain: string };
-  onboarding: {
-    recitDate?: string;
-    recitMontant?: number;
-    recitModePaiement?: string;
-    formationDate?: string;
-    ficheDate?: string;
-    ficheMontant?: number;
-    ficheModePaiement?: string;
-  };
+  codeParrain: string | null;
+  siteInscriptionId: string;
+  site: { id: string; nom: string };
+  parrain: { id: string; prenom: string; nom: string; codeParrain: string } | null;
+  onboardingEtapes: Array<{
+    etape: 'RECIT' | 'FORMATION' | 'FICHE' | 'ACTIVATION';
+    statut: string;
+    completeeAt?: string | null;
+    montant?: number | null;
+    modePaiement?: string | null;
+    referenceTransaction?: string | null;
+  }>;
 }
 
-export default function OnboardingActivationPage() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+interface ActivationResult {
+  id: string;
+  statut: string;
+  codeParrain: string;
+  dateActivation: string;
+  prenom: string;
+  nom: string;
+  telephone: string;
+}
 
-  const { data: client, isLoading } = useQuery<ClientActivationData>({
+const ETAPE_REQUIRED: Array<{ key: 'RECIT' | 'FORMATION' | 'FICHE'; label: string }> = [
+  { key: 'RECIT',     label: 'Récit de vente' },
+  { key: 'FORMATION', label: 'Formation' },
+  { key: 'FICHE',     label: 'Fiche client' },
+];
+
+const MODE_LABEL: Record<string, string> = {
+  CASH: 'Cash', MPESA: 'M-Pesa', AIRTEL_MONEY: 'Airtel Money', VIREMENT: 'Virement',
+};
+
+// ── Modale confirmation ───────────────────────────────────────────────────────
+
+function ConfirmModal({
+  client,
+  nextCode,
+  onConfirm,
+  onCancel,
+  isLoading,
+}: {
+  client: ClientActivation;
+  nextCode: string | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onCancel} aria-hidden />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        className="fixed inset-x-4 top-1/2 z-50 max-w-md mx-auto -translate-y-1/2 rounded-2xl bg-white shadow-2xl border border-border p-6 space-y-4"
+      >
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-amber-100">
+            <AlertTriangle size={18} className="text-warning" aria-hidden />
+          </div>
+          <div>
+            <h2 id="confirm-title" className="text-[15px] font-bold text-primary">
+              Confirmer l'activation ?
+            </h2>
+            <p className="text-[13px] text-text-muted mt-1">
+              Cette action est <strong>irréversible</strong>. Le compte de{' '}
+              <strong>{client.prenom} {client.nom}</strong> sera définitivement activé
+              {nextCode && <> et son code parrain <strong className="font-mono">{nextCode}</strong> sera généré</>}.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isLoading}
+            className="btn-secondary text-[13px]"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="btn-primary text-[13px] flex items-center gap-2"
+          >
+            {isLoading && <Loader2 size={14} className="animate-spin" aria-hidden />}
+            ✓ Activer le compte
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Écran succès ──────────────────────────────────────────────────────────────
+
+function SuccessScreen({
+  result,
+  clientId,
+  onNavigate,
+}: {
+  result: ActivationResult;
+  clientId: string;
+  onNavigate: () => void;
+}) {
+  const [countdown, setCountdown] = useState(5);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) { clearInterval(t); onNavigate(); return 0; }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [onNavigate]);
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(result.codeParrain).catch(() => {});
+    toast.success('Code copié !');
+  };
+
+  return (
+    <div className="flex flex-col items-center text-center py-12 px-6 space-y-5">
+      <CheckCircle2 size={80} className="text-success" aria-hidden />
+      <div>
+        <h2 className="text-[22px] font-extrabold text-primary">Compte activé avec succès !</h2>
+        <p className="text-[14px] text-text-muted mt-1">
+          {result.prenom} {result.nom} est maintenant un client actif.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-blue-100 bg-blue-50 px-6 py-4 space-y-3 w-full max-w-sm">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-primary-accent">Code parrain attribué</p>
+        <p className="text-[28px] font-extrabold font-mono text-primary tracking-widest">{result.codeParrain}</p>
+        <button
+          type="button"
+          onClick={copyCode}
+          className="flex items-center gap-1.5 mx-auto px-4 py-1.5 rounded-lg border border-border text-[12px] font-semibold text-text-muted hover:text-primary-accent hover:border-primary-accent transition-colors"
+        >
+          <Copy size={13} aria-hidden />
+          Copier le code
+        </button>
+      </div>
+
+      <p className="text-[12px] text-text-muted">
+        Un SMS de bienvenue a été envoyé au {result.telephone}{' '}
+        <span className="italic">(si le service SMS est configuré)</span>
+      </p>
+
+      <div className="flex items-center gap-3 flex-wrap justify-center">
+        <Link
+          to={`/clients/${clientId}`}
+          className="btn-primary text-[13px]"
+        >
+          Voir la fiche client
+        </Link>
+        <Link
+          to="/clients/new/recit"
+          className="btn-secondary text-[13px]"
+        >
+          + Nouveau client
+        </Link>
+      </div>
+
+      <p className="text-[11px] text-text-muted">
+        Redirection automatique vers la fiche dans {countdown} seconde{countdown !== 1 ? 's' : ''}…
+      </p>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function OnboardingActivationPage() {
+  const { id }   = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const qc       = useQueryClient();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [successResult, setSuccessResult] = useState<ActivationResult | null>(null);
+
+  const { data: client, isLoading } = useQuery<ClientActivation>({
     queryKey: ['client-activation', id],
     queryFn: () => api.get(`/clients/${id}`).then(r => r.data),
+    enabled: !!id,
   });
+
+  // Prévisualisation du prochain code parrain
+  const { data: nextCodeData } = useQuery<{ nextCode: string }>({
+    queryKey: ['next-code', client?.site?.id],
+    queryFn: () =>
+      api.get(`/clients/next-code`, { params: { siteId: client!.site.id } }).then(r => r.data),
+    enabled: !!client?.site?.id && !client?.codeParrain,
+  });
+  const nextCode = client?.codeParrain ?? nextCodeData?.nextCode ?? null;
 
   const mutation = useMutation({
     mutationFn: () => api.post(`/clients/${id}/onboarding/activate`),
-    onSuccess: () => {
-      toast.success('Compte activé avec succès ! Le client est maintenant actif.');
-      navigate(`/clients/${id}`);
+    onSuccess: (res) => {
+      setConfirmOpen(false);
+      // La réponse est le client complet via findOne
+      const c = res.data;
+      setSuccessResult({
+        id:             c.id,
+        statut:         c.statut,
+        codeParrain:    c.codeParrain,
+        dateActivation: c.dateActivation,
+        prenom:         c.prenom,
+        nom:            c.nom,
+        telephone:      c.telephone,
+      });
+      qc.invalidateQueries({ queryKey: ['client', id] });
+      qc.invalidateQueries({ queryKey: ['clients'] });
     },
-    onError: (error) => toast.error(getErrorMessage(error) || 'Erreur lors de l\'activation.'),
+    onError: (error: any) => {
+      setConfirmOpen(false);
+      const code = error?.response?.data?.code;
+      if (code === 'ERR_CONFLICT' || code === 'ERR_ALREADY_ACTIVE') {
+        toast.error('Ce client est déjà activé.');
+      } else {
+        toast.error(getErrorMessage(error) || "Erreur lors de l'activation.");
+      }
+    },
   });
 
-  const stepperSteps = ['Récit de vente', 'Formation', 'Fiche client', 'Activation'];
-
+  // ── Loading ──────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="p-6 max-w-3xl mx-auto space-y-4">
-        <div className="skeleton h-8 w-48 rounded" />
-        <div className="card space-y-4">
-          <div className="skeleton h-40 rounded" />
-        </div>
+      <div className="max-w-2xl mx-auto space-y-5 animate-pulse">
+        <div className="skeleton h-9 w-48 rounded-lg" />
+        <div className="skeleton h-12 w-full rounded-xl" />
+        <div className="skeleton h-64 w-full rounded-xl" />
       </div>
     );
   }
 
-  if (!client) return <div className="p-6 text-center text-gray-400">Client introuvable.</div>;
+  if (!client) {
+    return (
+      <div className="text-center py-16 text-text-muted">
+        <p>Client introuvable.</p>
+      </div>
+    );
+  }
 
-  const totalPaye = (client.onboarding?.recitMontant || 0) + (client.onboarding?.ficheMontant || 0);
+  // ── Succès ───────────────────────────────────────────────────────
+  if (successResult) {
+    return (
+      <div className="max-w-2xl mx-auto rounded-xl border border-border bg-white shadow-sm">
+        <SuccessScreen
+          result={successResult}
+          clientId={id!}
+          onNavigate={() => navigate(`/clients/${id}`)}
+        />
+      </div>
+    );
+  }
+
+  // ── Calculs ──────────────────────────────────────────────────────
+  const recit     = client.onboardingEtapes.find(e => e.etape === 'RECIT');
+  const formation = client.onboardingEtapes.find(e => e.etape === 'FORMATION');
+  const fiche     = client.onboardingEtapes.find(e => e.etape === 'FICHE');
+
+  const stepsOk = ETAPE_REQUIRED.map(({ key, label }) => ({
+    key, label,
+    done: client.onboardingEtapes.find(e => e.etape === key)?.statut === 'COMPLETE',
+  }));
+  const missingSteps = stepsOk.filter(s => !s.done);
+  const allComplete  = missingSteps.length === 0;
+
+  const totalPaye = (recit?.montant ?? 0) + (fiche?.montant ?? 0);
+
+  const firstMissingRoute: Record<string, string> = {
+    RECIT:     '/clients/new/recit',
+    FORMATION: `/clients/${id}/formation`,
+    FICHE:     `/clients/${id}/fiche`,
+  };
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Onboarding — Activation</h1>
-        <p className="text-gray-500 text-sm">Étape 4 sur 4 — Dernière étape</p>
-      </div>
+    <>
+      <div className="max-w-2xl mx-auto space-y-5">
 
-      <div className="flex items-center gap-2">
-        {stepperSteps.map((s, i) => (
-          <div key={i} className="flex items-center flex-1">
-            <div className="flex flex-col items-center w-full">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                i < 3 ? 'bg-green-500 text-white' : 'bg-blue-600 text-white'
-              }`}>{i < 3 ? '✓' : i + 1}</div>
-              <span className={`text-xs mt-1 font-medium ${i === 3 ? 'text-blue-600' : 'text-green-600'}`}>{s}</span>
-            </div>
-            {i < stepperSteps.length - 1 && <div className="h-0.5 flex-1 bg-green-400 mb-4" />}
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(`/clients/${id}`)}
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border text-text-muted hover:border-border-strong hover:text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent"
+            aria-label="Retour à la fiche client"
+          >
+            <ArrowLeft size={17} aria-hidden />
+          </button>
+          <div>
+            <h1 className="text-[18px] font-extrabold text-primary leading-tight">Activation du compte</h1>
+            <p className="text-[12px] text-text-muted">Étape 4 sur 4 — Dernière étape</p>
           </div>
-        ))}
-      </div>
+        </div>
 
-      <div className="card bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-        <h2 className="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2">
-          <CheckCircle className="text-green-500" size={22} />
-          Récapitulatif complet de l'onboarding
-        </h2>
+        {/* Stepper */}
+        <OnboardingStepper currentStep={4} clientId={id} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="space-y-3">
-            <div className="bg-white rounded-xl p-4 shadow-sm">
-              <p className="text-xs text-gray-400 font-semibold uppercase mb-1">Client</p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700">
-                  {client.prenom[0]}{client.nom[0]}
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">{client.prenom} {client.nom}</p>
-                  <p className="text-sm text-gray-500 flex items-center gap-1"><Phone size={12} />{client.telephone}</p>
-                  <p className="text-sm text-gray-500 flex items-center gap-1"><MapPin size={12} />{client.site?.nom}</p>
-                </div>
-              </div>
+        {/* Guard — étapes incomplètes */}
+        {!allComplete && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 space-y-2" role="alert">
+            <div className="flex items-center gap-2">
+              <XCircle size={15} className="text-danger flex-shrink-0" aria-hidden />
+              <p className="text-[13px] font-bold text-danger">L'onboarding n'est pas encore complet.</p>
             </div>
-
-            {client.parrain && (
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <p className="text-xs text-gray-400 font-semibold uppercase mb-2">Parrain</p>
-                <div className="flex items-center gap-2">
-                  <User size={16} className="text-purple-500" />
-                  <p className="font-medium text-gray-800">{client.parrain.prenom} {client.parrain.nom}</p>
-                  <span className="badge badge-info font-mono text-xs ml-auto">{client.parrain.codeParrain}</span>
-                </div>
-              </div>
-            )}
-
-            <div className="bg-white rounded-xl p-4 shadow-sm">
-              <p className="text-xs text-gray-400 font-semibold uppercase mb-2">Code parrain généré</p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                <p className="font-black text-blue-700 text-xl tracking-widest font-mono">{client.codeParrain}</p>
-                <p className="text-xs text-blue-500 mt-1">Code unique de parrainage</p>
-              </div>
-            </div>
+            <ul className="space-y-1 ml-5">
+              {missingSteps.map((s) => (
+                <li key={s.key} className="text-[12px] text-danger">
+                  • {s.label} non complété
+                </li>
+              ))}
+            </ul>
+            <Link
+              to={firstMissingRoute[missingSteps[0].key]}
+              className="inline-block mt-1 text-[12px] font-semibold text-danger hover:underline"
+            >
+              → Compléter l'onboarding
+            </Link>
           </div>
+        )}
 
-          <div className="space-y-3">
-            <div className="bg-white rounded-xl p-4 shadow-sm">
-              <p className="text-xs text-gray-400 font-semibold uppercase mb-3">Paiements effectués</p>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                  <span className="text-sm text-gray-600 flex items-center gap-2">
-                    <CreditCard size={14} /> Récit de vente
-                  </span>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">{formatCDF(client.onboarding?.recitMontant || 0)}</p>
-                    <p className="text-xs text-gray-400">{client.onboarding?.recitDate ? formatDate(client.onboarding.recitDate) : '—'}</p>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                  <span className="text-sm text-gray-600 flex items-center gap-2">
-                    <CreditCard size={14} /> Fiche client
-                  </span>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">{formatCDF(client.onboarding?.ficheMontant || 0)}</p>
-                    <p className="text-xs text-gray-400">{client.onboarding?.ficheDate ? formatDate(client.onboarding.ficheDate) : '—'}</p>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center pt-1">
-                  <span className="font-bold text-gray-900">TOTAL</span>
-                  <span className="font-black text-green-700 text-lg">{formatCDF(totalPaye)}</span>
+        {/* Récapitulatif */}
+        <div className="rounded-xl border border-border bg-white shadow-sm p-5 space-y-5">
+          <h2 className="text-[14px] font-bold text-primary uppercase tracking-wide">
+            Récapitulatif avant activation
+          </h2>
+
+          {/* Identité client + parrain */}
+          <div className="rounded-xl border border-border bg-slate-50 p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <span
+                className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-[14px] font-extrabold bg-primary-accent text-white select-none"
+                aria-hidden
+              >
+                {initials(client.nom, client.prenom)}
+              </span>
+              <div>
+                <p className="text-[15px] font-bold text-primary">{client.prenom} {client.nom}</p>
+                <div className="flex flex-wrap gap-3 mt-0.5 text-[12px] text-text-muted">
+                  <span className="flex items-center gap-1"><Phone size={11} aria-hidden />{client.telephone}</span>
+                  <span className="flex items-center gap-1"><MapPin size={11} aria-hidden />{client.site?.nom}</span>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              {[
-                { label: 'Récit', done: !!client.onboarding?.recitDate },
-                { label: 'Formation', done: !!client.onboarding?.formationDate },
-                { label: 'Fiche', done: !!client.onboarding?.ficheDate },
-              ].map(step => (
-                <div key={step.label} className={`flex items-center gap-3 p-3 rounded-lg ${step.done ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-                  <CheckCircle size={16} className={step.done ? 'text-green-500' : 'text-red-400'} />
-                  <p className={`text-sm font-medium ${step.done ? 'text-green-700' : 'text-red-600'}`}>
-                    {step.label}: {step.done ? 'Complété' : 'Non complété'}
+            {/* Parrain */}
+            {client.parrain ? (
+              <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+                <Users size={13} className="text-primary-accent flex-shrink-0" aria-hidden />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] text-primary-accent font-semibold">
+                    {client.parrain.prenom} {client.parrain.nom}
+                    <span className="font-mono ml-2 text-text-muted">({client.parrain.codeParrain})</span>
                   </p>
                 </div>
-              ))}
+                <span className="text-[10px] font-bold text-success bg-green-100 px-2 py-0.5 rounded-full flex-shrink-0">
+                  ✓ Lié
+                </span>
+              </div>
+            ) : (
+              <p className="text-[12px] text-text-muted italic">Aucun parrain.</p>
+            )}
+
+            {/* Code parrain prévisualisé */}
+            {!client.codeParrain && (
+              <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2.5 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-primary-accent mb-1">
+                  Code parrain qui sera généré
+                </p>
+                <p className="text-[20px] font-extrabold font-mono text-primary tracking-widest">
+                  {nextCode ?? 'TSG-XXXX'}
+                </p>
+                <p className="text-[10px] text-text-muted mt-0.5">(prévisualisation — non définitif)</p>
+              </div>
+            )}
+          </div>
+
+          {/* Paiements */}
+          <div className="space-y-2">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted">Paiements effectués</p>
+            {[
+              { label: 'Récit de vente', etape: recit },
+              { label: 'Fiche client',   etape: fiche },
+            ].map(({ label, etape }) => (
+              <div
+                key={label}
+                className={cn(
+                  'flex items-center justify-between px-3 py-2.5 rounded-lg border border-border',
+                  etape?.statut === 'COMPLETE' ? 'bg-green-50/50' : 'bg-slate-50',
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <CreditCard size={13} className="text-text-muted" aria-hidden />
+                  <span className="text-[12px] font-medium text-text">{label}</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-[13px] font-bold font-mono text-text">
+                    {etape?.montant ? formatCDF(etape.montant) : '—'}
+                  </p>
+                  {etape?.completeeAt && (
+                    <p className="text-[10px] text-text-muted">
+                      {formatDate(etape.completeeAt)}
+                      {etape.modePaiement && ` · ${MODE_LABEL[etape.modePaiement] ?? etape.modePaiement}`}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+            <div className="flex items-center justify-between px-3 py-2 border-t border-border">
+              <span className="text-[13px] font-bold text-text">Total payé</span>
+              <span className="text-[15px] font-extrabold font-mono text-success">{formatCDF(totalPaye)}</span>
             </div>
           </div>
+
+          {/* Checklist étapes */}
+          <div className="space-y-2">
+            {stepsOk.map((s) => (
+              <div
+                key={s.key}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg border',
+                  s.done ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50',
+                )}
+              >
+                {s.done
+                  ? <CheckCircle2 size={15} className="text-success flex-shrink-0" aria-hidden />
+                  : <XCircle     size={15} className="text-danger flex-shrink-0"   aria-hidden />}
+                <p className={cn('text-[13px] font-medium', s.done ? 'text-success' : 'text-danger')}>
+                  {s.label} — {s.done ? 'Complété' : 'Non complété'}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
+
+        {/* CTA activation — uniquement si toutes les étapes sont OK */}
+        {allComplete && (
+          <div className="rounded-xl border border-border bg-white shadow-sm p-5">
+            <div className="flex items-start gap-3 mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+              <AlertTriangle size={14} className="text-warning flex-shrink-0 mt-0.5" aria-hidden />
+              <p className="text-[12px] text-warning font-medium">
+                Cette action est irréversible. Le compte sera définitivement activé.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              disabled={mutation.isPending}
+              className="btn-primary w-full text-[14px] py-3 flex items-center justify-center gap-2"
+            >
+              <Zap size={16} aria-hidden />
+              ✓ Activer le compte et générer le code parrain
+            </button>
+          </div>
+        )}
+
       </div>
 
-      <div className="card">
-        <div className="flex flex-col items-center text-center gap-4 py-4">
-          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center">
-            <Zap size={30} className="text-yellow-500" />
-          </div>
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">Tout est prêt !</h3>
-            <p className="text-gray-500 mt-1 text-sm max-w-md">
-              Vérifiez les informations ci-dessus puis cliquez sur ACTIVER pour finaliser l'onboarding et activer le compte client.
-            </p>
-          </div>
-          <button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isLoading}
-            className="btn-primary px-8 py-3 text-lg font-bold flex items-center gap-3"
-          >
-            {mutation.isLoading ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Gift size={22} />
-            )}
-            ACTIVER LE COMPTE
-          </button>
-          <p className="text-xs text-gray-400">Cette action ne peut pas être annulée.</p>
-        </div>
-      </div>
-    </div>
+      {/* Modale de confirmation */}
+      {confirmOpen && client && (
+        <ConfirmModal
+          client={client}
+          nextCode={nextCode}
+          onConfirm={() => mutation.mutate()}
+          onCancel={() => setConfirmOpen(false)}
+          isLoading={mutation.isPending}
+        />
+      )}
+    </>
   );
 }

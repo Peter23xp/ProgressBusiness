@@ -84,7 +84,7 @@ export default function App() {
   }, [setOnline]);
 
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <OfflineBanner />
       <Routes>
         {/* Public routes */}

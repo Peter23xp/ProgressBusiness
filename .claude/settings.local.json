@@ -12,7 +12,13 @@
       "Bash(cp -r /tmp/impeccable/.claude/skills/impeccable \"D:/PETER/Progress app/.claude/skills/\")",
       "Bash(node .claude/skills/impeccable/scripts/load-context.mjs)",
       "Bash(echo \"frontend exit: $?\")",
-      "Bash(echo \"backend exit: $?\")"
+      "Bash(echo \"backend exit: $?\")",
+      "Bash(node *)",
+      "Skill(impeccable)",
+      "Bash(IMPECCABLE_CONTEXT_DIR=\"D:/PETER/Progress app/techshop-manager\" node *)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl *)"
     ]
   }
 }

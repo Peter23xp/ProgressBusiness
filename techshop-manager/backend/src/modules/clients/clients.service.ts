@@ -68,8 +68,13 @@ export class ClientsService {
       this.prisma.client.count({ where }),
     ]);
 
+    const mappedData = data.map(({ siteInscription, ...rest }) => ({
+      ...rest,
+      site: siteInscription,
+    }));
+
     return {
-      data,
+      data: mappedData,
       meta: {
         total,
         page,
@@ -91,11 +96,15 @@ export class ClientsService {
           orderBy: { createdAt: 'asc' },
         },
         parrain: { select: { id: true, prenom: true, nom: true, codeParrain: true } },
-        filleuls: { select: { id: true, prenom: true, nom: true, statut: true } },
+        filleuls: { select: { id: true, prenom: true, nom: true, statut: true, createdAt: true } },
         ventes: {
-          select: { id: true, numeroVente: true, montantNet: true, createdAt: true },
+          select: { id: true, numeroVente: true, montantNet: true, pointsAttribues: true, createdAt: true },
           orderBy: { createdAt: 'desc' },
-          take: 10,
+          take: 20,
+        },
+        mouvementsPoints: {
+          orderBy: { createdAt: 'desc' },
+          take: 30,
         },
       },
     });
@@ -104,7 +113,8 @@ export class ClientsService {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Client introuvable' });
     }
 
-    return client;
+    const { siteInscription, ...rest } = client;
+    return { ...rest, site: siteInscription };
   }
 
   async update(
@@ -536,36 +546,49 @@ export class ClientsService {
       });
     }
 
-    const preview: any[] = [];
-    const errors: { line: number; message: string }[] = [];
+    const rows: Array<{
+      ligne: number;
+      nom: string;
+      telephone: string;
+      matricule: string;
+      statut: 'OK' | 'DOUBLON' | 'ERREUR';
+      message?: string;
+    }> = [];
 
-    for (let i = 1; i < Math.min(lines.length, 11); i++) {
+    for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',').map((v) => v.trim());
       const row: any = {};
       headers.forEach((h, idx) => {
         row[h] = values[idx] ?? '';
       });
 
+      const nom = `${row.prenom ?? ''} ${row.nom ?? ''}`.trim();
+      const telephone = row.telephone ?? '';
+      const matricule = row.matricule ?? row.matriculeexterne ?? '';
+
       const rowErrors: string[] = [];
       if (!row.prenom) rowErrors.push('Prénom requis');
       if (!row.nom) rowErrors.push('Nom requis');
-      if (!row.telephone) rowErrors.push('Téléphone requis');
-      else if (!/^\+243[0-9]{9}$/.test(row.telephone)) {
+      if (!telephone) rowErrors.push('Téléphone requis');
+      else if (!/^\+243[0-9]{9}$/.test(telephone)) {
         rowErrors.push('Format téléphone invalide (+243XXXXXXXXX)');
       }
 
-      preview.push({ line: i + 1, data: row, errors: rowErrors });
       if (rowErrors.length > 0) {
-        errors.push({ line: i + 1, message: rowErrors.join(', ') });
+        rows.push({ ligne: i + 1, nom, telephone, matricule, statut: 'ERREUR', message: rowErrors.join(', ') });
+        continue;
       }
+
+      const exists = await this.prisma.client.findUnique({ where: { telephone } });
+      if (exists) {
+        rows.push({ ligne: i + 1, nom, telephone, matricule, statut: 'DOUBLON', message: 'Numéro déjà enregistré' });
+        continue;
+      }
+
+      rows.push({ ligne: i + 1, nom, telephone, matricule, statut: 'OK' });
     }
 
-    return {
-      totalLines: lines.length - 1,
-      preview,
-      errors,
-      valid: errors.length === 0,
-    };
+    return { rows };
   }
 
   async importExecute(file: Express.Multer.File) {
@@ -584,7 +607,7 @@ export class ClientsService {
     }
 
     const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
-    const results = { created: 0, skipped: 0, errors: [] as { line: number; message: string }[] };
+    const results = { success: 0, doublons: 0, errors: 0, details: [] as { ligne: number; message: string }[] };
 
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',').map((v) => v.trim());
@@ -595,7 +618,8 @@ export class ClientsService {
 
       try {
         if (!row.telephone || !/^\+243[0-9]{9}$/.test(row.telephone)) {
-          results.errors.push({ line: i + 1, message: 'Téléphone invalide ou manquant' });
+          results.errors++;
+          results.details.push({ ligne: i + 1, message: 'Téléphone invalide ou manquant' });
           continue;
         }
 
@@ -604,18 +628,20 @@ export class ClientsService {
         });
 
         if (exists) {
-          results.skipped++;
+          results.doublons++;
           continue;
         }
 
         if (!row.siteid) {
-          results.errors.push({ line: i + 1, message: 'siteId requis' });
+          results.errors++;
+          results.details.push({ ligne: i + 1, message: 'siteId requis' });
           continue;
         }
 
         const site = await this.prisma.site.findUnique({ where: { id: row.siteid } });
         if (!site) {
-          results.errors.push({ line: i + 1, message: `Site introuvable: ${row.siteid}` });
+          results.errors++;
+          results.details.push({ ligne: i + 1, message: `Site introuvable: ${row.siteid}` });
           continue;
         }
 
@@ -623,7 +649,8 @@ export class ClientsService {
           where: { siteId: row.siteid, actif: true },
         });
         if (!agent) {
-          results.errors.push({ line: i + 1, message: 'Aucun agent actif pour ce site' });
+          results.errors++;
+          results.details.push({ ligne: i + 1, message: 'Aucun agent actif pour ce site' });
           continue;
         }
 
@@ -640,9 +667,10 @@ export class ClientsService {
           },
         });
 
-        results.created++;
+        results.success++;
       } catch (err) {
-        results.errors.push({ line: i + 1, message: err.message || 'Erreur inattendue' });
+        results.errors++;
+        results.details.push({ ligne: i + 1, message: err.message || 'Erreur inattendue' });
       }
     }
 

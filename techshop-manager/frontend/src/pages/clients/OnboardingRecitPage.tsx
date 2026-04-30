@@ -1,256 +1,367 @@
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import { CheckCircle, XCircle, Loader } from 'lucide-react';
+import { useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useNavigate, Link } from 'react-router-dom';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
+import { cn } from '@/lib/utils';
+import { OnboardingStepper } from '@/components/clients/OnboardingStepper';
+import { PhoneInput } from '@/components/ui/PhoneInput';
+import { CodeParrainInput } from '@/components/clients/CodeParrainInput';
 
-interface RecitFormData {
-  prenom: string;
-  nom: string;
-  telephone: string;
-  email?: string;
-  site: string;
-  codeParrain?: string;
-  matriculeExterne?: string;
-  montantRecit: number;
-  modePaiement: string;
-  numeroRecu?: string;
-}
+// ── Schema Zod ────────────────────────────────────────────────────────────────
+
+const schema = z
+  .object({
+    prenom:           z.string().min(2, 'Minimum 2 caractères').max(50),
+    nom:              z.string().min(2, 'Minimum 2 caractères').max(50),
+    telephone:        z.string().regex(/^\+243[0-9]{9}$/, 'Format invalide (+243XXXXXXXXX)'),
+    email:            z.string().email('Email invalide').or(z.literal('')).optional(),
+    siteId:           z.string().min(1, 'Site requis'),
+    codeParrain:      z.string().regex(/^TSG-[0-9]{4}$/).or(z.literal('')).optional(),
+    matriculeExterne: z.string().max(50).optional(),
+    montantRecit:     z.number({ invalid_type_error: 'Montant requis' }).positive('Montant requis'),
+    modePaiement:     z.enum(['CASH', 'MPESA', 'AIRTEL_MONEY', 'VIREMENT']),
+    numeroRecu:       z.string().optional(),
+  })
+  .refine(
+    (d) => d.modePaiement === 'CASH' || !!d.numeroRecu,
+    { message: 'Numéro de transaction requis pour ce mode', path: ['numeroRecu'] },
+  );
+
+type FormValues = z.infer<typeof schema>;
+
+const MODES = [
+  { value: 'CASH',         label: 'Cash' },
+  { value: 'MPESA',        label: 'M-Pesa' },
+  { value: 'AIRTEL_MONEY', label: 'Airtel Money' },
+  { value: 'VIREMENT',     label: 'Virement' },
+] as const;
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function OnboardingRecitPage() {
-  const navigate = useNavigate();
-  const { user } = useAuthStore();
-  const [phoneStatus, setPhoneStatus] = useState<'idle' | 'checking' | 'ok' | 'exists'>('idle');
-  const [parrainStatus, setParrainStatus] = useState<'idle' | 'checking' | 'ok' | 'notfound'>('idle');
-  const [parrainNom, setParrainNom] = useState('');
+  const navigate   = useNavigate();
+  const { user, hasRole } = useAuthStore();
 
-  const { register, handleSubmit, watch, setError, clearErrors, formState: { errors, isSubmitting } } = useForm<RecitFormData>({
-    defaultValues: { site: user?.site?.id || '', modePaiement: 'CASH' },
+  const isAgent = user?.role === 'AGENT';
+
+  // Charger les sites (GERANT/SUPER_ADMIN) et la config (montant récit)
+  const { data: sitesRaw } = useQuery<{ data: Array<{ id: string; nom: string }> }>({
+    queryKey: ['sites'],
+    queryFn: () => api.get('/sites').then(r => r.data),
+    enabled: !isAgent,
+  });
+  const sites = sitesRaw?.data ?? [];
+
+  const { data: config } = useQuery<{ montantRecit: number }>({
+    queryKey: ['config'],
+    queryFn: () => api.get('/config').then(r => r.data),
   });
 
-  const telephone = watch('telephone');
-  const codeParrain = watch('codeParrain');
+  const {
+    register,
+    handleSubmit,
+    control,
+    watch,
+    setError,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      siteId:       user?.siteId ?? '',
+      modePaiement: 'CASH',
+      montantRecit: config?.montantRecit ?? undefined,
+    },
+  });
 
+  // Pré-remplir le montant dès que la config est disponible
   useEffect(() => {
-    if (!telephone || telephone.length < 9) { setPhoneStatus('idle'); return; }
-    setPhoneStatus('checking');
-    const t = setTimeout(async () => {
-      try {
-        const res = await api.get(`/clients/check-phone/${encodeURIComponent(telephone)}`);
-        if (res.data.exists) {
-          setPhoneStatus('exists');
-          setError('telephone', { message: 'Ce numéro est déjà utilisé.' });
-        } else {
-          setPhoneStatus('ok');
-          clearErrors('telephone');
-        }
-      } catch { setPhoneStatus('idle'); }
-    }, 600);
-    return () => clearTimeout(t);
-  }, [telephone, setError, clearErrors]);
+    if (config?.montantRecit) {
+      setValue('montantRecit', config.montantRecit, { shouldValidate: false });
+    }
+  }, [config, setValue]);
 
-  useEffect(() => {
-    if (!codeParrain || codeParrain.length < 4) { setParrainStatus('idle'); setParrainNom(''); return; }
-    setParrainStatus('checking');
-    const t = setTimeout(async () => {
-      try {
-        const res = await api.get(`/parrainage/check-code/${encodeURIComponent(codeParrain)}`);
-        if (res.data.valid) {
-          setParrainStatus('ok');
-          setParrainNom(`${res.data.parrain?.prenom || ''} ${res.data.parrain?.nom || ''}`.trim());
-        } else {
-          setParrainStatus('notfound');
-          setParrainNom('');
-        }
-      } catch { setParrainStatus('notfound'); setParrainNom(''); }
-    }, 600);
-    return () => clearTimeout(t);
-  }, [codeParrain]);
+  const modePaiement = watch('modePaiement');
+  const telephone    = watch('telephone') ?? '';
+  const needsRef     = modePaiement !== 'CASH';
 
   const mutation = useMutation({
-    mutationFn: (data: RecitFormData) => api.post('/clients/onboarding/recit', data),
+    mutationFn: (data: FormValues) =>
+      api.post<{ id: string }>('/clients/onboarding/recit', {
+        ...data,
+        email: data.email || undefined,
+        codeParrain: data.codeParrain || undefined,
+        matriculeExterne: data.matriculeExterne || undefined,
+        numeroRecu: data.numeroRecu || undefined,
+      }),
     onSuccess: (res) => {
-      toast.success('Récit de vente enregistré !');
-      navigate(`/clients/${res.data.clientId}/formation`);
+      toast.success('Client créé avec succès ! Passage à la formation...');
+      setTimeout(() => navigate(`/clients/${res.data.id}/formation`), 1000);
     },
-    onError: (error) => toast.error(getErrorMessage(error) || 'Erreur lors de l\'enregistrement.'),
+    onError: (error: any) => {
+      const code = error?.response?.data?.code;
+      const msg  = getErrorMessage(error) || 'Une erreur est survenue.';
+
+      if (code === 'ERR_CONFLICT' && error?.response?.data?.message?.includes('téléphone')) {
+        setError('telephone', { message: 'Ce numéro est déjà enregistré.' });
+        return;
+      }
+      if (code === 'ERR_SELF_PARRAINAGE') {
+        toast.error('Un client ne peut pas se parrainer lui-même.');
+        return;
+      }
+      toast.error(`${msg} Vos données sont conservées, réessayez.`);
+    },
   });
 
-  const onSubmit = async (data: RecitFormData) => {
-    if (phoneStatus === 'exists') { toast.error('Numéro déjà utilisé.'); return; }
-    mutation.mutate(data);
-  };
+  const fieldCls = (hasErr: boolean) => cn(
+    'w-full px-3 py-2.5 rounded-lg border border-border text-[13px] text-text bg-white',
+    'focus:outline-none focus:ring-2 focus:ring-primary-accent/30 focus:border-primary-accent transition-colors',
+    hasErr && 'border-danger focus:ring-danger/30 focus:border-danger',
+  );
 
-  const stepperSteps = ['Récit de vente', 'Formation', 'Fiche client', 'Activation'];
+  const disabled = isSubmitting || mutation.isPending;
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Onboarding Nouveau Client</h1>
-        <p className="text-gray-500 text-sm">Étape 1 sur 4</p>
+    <div className="max-w-2xl mx-auto space-y-5">
+
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => navigate('/clients')}
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border text-text-muted hover:border-border-strong hover:text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent"
+          aria-label="Retour à la liste des clients"
+        >
+          <ArrowLeft size={17} aria-hidden />
+        </button>
+        <div>
+          <h1 className="text-[18px] font-extrabold text-primary leading-tight">Nouveau client</h1>
+          <p className="text-[12px] text-text-muted">Étape 1 sur 4 — Récit de vente</p>
+        </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        {stepperSteps.map((s, i) => (
-          <div key={i} className="flex items-center flex-1">
-            <div className={`flex flex-col items-center ${i < stepperSteps.length - 1 ? 'w-full' : ''}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                i === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
-              }`}>{i + 1}</div>
-              <span className={`text-xs mt-1 font-medium ${i === 0 ? 'text-blue-600' : 'text-gray-400'}`}>{s}</span>
-            </div>
-            {i < stepperSteps.length - 1 && <div className="h-0.5 flex-1 bg-gray-200 mb-4" />}
-          </div>
-        ))}
-      </div>
+      {/* Stepper */}
+      <OnboardingStepper currentStep={1} />
 
-      <div className="card">
-        <h2 className="text-lg font-semibold text-gray-800 mb-6">Récit de vente</h2>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {/* Formulaire */}
+      <div className="rounded-xl border border-border bg-white shadow-sm p-6">
+        <h2 className="text-[15px] font-bold text-primary mb-5">
+          Informations personnelles &amp; Achat du récit
+        </h2>
+
+        <form onSubmit={handleSubmit((d) => mutation.mutate(d))} noValidate className="space-y-5">
+
+          {/* Prénom + Nom */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="form-group">
-              <label className="form-label">Prénom *</label>
+              <label htmlFor="prenom" className="form-label">Prénom *</label>
               <input
-                className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.prenom ? 'border-red-400' : 'border-gray-300'}`}
-                {...register('prenom', { required: 'Prénom requis' })}
+                id="prenom"
+                autoComplete="given-name"
+                disabled={disabled}
+                className={fieldCls(!!errors.prenom)}
+                {...register('prenom')}
               />
               {errors.prenom && <p className="form-error">{errors.prenom.message}</p>}
             </div>
             <div className="form-group">
-              <label className="form-label">Nom *</label>
+              <label htmlFor="nom" className="form-label">Nom *</label>
               <input
-                className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.nom ? 'border-red-400' : 'border-gray-300'}`}
-                {...register('nom', { required: 'Nom requis' })}
+                id="nom"
+                autoComplete="family-name"
+                disabled={disabled}
+                className={fieldCls(!!errors.nom)}
+                {...register('nom')}
               />
               {errors.nom && <p className="form-error">{errors.nom.message}</p>}
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Téléphone (+243) *</label>
-            <div className="relative">
-              <input
-                type="tel"
-                placeholder="+243 XXX XXX XXX"
-                className={`w-full px-4 py-2.5 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.telephone ? 'border-red-400' : 'border-gray-300'}`}
-                {...register('telephone', { required: 'Téléphone requis', pattern: { value: /^\+?243[0-9]{9}$/, message: 'Format: +243XXXXXXXXX' } })}
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                {phoneStatus === 'checking' && <Loader size={16} className="text-gray-400 animate-spin" />}
-                {phoneStatus === 'ok' && <CheckCircle size={16} className="text-green-500" />}
-                {phoneStatus === 'exists' && <XCircle size={16} className="text-red-500" />}
-              </div>
-            </div>
-            {errors.telephone && <p className="form-error">{errors.telephone.message}</p>}
-            {phoneStatus === 'exists' && <p className="text-red-500 text-xs mt-1">Ce numéro est déjà enregistré dans le système.</p>}
-            {phoneStatus === 'ok' && <p className="text-green-600 text-xs mt-1">Numéro disponible.</p>}
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Email (optionnel)</label>
-            <input
-              type="email"
-              placeholder="client@example.com"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              {...register('email', { pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Email invalide' } })}
-            />
-            {errors.email && <p className="form-error">{errors.email.message}</p>}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Téléphone + Email */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="form-group">
-              <label className="form-label">Site *</label>
+              <label className="form-label">Téléphone *</label>
+              <Controller
+                name="telephone"
+                control={control}
+                render={({ field }) => (
+                  <PhoneInput
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    disabled={disabled}
+                    error={errors.telephone?.message}
+                  />
+                )}
+              />
+              {errors.telephone && (
+                <p className="form-error">{errors.telephone.message}</p>
+              )}
+            </div>
+            <div className="form-group">
+              <label htmlFor="email" className="form-label">Email</label>
+              <input
+                id="email"
+                type="email"
+                placeholder="optionnel"
+                autoComplete="email"
+                disabled={disabled}
+                className={fieldCls(!!errors.email)}
+                {...register('email')}
+              />
+              {errors.email && <p className="form-error">{errors.email.message}</p>}
+            </div>
+          </div>
+
+          {/* Site */}
+          <div className="form-group">
+            <label htmlFor="siteId" className="form-label">Site *</label>
+            {isAgent ? (
+              <input
+                id="siteId"
+                value={user?.site?.nom ?? user?.siteName ?? user?.siteId ?? ''}
+                disabled
+                className={cn(fieldCls(false), 'opacity-60 cursor-not-allowed bg-slate-50')}
+                readOnly
+              />
+            ) : (
               <select
-                className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.site ? 'border-red-400' : 'border-gray-300'}`}
-                {...register('site', { required: 'Site requis' })}
+                id="siteId"
+                disabled={disabled}
+                className={fieldCls(!!errors.siteId)}
+                {...register('siteId')}
               >
                 <option value="">Sélectionner un site</option>
-                <option value="GOMA_CENTRE">Goma Centre</option>
-                <option value="GOMA_NORD">Goma Nord</option>
-                <option value="GISENYI">Gisenyi</option>
+                {sites.map((s) => (
+                  <option key={s.id} value={s.id}>{s.nom}</option>
+                ))}
               </select>
-              {errors.site && <p className="form-error">{errors.site.message}</p>}
+            )}
+            {isAgent && (
+              <input type="hidden" {...register('siteId')} value={user?.siteId ?? ''} />
+            )}
+            {errors.siteId && <p className="form-error">{errors.siteId.message}</p>}
+          </div>
+
+          {/* Code parrain + Matricule */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="form-group">
+              <label className="form-label">
+                Code parrain <span className="text-text-muted font-normal">(optionnel)</span>
+              </label>
+              <Controller
+                name="codeParrain"
+                control={control}
+                render={({ field }) => (
+                  <CodeParrainInput
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    currentClientPhone={telephone}
+                    disabled={disabled}
+                    error={errors.codeParrain?.message}
+                  />
+                )}
+              />
             </div>
             <div className="form-group">
-              <label className="form-label">Matricule externe (optionnel)</label>
+              <label htmlFor="matriculeExterne" className="form-label">
+                Matricule externe <span className="text-text-muted font-normal">(optionnel)</span>
+              </label>
               <input
-                placeholder="ex: MAT-001"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                id="matriculeExterne"
+                placeholder="ex: NK-GOM-001-0001"
+                disabled={disabled}
+                className={fieldCls(false)}
                 {...register('matriculeExterne')}
               />
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Code parrain (optionnel)</label>
-            <div className="relative">
-              <input
-                placeholder="ex: TSM-ABC123"
-                className={`w-full px-4 py-2.5 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  parrainStatus === 'notfound' ? 'border-orange-400' : parrainStatus === 'ok' ? 'border-green-400' : 'border-gray-300'
-                }`}
-                {...register('codeParrain')}
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                {parrainStatus === 'checking' && <Loader size={16} className="text-gray-400 animate-spin" />}
-                {parrainStatus === 'ok' && <CheckCircle size={16} className="text-green-500" />}
-                {parrainStatus === 'notfound' && <XCircle size={16} className="text-orange-400" />}
+          {/* Séparateur Achat */}
+          <div className="rounded-xl border border-border bg-slate-50 p-5 space-y-4">
+            <h3 className="text-[13px] font-bold text-primary">Achat du Récit</h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Montant */}
+              <div className="form-group">
+                <label htmlFor="montantRecit" className="form-label">Montant payé * (CDF)</label>
+                <input
+                  id="montantRecit"
+                  type="number"
+                  min={1}
+                  placeholder="ex: 5 000"
+                  disabled={disabled}
+                  className={fieldCls(!!errors.montantRecit)}
+                  {...register('montantRecit', { valueAsNumber: true })}
+                />
+                {errors.montantRecit && <p className="form-error">{errors.montantRecit.message}</p>}
+              </div>
+
+              {/* Mode paiement */}
+              <div className="form-group">
+                <p className="form-label">Mode de paiement *</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {MODES.map((m) => (
+                    <label
+                      key={m.value}
+                      className={cn(
+                        'flex items-center justify-center px-3 py-2 border-2 rounded-lg cursor-pointer text-[12px] font-semibold transition-colors',
+                        'has-[:checked]:border-primary-accent has-[:checked]:bg-primary-light/40 has-[:checked]:text-primary-accent',
+                        'border-border text-text-muted hover:border-border-strong',
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        value={m.value}
+                        className="sr-only"
+                        disabled={disabled}
+                        {...register('modePaiement')}
+                      />
+                      {m.label}
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
-            {parrainStatus === 'ok' && parrainNom && <p className="text-green-600 text-xs mt-1">Parrain trouvé: {parrainNom}</p>}
-            {parrainStatus === 'notfound' && <p className="text-orange-500 text-xs mt-1">Code parrain introuvable.</p>}
+
+            {/* Numéro reçu — conditionnel */}
+            {needsRef && (
+              <div className="form-group">
+                <label htmlFor="numeroRecu" className="form-label">Numéro de transaction *</label>
+                <input
+                  id="numeroRecu"
+                  placeholder="ex: TXN-123456"
+                  disabled={disabled}
+                  className={fieldCls(!!errors.numeroRecu)}
+                  {...register('numeroRecu')}
+                />
+                {errors.numeroRecu && <p className="form-error">{errors.numeroRecu.message}</p>}
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="form-group">
-              <label className="form-label">Montant récit (CDF) *</label>
-              <input
-                type="number"
-                min={0}
-                placeholder="ex: 50000"
-                className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.montantRecit ? 'border-red-400' : 'border-gray-300'}`}
-                {...register('montantRecit', { required: 'Montant requis', valueAsNumber: true, min: { value: 0, message: 'Montant positif requis' } })}
-              />
-              {errors.montantRecit && <p className="form-error">{errors.montantRecit.message}</p>}
-            </div>
-            <div className="form-group">
-              <label className="form-label">Mode de paiement *</label>
-              <select
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                {...register('modePaiement', { required: true })}
-              >
-                <option value="CASH">Cash</option>
-                <option value="MPESA">M-Pesa</option>
-                <option value="AIRTEL_MONEY">Airtel Money</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">N° Reçu / Transaction (optionnel)</label>
-            <input
-              placeholder="ex: TXN-123456"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              {...register('numeroRecu')}
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <button type="button" onClick={() => navigate('/clients')} className="btn-secondary">
+          {/* Actions */}
+          <div className="flex items-center justify-between gap-3 pt-2 border-t border-border">
+            <Link
+              to="/clients"
+              className="btn-secondary text-[13px]"
+              tabIndex={disabled ? -1 : undefined}
+            >
               Annuler
-            </button>
+            </Link>
             <button
               type="submit"
-              disabled={isSubmitting || mutation.isLoading || phoneStatus === 'exists'}
-              className="btn-primary flex items-center gap-2"
+              disabled={disabled}
+              className="btn-primary text-[13px] flex items-center gap-2"
             >
-              {(isSubmitting || mutation.isLoading) && (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              )}
-              Suivant : Formation →
+              {disabled && <Loader2 size={14} className="animate-spin" aria-hidden />}
+              {disabled ? 'Enregistrement…' : 'Enregistrer & Passer à la Formation →'}
             </button>
           </div>
         </form>

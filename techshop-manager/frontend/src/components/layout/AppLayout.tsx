@@ -17,17 +17,15 @@ import {
   UserCog,
   LogOut,
   ChevronDown,
-  ChevronRight,
   Menu,
   X,
+  Zap,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { useUIStore } from '@/store/ui.store';
 import { cn } from '@/lib/utils';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import type { Role } from '@/types';
-
-// ─── Nav item types ───────────────────────────────────────────────────────────
 
 interface NavItemDef {
   label: string;
@@ -43,196 +41,192 @@ interface NavGroupDef {
   children: NavItemDef[];
 }
 
-// ─── Nav config ───────────────────────────────────────────────────────────────
-
 const NAV_ITEMS: NavItemDef[] = [
-  {
-    label: 'Dashboard',
-    icon: <LayoutDashboard size={18} />,
-    to: '/dashboard',
-    minRole: 'AGENT',
-  },
-  {
-    label: 'Dashboard Régional',
-    icon: <TrendingUp size={18} />,
-    to: '/dashboard/regional',
-    minRole: 'DIRECTEUR_REGIONAL',
-  },
-  {
-    label: 'Clients',
-    icon: <Users size={18} />,
-    to: '/clients',
-    minRole: 'AGENT',
-  },
-  {
-    label: 'Caisse POS',
-    icon: <ShoppingCart size={18} />,
-    to: '/sales/pos',
-    minRole: 'AGENT',
-  },
-  {
-    label: 'Ventes',
-    icon: <Receipt size={18} />,
-    to: '/sales',
-    minRole: 'GERANT',
-  },
-  {
-    label: 'Stocks',
-    icon: <Package size={18} />,
-    to: '/stocks',
-    minRole: 'AGENT',
-  },
-  {
-    label: 'Parrainage',
-    icon: <GitBranch size={18} />,
-    to: '/parrainage',
-    minRole: 'GERANT',
-  },
-  {
-    label: 'Fidélité',
-    icon: <Star size={18} />,
-    to: '/fidelite',
-    minRole: 'GERANT',
-  },
-  {
-    label: 'Rapports',
-    icon: <BarChart2 size={18} />,
-    to: '/reports',
-    minRole: 'GERANT',
-  },
+  { label: 'Dashboard',          icon: <LayoutDashboard size={16} />, to: '/dashboard',          minRole: 'AGENT' },
+  { label: 'Dashboard Régional', icon: <TrendingUp size={16} />,      to: '/dashboard/regional', minRole: 'DIRECTEUR_REGIONAL' },
+  { label: 'Clients',            icon: <Users size={16} />,           to: '/clients',            minRole: 'AGENT' },
+  { label: 'Caisse POS',         icon: <ShoppingCart size={16} />,    to: '/sales/pos',          minRole: 'AGENT' },
+  { label: 'Ventes',             icon: <Receipt size={16} />,         to: '/sales',              minRole: 'GERANT' },
+  { label: 'Stocks',             icon: <Package size={16} />,         to: '/stocks',             minRole: 'AGENT' },
+  { label: 'Parrainage',         icon: <GitBranch size={16} />,       to: '/parrainage',         minRole: 'GERANT' },
+  { label: 'Fidélité',           icon: <Star size={16} />,            to: '/fidelite',           minRole: 'GERANT' },
+  { label: 'Rapports',           icon: <BarChart2 size={16} />,       to: '/reports',            minRole: 'GERANT' },
 ];
 
 const SETTINGS_GROUP: NavGroupDef = {
   label: 'Paramètres',
-  icon: <Settings size={18} />,
+  icon: <Settings size={16} />,
   minRole: 'AGENT',
   children: [
-    {
-      label: 'Utilisateurs',
-      icon: <UserCog size={16} />,
-      to: '/settings/users',
-      minRole: 'SUPER_ADMIN',
-    },
-    {
-      label: 'Sites',
-      icon: <Building2 size={16} />,
-      to: '/settings/sites',
-      minRole: 'SUPER_ADMIN',
-    },
-    {
-      label: 'Profil',
-      icon: <User size={16} />,
-      to: '/settings/profile',
-      minRole: 'AGENT',
-    },
-    {
-      label: 'Config',
-      icon: <SlidersHorizontal size={16} />,
-      to: '/settings/config',
-      minRole: 'SUPER_ADMIN',
-    },
+    { label: 'Utilisateurs', icon: <UserCog size={15} />,        to: '/settings/users',   minRole: 'SUPER_ADMIN' },
+    { label: 'Sites',        icon: <Building2 size={15} />,      to: '/settings/sites',   minRole: 'SUPER_ADMIN' },
+    { label: 'Profil',       icon: <User size={15} />,           to: '/settings/profile', minRole: 'AGENT' },
+    { label: 'Config',       icon: <SlidersHorizontal size={15} />, to: '/settings/config', minRole: 'SUPER_ADMIN' },
   ],
 };
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
+// ── Nav section label ─────────────────────────────────────────────
+function NavSection({ label }: { label: string }) {
+  return (
+    <p className="px-5 pt-5 pb-1.5 text-[10px] font-bold uppercase tracking-[0.12em]"
+       style={{ color: '#3d5478' }}>
+      {label}
+    </p>
+  );
+}
 
+// ── Sidebar ───────────────────────────────────────────────────────
 function Sidebar({ onClose }: { onClose?: () => void }) {
   const { hasRole } = useAuthStore();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const visibleItems = NAV_ITEMS.filter((item) => hasRole(item.minRole));
-  const visibleSettingsChildren = SETTINGS_GROUP.children.filter((c) =>
-    hasRole(c.minRole),
-  );
-  const showSettings =
-    hasRole(SETTINGS_GROUP.minRole) && visibleSettingsChildren.length > 0;
+  const visibleSettingsChildren = SETTINGS_GROUP.children.filter((c) => hasRole(c.minRole));
+  const showSettings = hasRole(SETTINGS_GROUP.minRole) && visibleSettingsChildren.length > 0;
+
+  // Split nav into groups
+  const mainItems    = visibleItems.slice(0, 2);
+  const opItems      = visibleItems.slice(2, 6);
+  const businessItems = visibleItems.slice(6);
 
   return (
-    <aside className="sidebar flex flex-col">
+    <aside className="sidebar flex flex-col shadow-sidebar">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-accent text-white font-extrabold text-lg tracking-tight select-none">
-          TS
+      <div className="flex items-center gap-3 px-5 py-5" style={{ borderBottom: '1px solid #1e2d4a' }}>
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg flex-shrink-0"
+             style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}
+             aria-hidden>
+          <Zap size={15} className="text-white" />
         </div>
-        <span className="text-white font-bold text-base tracking-wide">
-          TechShop
-        </span>
+        <div className="flex flex-col leading-none">
+          <span className="text-[13px] font-bold tracking-tight" style={{ color: '#e8edf5' }}>TechShop</span>
+          <span className="text-[10px] font-medium" style={{ color: '#3d5478' }}>Manager v1.0</span>
+        </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="ml-auto text-white/60 hover:text-white lg:hidden"
+            className="ml-auto flex h-7 w-7 items-center justify-center rounded-md transition-colors lg:hidden
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            style={{ color: '#94a8c7' }}
             aria-label="Fermer le menu"
           >
-            <X size={20} />
+            <X size={16} />
           </button>
         )}
       </div>
 
-      {/* Nav links */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {visibleItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/dashboard'}
-            onClick={onClose}
-            className={({ isActive }) =>
-              cn('sidebar-link', isActive && 'active')
-            }
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto no-scrollbar py-2" aria-label="Navigation principale">
+
+        {mainItems.length > 0 && (
+          <>
+            <NavSection label="Vue d'ensemble" />
+            <div className="space-y-0.5 px-2">
+              {mainItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === '/dashboard'}
+                  onClick={onClose}
+                  className={({ isActive }) => cn('sidebar-link', isActive && 'active')}
+                >
+                  <span className="sidebar-icon">{item.icon}</span>
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </>
+        )}
+
+        {opItems.length > 0 && (
+          <>
+            <NavSection label="Opérations" />
+            <div className="space-y-0.5 px-2">
+              {opItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={onClose}
+                  className={({ isActive }) => cn('sidebar-link', isActive && 'active')}
+                >
+                  <span className="sidebar-icon">{item.icon}</span>
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </>
+        )}
+
+        {businessItems.length > 0 && (
+          <>
+            <NavSection label="Business" />
+            <div className="space-y-0.5 px-2">
+              {businessItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={onClose}
+                  className={({ isActive }) => cn('sidebar-link', isActive && 'active')}
+                >
+                  <span className="sidebar-icon">{item.icon}</span>
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Settings group */}
         {showSettings && (
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={() => setSettingsOpen((v) => !v)}
-              className={cn(
-                'sidebar-link w-full justify-between',
-                settingsOpen && 'bg-white/10',
-              )}
-            >
-              <span className="flex items-center gap-3">
-                {SETTINGS_GROUP.icon}
-                {SETTINGS_GROUP.label}
-              </span>
-              {settingsOpen ? (
-                <ChevronDown size={14} />
-              ) : (
-                <ChevronRight size={14} />
-              )}
-            </button>
+          <>
+            <NavSection label="Système" />
+            <div className="px-2 space-y-0.5">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen((v) => !v)}
+                className={cn(
+                  'sidebar-link w-full justify-between',
+                  settingsOpen && 'active',
+                )}
+                aria-expanded={settingsOpen}
+              >
+                <span className="flex items-center gap-3">
+                  <span className="sidebar-icon">{SETTINGS_GROUP.icon}</span>
+                  {SETTINGS_GROUP.label}
+                </span>
+                <ChevronDown
+                  size={13}
+                  className={cn('transition-transform duration-200', settingsOpen && 'rotate-180')}
+                  style={{ color: '#3d5478' }}
+                />
+              </button>
 
-            {settingsOpen && (
-              <div className="mt-0.5 ml-5 pl-3 border-l border-white/20 space-y-0.5">
-                {visibleSettingsChildren.map((child) => (
-                  <NavLink
-                    key={child.to}
-                    to={child.to}
-                    onClick={onClose}
-                    className={({ isActive }) =>
-                      cn('sidebar-link text-sm', isActive && 'active')
-                    }
-                  >
-                    {child.icon}
-                    <span>{child.label}</span>
-                  </NavLink>
-                ))}
-              </div>
-            )}
-          </div>
+              {settingsOpen && (
+                <div className="mt-0.5 ml-3 pl-3 space-y-0.5" style={{ borderLeft: '1px solid #1e2d4a' }}>
+                  {visibleSettingsChildren.map((child) => (
+                    <NavLink
+                      key={child.to}
+                      to={child.to}
+                      onClick={onClose}
+                      className={({ isActive }) =>
+                        cn('sidebar-link text-[12px] py-1.5', isActive && 'active')
+                      }
+                    >
+                      <span className="sidebar-icon">{child.icon}</span>
+                      <span>{child.label}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         )}
       </nav>
     </aside>
   );
 }
 
-// ─── Header ───────────────────────────────────────────────────────────────────
-
+// ── Header ────────────────────────────────────────────────────────
 function Header({ onMenuClick }: { onMenuClick: () => void }) {
   const { user, logout } = useAuthStore();
   const { selectedSiteId } = useUIStore();
@@ -243,47 +237,67 @@ function Header({ onMenuClick }: { onMenuClick: () => void }) {
     navigate('/login', { replace: true });
   };
 
-  // Derive displayed site name from user or selected site
   const siteName = user?.siteName ?? (selectedSiteId ? `Site ${selectedSiteId}` : null);
+  const initials = user?.name?.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase() ?? '';
 
   return (
-    <header className="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-100 shadow-sm flex-shrink-0">
-      {/* Left: hamburger (mobile) + site name */}
-      <div className="flex items-center gap-3">
+    <header className="flex h-14 items-center justify-between gap-4 bg-white border-b border-border px-5 flex-shrink-0">
+      {/* Left */}
+      <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={onMenuClick}
-          className="btn-ghost p-1.5 lg:hidden"
+          type="button"
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-border
+                     text-text-muted hover:border-primary-accent hover:text-primary-accent
+                     transition-colors duration-150 lg:hidden
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent"
           aria-label="Ouvrir le menu"
         >
-          <Menu size={20} />
+          <Menu size={16} />
         </button>
 
         {siteName && (
-          <div className="flex items-center gap-1.5 text-sm">
-            <Building2 size={15} className="text-primary-accent" />
-            <span className="font-semibold text-primary-DEFAULT">{siteName}</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary-light flex-shrink-0">
+              <Building2 size={12} className="text-primary-accent" aria-hidden />
+            </div>
+            <span className="text-sm font-semibold text-text truncate">{siteName}</span>
           </div>
         )}
       </div>
 
-      {/* Right: user info + logout */}
-      <div className="flex items-center gap-4">
+      {/* Right */}
+      <div className="flex items-center gap-3 flex-shrink-0">
         {user && (
-          <div className="hidden sm:flex flex-col items-end">
-            <span className="text-sm font-semibold text-primary-DEFAULT leading-none">
-              {user.name}
+          <div className="hidden sm:flex flex-col items-end leading-none gap-0.5">
+            <span className="text-[13px] font-semibold text-text">{user.name}</span>
+            <span className="text-[11px] text-text-muted capitalize">
+              {user.role.replace(/_/g, ' ').toLowerCase()}
             </span>
-            <span className="text-xs text-gray-400 mt-0.5">{user.role}</span>
+          </div>
+        )}
+
+        {user && (
+          <div
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full
+                       bg-primary-accent text-white font-bold text-[11px] select-none"
+            aria-hidden
+          >
+            {initials}
           </div>
         )}
 
         <button
           type="button"
           onClick={handleLogout}
-          className="btn-ghost flex items-center gap-1.5 text-sm text-gray-500 hover:text-danger"
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px]
+                     font-medium text-text-muted
+                     hover:border-danger hover:text-danger hover:bg-red-50
+                     transition-colors duration-150
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
           title="Se déconnecter"
         >
-          <LogOut size={17} />
+          <LogOut size={14} aria-hidden />
           <span className="hidden sm:inline">Déconnexion</span>
         </button>
       </div>
@@ -291,8 +305,7 @@ function Header({ onMenuClick }: { onMenuClick: () => void }) {
   );
 }
 
-// ─── AppLayout ────────────────────────────────────────────────────────────────
-
+// ── AppLayout ─────────────────────────────────────────────────────
 export function AppLayout() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -300,7 +313,7 @@ export function AppLayout() {
     <>
       <OfflineBanner />
 
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex h-screen overflow-hidden bg-bg">
         {/* Desktop sidebar */}
         <div className="hidden lg:flex lg:flex-shrink-0">
           <Sidebar />
@@ -310,11 +323,11 @@ export function AppLayout() {
         {mobileSidebarOpen && (
           <>
             <div
-              className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
               onClick={() => setMobileSidebarOpen(false)}
               aria-hidden="true"
             />
-            <div className="fixed inset-y-0 left-0 z-50 lg:hidden">
+            <div className="fixed inset-y-0 left-0 z-50 animate-slide-in-left lg:hidden">
               <Sidebar onClose={() => setMobileSidebarOpen(false)} />
             </div>
           </>
@@ -323,7 +336,7 @@ export function AppLayout() {
         {/* Main content area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header onMenuClick={() => setMobileSidebarOpen(true)} />
-          <main className="main-content flex-1 overflow-y-auto p-6 bg-bg">
+          <main className="flex-1 overflow-y-auto p-5 sm:p-7 bg-bg">
             <Outlet />
           </main>
         </div>
