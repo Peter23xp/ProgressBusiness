@@ -229,18 +229,6 @@ export class ClientsService {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Site introuvable' });
     }
 
-    // Trouver ou créer un agent par défaut (système)
-    const systemAgent = await this.prisma.utilisateur.findFirst({
-      where: { siteId: dto.siteId, actif: true },
-      orderBy: { createdAt: 'asc' },
-    });
-    if (!systemAgent) {
-      throw new BadRequestException({
-        code: 'ERR_BAD_REQUEST',
-        message: 'Aucun agent actif trouvé pour ce site',
-      });
-    }
-
     // Créer le client et l'étape RECIT dans une transaction
     const client = await this.prisma.$transaction(async (tx) => {
       const newClient = await tx.client.create({
@@ -251,7 +239,7 @@ export class ClientsService {
           email: dto.email,
           matriculeExterne: dto.matriculeExterne,
           siteInscriptionId: dto.siteId,
-          createdById: systemAgent.id,
+          createdById: dto.agentId,
           parrainId: parrainId,
           statut: StatutClient.EN_COURS,
         },
@@ -266,7 +254,7 @@ export class ClientsService {
           modePaiement: dto.modePaiement,
           referenceTransaction: dto.numeroRecu,
           clientId: newClient.id,
-          agentId: systemAgent.id,
+          agentId: dto.agentId,
           siteId: dto.siteId,
         },
       });

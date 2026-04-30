@@ -1,164 +1,432 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Search,
+  Download,
+  ChevronRight,
+  RefreshCw,
+  AlertCircle,
+  Receipt,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { Search, Download, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { api, getErrorMessage } from '@/lib/api';
-import { formatCDF, formatDateTime } from '@/lib/utils';
+import { useDebounce } from '@/hooks/useDebounce';
+import { ventesApi } from '@/lib/ventes.api';
+import { SaleStatusBadge } from '@/components/sales/SaleStatusBadge';
+import { cn, formatCDF, formatDateTime } from '@/lib/utils';
+import type { ModePaiement } from '@/types';
+import type { SalesListResponse } from '@/lib/ventes.api';
 
-interface Vente {
-  id: string;
-  numero: string;
-  clientNom: string;
-  agentNom: string;
-  siteNom: string;
-  montantTotal: number;
-  modePaiement: string;
-  statut: string;
-  createdAt: string;
+// ── Utilitaires ───────────────────────────────────────────────────
+
+type Periode = 'today' | 'week' | 'month' | 'last_month';
+
+function getPeriodeDates(p: Periode): { dateDebut: string; dateFin: string } {
+  const now = new Date();
+
+  if (p === 'today') {
+    const debut = new Date(now);
+    debut.setHours(0, 0, 0, 0);
+    const fin = new Date(now);
+    fin.setHours(23, 59, 59, 999);
+    return { dateDebut: debut.toISOString(), dateFin: fin.toISOString() };
+  }
+
+  if (p === 'week') {
+    const debut = new Date(now);
+    debut.setDate(now.getDate() - now.getDay());
+    debut.setHours(0, 0, 0, 0);
+    const fin = new Date(now);
+    fin.setHours(23, 59, 59, 999);
+    return { dateDebut: debut.toISOString(), dateFin: fin.toISOString() };
+  }
+
+  if (p === 'last_month') {
+    const debut = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const fin = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    return { dateDebut: debut.toISOString(), dateFin: fin.toISOString() };
+  }
+
+  // month (défaut)
+  const debut = new Date(now.getFullYear(), now.getMonth(), 1);
+  const fin = new Date(now);
+  fin.setHours(23, 59, 59, 999);
+  return { dateDebut: debut.toISOString(), dateFin: fin.toISOString() };
 }
 
-interface PaginatedVentes {
-  data: Vente[];
-  total: number;
-  totalMontant: number;
-  page: number;
-  totalPages: number;
+function exportCSV(ventes: SalesListResponse['ventes']) {
+  const rows = [
+    ['N° Vente', 'Date', 'Agent', 'Client', 'Montant CDF', 'Mode Paiement', 'Statut'],
+    ...ventes.map((v) => [
+      v.numeroVente,
+      v.createdAt,
+      v.agent.nom,
+      v.client ? `${v.client.prenom} ${v.client.nom}` : '—',
+      String(v.montantNet),
+      v.modePaiement,
+      v.statut,
+    ]),
+  ];
+  const csv = rows.map((r) => r.join(';')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ventes-techshop-${new Date().toISOString().slice(0, 7)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
+
+// ── Icônes mode de paiement ───────────────────────────────────────
+
+const MODE_ICONS: Record<ModePaiement, string> = {
+  CASH: '💵',
+  MPESA: '📱',
+  AIRTEL_MONEY: '📱',
+  VIREMENT: '💳',
+};
+
+const MODE_LABELS: Record<ModePaiement, string> = {
+  CASH: 'Espèces',
+  MPESA: 'M-Pesa',
+  AIRTEL_MONEY: 'Airtel',
+  VIREMENT: 'Virement',
+};
+
+// ── KPI Card ──────────────────────────────────────────────────────
+
+function KpiCard({
+  label,
+  value,
+  isLoading,
+}: {
+  label: string;
+  value: string;
+  isLoading: boolean;
+}) {
+  return (
+    <div className="card flex flex-col gap-1">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">{label}</p>
+      {isLoading ? (
+        <div className="skeleton h-6 w-3/4 rounded mt-1" />
+      ) : (
+        <p className="text-[20px] font-bold text-primary">{value}</p>
+      )}
+    </div>
+  );
+}
+
+// ── Page principale ───────────────────────────────────────────────
 
 export default function VentesHistoriquePage() {
-  const [search, setSearch] = useState('');
-  const [dateDebut, setDateDebut] = useState('');
-  const [dateFin, setDateFin] = useState('');
-  const [site, setSite] = useState('');
-  const [page, setPage] = useState(1);
+  const navigate = useNavigate();
 
-  const { data, isLoading } = useQuery<PaginatedVentes>({
-    queryKey: ['ventes', { search, dateDebut, dateFin, site, page }],
-    queryFn: () => api.get('/ventes', { params: { search, dateDebut, dateFin, site, page, limit: 20 } }).then(r => r.data),
-    keepPreviousData: true,
+  const [periode, setPeriode] = useState<Periode>('month');
+  const [modePaiement, setModePaiement] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const debouncedSearch = useDebounce(search, 400);
+
+  const { data, isLoading, isFetching, isError, refetch } = useQuery({
+    queryKey: ['ventes', { periode, modePaiement, search: debouncedSearch, page, sortOrder }],
+    queryFn: () =>
+      ventesApi.list({
+        ...getPeriodeDates(periode),
+        modePaiement: modePaiement || undefined,
+        search: debouncedSearch || undefined,
+        page,
+        limit: 50,
+        sortBy: 'createdAt',
+        sortOrder,
+      }),
+    staleTime: 60_000,
+    placeholderData: (prev) => prev,
   });
 
-  const handleExport = async () => {
-    try {
-      const res = await api.get('/ventes/export', { params: { search, dateDebut, dateFin, site }, responseType: 'blob' });
-      const url = window.URL.createObjectURL(res.data);
-      const a = document.createElement('a'); a.href = url; a.download = 'ventes.csv'; a.click();
-      window.URL.revokeObjectURL(url);
-      toast.success('Export CSV téléchargé.');
-    } catch (error) {
-      toast.error(getErrorMessage(error) || 'Erreur d\'export.');
-    }
-  };
+  const ventes = data?.ventes ?? [];
+  const meta = data?.meta;
+  const kpis = data?.kpis;
+
+  const PERIODES: { value: Periode; label: string }[] = [
+    { value: 'today', label: "Aujourd'hui" },
+    { value: 'week', label: 'Cette semaine' },
+    { value: 'month', label: 'Ce mois' },
+    { value: 'last_month', label: 'Mois dernier' },
+  ];
+
+  const MODES_OPTIONS: { value: string; label: string }[] = [
+    { value: '', label: 'Tous modes' },
+    { value: 'CASH', label: 'Espèces' },
+    { value: 'MPESA', label: 'M-Pesa' },
+    { value: 'AIRTEL_MONEY', label: 'Airtel Money' },
+    { value: 'VIREMENT', label: 'Virement' },
+  ];
+
+  function handleChangePeriode(p: Periode) {
+    setPeriode(p);
+    setPage(1);
+  }
+
+  function handleChangeMode(m: string) {
+    setModePaiement(m);
+    setPage(1);
+  }
+
+  function handleChangeSearch(s: string) {
+    setSearch(s);
+    setPage(1);
+  }
+
+  function toggleSort() {
+    setSortOrder((v) => (v === 'desc' ? 'asc' : 'desc'));
+    setPage(1);
+  }
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <ShoppingBag size={26} className="text-blue-600" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Historique des ventes</h1>
-            <p className="text-sm text-gray-500">{data?.total ?? '...'} ventes</p>
-          </div>
+    <div className="space-y-5">
+      {/* ── En-tête ──────────────────────────────────────────────── */}
+      <div className="page-header">
+        <div>
+          <h1 className="text-page-title text-primary">Historique des ventes</h1>
+          <p className="mt-1 text-[13px] text-text-muted">
+            Consultez et exportez toutes les transactions
+          </p>
         </div>
-        <button onClick={handleExport} className="btn-secondary flex items-center gap-2">
-          <Download size={16} /> Exporter CSV
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="btn-secondary"
+            title="Rafraîchir"
+          >
+            <RefreshCw size={14} className={cn(isFetching && 'animate-spin')} />
+            Rafraîchir
+          </button>
+          {ventes.length > 0 && (
+            <button
+              type="button"
+              onClick={() => exportCSV(ventes)}
+              className="btn-secondary"
+            >
+              <Download size={14} />
+              Export CSV
+            </button>
+          )}
+        </div>
       </div>
 
-      {data && (
-        <div className="stat-card bg-green-50 border border-green-200">
-          <div className="flex items-center gap-3">
-            <div className="bg-green-100 p-3 rounded-xl">
-              <ShoppingBag size={22} className="text-green-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-green-700">{formatCDF(data.totalMontant)}</p>
-              <p className="text-sm text-green-600">Total de la période</p>
-            </div>
-          </div>
+      {/* ── KPIs ─────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KpiCard
+          label="Chiffre d'affaires"
+          value={kpis ? formatCDF(kpis.totalCA) : '—'}
+          isLoading={isLoading}
+        />
+        <KpiCard
+          label="Nombre de ventes"
+          value={kpis ? String(kpis.nbVentes) : '—'}
+          isLoading={isLoading}
+        />
+        <KpiCard
+          label="Panier moyen"
+          value={kpis ? formatCDF(kpis.panierMoyen) : '—'}
+          isLoading={isLoading}
+        />
+      </div>
+
+      {/* ── Filtres ───────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Toggle période */}
+        <div className="period-toggle">
+          {PERIODES.map((p) => (
+            <button
+              key={p.value}
+              type="button"
+              onClick={() => handleChangePeriode(p.value)}
+              className={cn('period-btn', periode === p.value && 'active')}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Recherche */}
+        <div className="relative min-w-[200px]">
+          <Search
+            size={13}
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-subtle"
+          />
+          <input
+            type="text"
+            placeholder="N° vente, client, agent..."
+            value={search}
+            onChange={(e) => handleChangeSearch(e.target.value)}
+            className="pl-8 text-sm"
+          />
+        </div>
+
+        {/* Mode paiement */}
+        <div className="relative">
+          <select
+            value={modePaiement}
+            onChange={(e) => handleChangeMode(e.target.value)}
+            className="text-sm pr-8"
+          >
+            {MODES_OPTIONS.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            size={13}
+            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-subtle"
+          />
+        </div>
+      </div>
+
+      {/* ── État d'erreur ─────────────────────────────────────────── */}
+      {isError && (
+        <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-danger">
+          <AlertCircle size={16} />
+          Impossible de charger les ventes. Vérifiez votre connexion.
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="ml-auto text-danger underline hover:no-underline"
+          >
+            Réessayer
+          </button>
         </div>
       )}
 
-      <div className="card">
-        <div className="flex flex-wrap gap-3 mb-5">
-          <div className="relative flex-1 min-w-48">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text" placeholder="Rechercher n° vente, client..."
-              value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-              className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <input type="date" value={dateDebut} onChange={e => { setDateDebut(e.target.value); setPage(1); }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <input type="date" value={dateFin} onChange={e => { setDateFin(e.target.value); setPage(1); }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <select value={site} onChange={e => { setSite(e.target.value); setPage(1); }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Tous les sites</option>
-            <option value="GOMA_CENTRE">Goma Centre</option>
-            <option value="GOMA_NORD">Goma Nord</option>
-            <option value="GISENYI">Gisenyi</option>
-          </select>
-        </div>
-
-        {isLoading ? (
-          <div className="space-y-2">{[...Array(8)].map((_, i) => <div key={i} className="skeleton h-12 rounded" />)}</div>
-        ) : (
-          <>
-            <div className="table-container">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-gray-500 border-b text-xs uppercase tracking-wider">
-                    <th className="pb-3 font-semibold">N° Vente</th>
-                    <th className="pb-3 font-semibold">Client</th>
-                    <th className="pb-3 font-semibold">Agent</th>
-                    <th className="pb-3 font-semibold">Site</th>
-                    <th className="pb-3 font-semibold">Montant</th>
-                    <th className="pb-3 font-semibold">Paiement</th>
-                    <th className="pb-3 font-semibold">Date</th>
-                    <th className="pb-3 font-semibold">Statut</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {(data?.data || []).map(v => (
-                    <tr key={v.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-3">
-                        <Link to={`/sales/${v.id}`} className="text-blue-600 hover:underline font-mono font-semibold">{v.numero}</Link>
-                      </td>
-                      <td className="py-3 text-gray-700">{v.clientNom}</td>
-                      <td className="py-3 text-gray-500">{v.agentNom}</td>
-                      <td className="py-3 text-gray-500">{v.siteNom}</td>
-                      <td className="py-3 font-bold text-gray-900">{formatCDF(v.montantTotal)}</td>
-                      <td className="py-3"><span className="badge badge-info">{v.modePaiement}</span></td>
-                      <td className="py-3 text-gray-500">{formatDateTime(v.createdAt)}</td>
-                      <td className="py-3">
-                        <span className={`badge ${v.statut === 'COMPLETE' ? 'badge-success' : v.statut === 'ANNULE' ? 'badge-danger' : 'badge-warning'}`}>{v.statut}</span>
-                      </td>
-                    </tr>
-                  ))}
-                  {(!data?.data || data.data.length === 0) && (
-                    <tr><td colSpan={8} className="py-12 text-center">
-                      <ShoppingBag size={40} className="mx-auto text-gray-300 mb-2" />
-                      <p className="text-gray-400">Aucune vente trouvée</p>
-                    </td></tr>
+      {/* ── Tableau ───────────────────────────────────────────────── */}
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>N° Vente</th>
+              <th>
+                <button
+                  type="button"
+                  onClick={toggleSort}
+                  className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                >
+                  Date
+                  {sortOrder === 'desc' ? (
+                    <ChevronDown size={11} />
+                  ) : (
+                    <ChevronUp size={11} />
                   )}
-                </tbody>
-              </table>
-            </div>
-            {data && data.totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                <p className="text-sm text-gray-500">Page {data.page} / {data.totalPages}</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={data.page === 1} className="btn-secondary p-2 disabled:opacity-40"><ChevronLeft size={16} /></button>
-                  <button onClick={() => setPage(p => Math.min(data.totalPages, p + 1))} disabled={data.page === data.totalPages} className="btn-secondary p-2 disabled:opacity-40"><ChevronRight size={16} /></button>
-                </div>
-              </div>
-            )}
-          </>
+                </button>
+              </th>
+              <th>Agent</th>
+              <th>Client</th>
+              <th className="text-right">Montant</th>
+              <th>Paiement</th>
+              <th>Statut</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading
+              ? Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i}>
+                    {Array.from({ length: 8 }).map((__, j) => (
+                      <td key={j}>
+                        <div className="skeleton h-3 rounded w-full" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              : ventes.map((vente) => (
+                  <tr
+                    key={vente.id}
+                    onClick={() => navigate(`/sales/${vente.id}`)}
+                    className={cn(
+                      'cursor-pointer',
+                      vente.statut === 'RETOURNEE' && 'bg-red-50/60',
+                      vente.statut === 'ANNULEE' && 'opacity-60',
+                    )}
+                  >
+                    <td>
+                      <span className="font-mono text-[12px] font-semibold text-primary-accent">
+                        {vente.numeroVente}
+                      </span>
+                    </td>
+                    <td className="text-[12px] text-text-muted whitespace-nowrap">
+                      {formatDateTime(vente.createdAt)}
+                    </td>
+                    <td className="text-[13px]">
+                      {vente.agent.prenom
+                        ? `${vente.agent.prenom} ${vente.agent.nom}`
+                        : vente.agent.nom}
+                    </td>
+                    <td className="text-[13px]">
+                      {vente.client ? (
+                        `${vente.client.prenom} ${vente.client.nom}`
+                      ) : (
+                        <span className="text-text-muted">—</span>
+                      )}
+                    </td>
+                    <td className="text-right font-mono font-semibold text-[13px]">
+                      {formatCDF(vente.montantNet)}
+                    </td>
+                    <td>
+                      <span className="inline-flex items-center gap-1 text-[12px]">
+                        <span aria-hidden>{MODE_ICONS[vente.modePaiement]}</span>
+                        {MODE_LABELS[vente.modePaiement]}
+                      </span>
+                    </td>
+                    <td>
+                      <SaleStatusBadge statut={vente.statut} />
+                    </td>
+                    <td>
+                      <ChevronRight size={14} className="text-text-subtle" />
+                    </td>
+                  </tr>
+                ))}
+          </tbody>
+        </table>
+
+        {!isLoading && ventes.length === 0 && !isError && (
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-text-muted">
+            <Receipt size={32} className="opacity-30" />
+            <p className="text-[13px] font-medium">Aucune vente pour cette période</p>
+          </div>
         )}
       </div>
+
+      {/* ── Pagination ────────────────────────────────────────────── */}
+      {meta && meta.totalPages > 1 && (
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <p className="text-[12px] text-text-muted">
+            Page {meta.page} / {meta.totalPages} — {meta.total} ventes
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={meta.page <= 1 || isFetching}
+              className="btn-secondary text-[12px] py-1.5 px-3"
+            >
+              Précédent
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
+              disabled={meta.page >= meta.totalPages || isFetching}
+              className="btn-secondary text-[12px] py-1.5 px-3"
+            >
+              Suivant
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

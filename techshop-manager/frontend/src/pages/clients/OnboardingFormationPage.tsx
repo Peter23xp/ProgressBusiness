@@ -92,6 +92,12 @@ export default function OnboardingFormationPage() {
       navigate(`/clients/${id}/fiche`);
     },
     onError: (error: any) => {
+      const status = error?.response?.status;
+      if (status === 409) {
+        toast('Formation déjà validée, passage à l\'étape suivante.', { icon: 'ℹ️' });
+        navigate(`/clients/${id}/fiche`);
+        return;
+      }
       const msg = getErrorMessage(error) || 'Erreur lors de l\'enregistrement.';
       toast.error(msg);
     },

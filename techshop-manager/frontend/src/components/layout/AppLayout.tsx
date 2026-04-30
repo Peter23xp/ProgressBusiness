@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
-  TrendingUp,
   Users,
   ShoppingCart,
   Receipt,
@@ -43,7 +42,6 @@ interface NavGroupDef {
 
 const NAV_ITEMS: NavItemDef[] = [
   { label: 'Dashboard',          icon: <LayoutDashboard size={16} />, to: '/dashboard',          minRole: 'AGENT' },
-  { label: 'Dashboard Régional', icon: <TrendingUp size={16} />,      to: '/dashboard/regional', minRole: 'DIRECTEUR_REGIONAL' },
   { label: 'Clients',            icon: <Users size={16} />,           to: '/clients',            minRole: 'AGENT' },
   { label: 'Caisse POS',         icon: <ShoppingCart size={16} />,    to: '/sales/pos',          minRole: 'AGENT' },
   { label: 'Ventes',             icon: <Receipt size={16} />,         to: '/sales',              minRole: 'GERANT' },

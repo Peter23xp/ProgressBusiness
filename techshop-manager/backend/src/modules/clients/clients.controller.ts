@@ -57,8 +57,8 @@ export class ClientsController {
   }
 
   @Post('onboarding/recit')
-  onboardingRecit(@Body() body: any) {
-    return this.clientsService.onboardingRecit(body);
+  onboardingRecit(@Body() body: any, @CurrentUser() user: any) {
+    return this.clientsService.onboardingRecit({ ...body, agentId: user.id });
   }
 
   @Post('import/preview')

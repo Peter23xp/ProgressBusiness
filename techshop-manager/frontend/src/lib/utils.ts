@@ -15,16 +15,25 @@ export function formatCDF(amount: number): string {
   }).format(amount) + ' CDF';
 }
 
-export function formatDate(date: string | Date): string {
-  return format(new Date(date), 'dd/MM/yyyy', { locale: fr });
+export function formatDate(date: string | Date | null | undefined): string {
+  if (!date) return '—';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '—';
+  return format(d, 'dd/MM/yyyy', { locale: fr });
 }
 
-export function formatDateTime(date: string | Date): string {
-  return format(new Date(date), 'dd/MM/yyyy HH:mm', { locale: fr });
+export function formatDateTime(date: string | Date | null | undefined): string {
+  if (!date) return '—';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '—';
+  return format(d, 'dd/MM/yyyy HH:mm', { locale: fr });
 }
 
-export function formatRelative(date: string | Date): string {
-  return formatDistanceToNow(new Date(date), { locale: fr, addSuffix: true });
+export function formatRelative(date: string | Date | null | undefined): string {
+  if (!date) return '—';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '—';
+  return formatDistanceToNow(d, { locale: fr, addSuffix: true });
 }
 
 export function statutClientColor(statut: StatutClient): string {

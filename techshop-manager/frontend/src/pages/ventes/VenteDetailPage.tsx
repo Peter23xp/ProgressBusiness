@@ -1,20 +1,125 @@
 import { useQuery } from '@tanstack/react-query';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Printer, RotateCcw, User, MapPin, Calendar } from 'lucide-react';
-import { api } from '@/lib/api';
-import { formatCDF, formatDateTime } from '@/lib/utils';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { differenceInDays } from 'date-fns';
+import {
+  ArrowLeft,
+  Printer,
+  RotateCcw,
+  Receipt,
+  Banknote,
+  Smartphone,
+  CreditCard,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { api, getErrorMessage } from '@/lib/api';
+import { cn, formatCDF, formatDateTime } from '@/lib/utils';
+import { SaleStatusBadge } from '@/components/sales/SaleStatusBadge';
+import type { StatutVente, ModePaiement, NiveauFidelite } from '@/types';
 
-interface VenteLigne { id: string; produitNom: string; sku: string; quantite: number; prixUnitaire: number; remise: number; sousTotal: number }
-interface VenteDetail {
-  id: string; numero: string; statut: string; createdAt: string;
-  agent: { prenom: string; nom: string };
-  site: { nom: string; ville: string };
-  client?: { id: string; prenom: string; nom: string; telephone: string; niveau: string };
-  lignes: VenteLigne[];
-  sousTotal: number; remiseFidelite: number; remiseMontant: number; montantTotal: number;
-  modePaiement: string; montantRecu?: number; monnaieRendue?: number;
-  pointsGagnes?: number;
+// ── Types locaux étendus ──────────────────────────────────────────────────────
+
+interface LigneVenteDetail {
+  id: string;
+  produit: { id: string; sku: string; nom: string; categorie: string };
+  quantite: number;
+  prixUnitaire: number;
+  sousTotal: number;
+  quantiteRetournee: number;
+  retournee: boolean;
 }
+
+interface VenteDetail {
+  id: string;
+  numeroVente: string;
+  createdAt: string;
+  statut: StatutVente;
+  agent: { id: string; nom: string; prenom?: string };
+  site: { id: string; nom: string; ville?: string };
+  client?: {
+    id: string;
+    nom: string;
+    prenom: string;
+    telephone: string;
+    niveauFidelite: NiveauFidelite;
+    pointsAvant?: number;
+    pointsApres?: number;
+    pointsAttribues?: number;
+  };
+  lignes: LigneVenteDetail[];
+  montantBrut: number;
+  remiseFidelite: number;
+  montantNet: number;
+  modePaiement: ModePaiement;
+  referenceTransaction?: string;
+  montantRecu?: number;
+  monnaieRendue?: number;
+}
+
+// ── Constantes ────────────────────────────────────────────────────────────────
+
+const PAYMENT_ICONS: Record<ModePaiement, LucideIcon> = {
+  CASH: Banknote,
+  MPESA: Smartphone,
+  AIRTEL_MONEY: Smartphone,
+  VIREMENT: CreditCard,
+};
+
+const PAYMENT_LABELS: Record<ModePaiement, string> = {
+  CASH: 'Espèces',
+  MPESA: 'M-Pesa',
+  AIRTEL_MONEY: 'Airtel Money',
+  VIREMENT: 'Virement bancaire',
+};
+
+const NIVEAU_COLORS: Record<NiveauFidelite, string> = {
+  BRONZE: 'bg-amber-100 text-amber-700',
+  ARGENT: 'bg-slate-100 text-slate-600',
+  OR: 'bg-yellow-100 text-yellow-700',
+  PLATINE: 'bg-purple-100 text-platine',
+};
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+function VenteDetailSkeleton() {
+  return (
+    <div className="max-w-4xl mx-auto space-y-5 px-4 py-6 animate-pulse">
+      <div className="h-8 w-48 bg-slate-200 rounded-lg" />
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl shadow-card p-5 h-48">
+          <div className="space-y-3">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-4 bg-slate-200 rounded w-full" />
+            ))}
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-card p-5 h-48">
+          <div className="space-y-3">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-4 bg-slate-200 rounded w-full" />
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="bg-white rounded-xl shadow-card p-5 h-32">
+        <div className="space-y-3">
+          {[...Array(2)].map((_, i) => (
+            <div key={i} className="h-4 bg-slate-200 rounded w-full" />
+          ))}
+        </div>
+      </div>
+      <div className="bg-white rounded-xl shadow-card p-5 h-64">
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-4 bg-slate-200 rounded w-full" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Page principale ───────────────────────────────────────────────────────────
 
 export default function VenteDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -22,126 +127,326 @@ export default function VenteDetailPage() {
 
   const { data: vente, isLoading } = useQuery<VenteDetail>({
     queryKey: ['vente', id],
-    queryFn: () => api.get(`/ventes/${id}`).then(r => r.data),
+    queryFn: () =>
+      api.get(`/ventes/${id}`).then((r) => r.data),
   });
 
-  const isReturnable = vente ? (new Date().getTime() - new Date(vente.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000 : false;
+  const canRetour = vente
+    ? differenceInDays(new Date(), new Date(vente.createdAt)) <= 7 &&
+      vente.statut === 'VALIDE'
+    : false;
 
-  if (isLoading) {
+  if (isLoading) return <VenteDetailSkeleton />;
+
+  if (!vente) {
     return (
-      <div className="p-6 space-y-4">
-        <div className="skeleton h-8 w-48 rounded" />
-        <div className="card space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="skeleton h-14 rounded" />)}</div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-text-muted">
+        <Receipt size={48} className="opacity-30" strokeWidth={1.5} />
+        <p className="text-lg font-semibold text-text">Vente introuvable</p>
+        <button
+          onClick={() => navigate('/sales')}
+          className="btn-secondary flex items-center gap-2"
+        >
+          <ArrowLeft size={16} />
+          Retour à l'historique
+        </button>
       </div>
     );
   }
 
-  if (!vente) return <div className="p-6 text-center text-gray-400">Vente introuvable.</div>;
+  const PayIcon = PAYMENT_ICONS[vente.modePaiement];
+  const isMobileMoney =
+    vente.modePaiement === 'MPESA' || vente.modePaiement === 'AIRTEL_MONEY';
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="max-w-4xl mx-auto space-y-5 px-4 py-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="btn-secondary p-2"><ArrowLeft size={18} /></button>
+          <button
+            onClick={() => navigate('/sales')}
+            className="btn-secondary p-2"
+            aria-label="Retour à l'historique"
+          >
+            <ArrowLeft size={18} />
+          </button>
           <div>
-            <h1 className="text-xl font-bold text-gray-900 font-mono">{vente.numero}</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <span className={`badge ${vente.statut === 'COMPLETE' ? 'badge-success' : vente.statut === 'ANNULE' ? 'badge-danger' : 'badge-warning'}`}>{vente.statut}</span>
-              <span className="text-sm text-gray-500 flex items-center gap-1"><Calendar size={13} />{formatDateTime(vente.createdAt)}</span>
-            </div>
+            <p className="text-sm text-text-muted">← Historique</p>
+            <h1 className="text-xl font-bold text-text font-mono leading-tight">
+              {vente.numeroVente}
+            </h1>
           </div>
         </div>
-        <div className="flex gap-3">
-          <Link to={`/sales/${id}/receipt`} className="btn-secondary flex items-center gap-2"><Printer size={16} /> Imprimer</Link>
-          {isReturnable && vente.statut === 'COMPLETE' && (
-            <Link to={`/sales/${id}/retour`} className="btn-danger flex items-center gap-2"><RotateCcw size={16} /> Retour</Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate(`/sales/${id}/receipt`)}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <Printer size={16} />
+            Imprimer
+          </button>
+          {canRetour && (
+            <button
+              onClick={() => navigate(`/sales/returns?venteId=${id}`)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-danger text-danger font-semibold text-sm transition-colors hover:bg-red-50"
+            >
+              <RotateCcw size={16} />
+              ↩ Initier un retour
+            </button>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card">
-          <p className="text-xs text-gray-400 font-semibold uppercase mb-2">Agent</p>
-          <p className="font-semibold text-gray-900">{vente.agent?.prenom} {vente.agent?.nom}</p>
+      {/* Bannière statut dégradé */}
+      {vente.statut === 'RETOURNEE_PARTIELLE' && (
+        <div className="flex items-center gap-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-warning text-sm font-medium">
+          <RotateCcw size={16} />
+          Cette vente a fait l'objet d'un retour partiel. Certains articles ont été retournés.
         </div>
-        <div className="card">
-          <p className="text-xs text-gray-400 font-semibold uppercase mb-2 flex items-center gap-1"><MapPin size={12} />Site</p>
-          <p className="font-semibold text-gray-900">{vente.site?.nom}</p>
-          <p className="text-sm text-gray-500">{vente.site?.ville}</p>
+      )}
+      {(vente.statut === 'RETOURNEE' || vente.statut === 'ANNULEE') && (
+        <div className="flex items-center gap-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-danger text-sm font-medium">
+          <RotateCcw size={16} />
+          {vente.statut === 'RETOURNEE'
+            ? 'Cette vente a été intégralement retournée.'
+            : 'Cette vente a été annulée.'}
         </div>
-        {vente.client && (
-          <div className="card">
-            <p className="text-xs text-gray-400 font-semibold uppercase mb-2 flex items-center gap-1"><User size={12} />Client</p>
-            <Link to={`/clients/${vente.client.id}`} className="font-semibold text-blue-600 hover:underline">
-              {vente.client.prenom} {vente.client.nom}
-            </Link>
-            <p className="text-sm text-gray-500">{vente.client.telephone}</p>
-            <span className="badge badge-gray text-xs">{vente.client.niveau}</span>
+      )}
+
+      {/* Grille infos générales + paiement */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        {/* Card infos générales */}
+        <div className="bg-white rounded-xl shadow-card p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide">
+            Informations générales
+          </h2>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-text-muted">N° vente</span>
+              <span className="font-mono font-semibold text-text">
+                {vente.numeroVente}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text-muted">Date</span>
+              <span className="text-text">{formatDateTime(vente.createdAt)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text-muted">Agent</span>
+              <span className="text-text">
+                {vente.agent.prenom
+                  ? `${vente.agent.prenom} ${vente.agent.nom}`
+                  : vente.agent.nom}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text-muted">Site</span>
+              <span className="text-text">
+                {vente.site.nom}
+                {vente.site.ville ? ` — ${vente.site.ville}` : ''}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-text-muted">Statut</span>
+              <SaleStatusBadge statut={vente.statut} />
+            </div>
           </div>
-        )}
+        </div>
+
+        {/* Card paiement */}
+        <div className="bg-white rounded-xl shadow-card p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide">
+            Paiement
+          </h2>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-text-muted">Mode</span>
+              <span className="flex items-center gap-1.5 font-medium text-text">
+                <PayIcon size={15} className="text-primary-accent" />
+                {PAYMENT_LABELS[vente.modePaiement]}
+              </span>
+            </div>
+            {isMobileMoney && vente.referenceTransaction && (
+              <div className="flex justify-between">
+                <span className="text-text-muted">Référence</span>
+                <span className="font-mono text-text text-xs">
+                  {vente.referenceTransaction}
+                </span>
+              </div>
+            )}
+            {vente.modePaiement === 'CASH' && vente.montantRecu != null && (
+              <div className="flex justify-between">
+                <span className="text-text-muted">Montant reçu</span>
+                <span className="text-text">{formatCDF(vente.montantRecu)}</span>
+              </div>
+            )}
+            {vente.modePaiement === 'CASH' &&
+              vente.monnaieRendue != null &&
+              vente.monnaieRendue > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-text-muted">Monnaie rendue</span>
+                  <span className="text-text-accent font-semibold">
+                    {formatCDF(vente.monnaieRendue)}
+                  </span>
+                </div>
+              )}
+          </div>
+        </div>
       </div>
 
-      <div className="card">
-        <h2 className="font-semibold text-gray-800 mb-4">Articles vendus</h2>
-        <div className="table-container">
+      {/* Card client */}
+      {vente.client && (
+        <div className="bg-white rounded-xl shadow-card p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide">
+            Client
+          </h2>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-1">
+              <Link
+                to={`/clients/${vente.client.id}`}
+                className="font-semibold text-primary-accent hover:underline"
+              >
+                {vente.client.prenom} {vente.client.nom}
+              </Link>
+              <p className="text-sm text-text-muted">{vente.client.telephone}</p>
+              <span
+                className={cn(
+                  'inline-block px-2 py-0.5 rounded-full text-xs font-semibold',
+                  NIVEAU_COLORS[vente.client.niveauFidelite],
+                )}
+              >
+                {vente.client.niveauFidelite}
+              </span>
+            </div>
+
+            {/* Progression points */}
+            {vente.client.pointsAvant != null &&
+              vente.client.pointsApres != null && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-text-muted">
+                    {vente.client.pointsAvant} pts
+                  </span>
+                  <span className="text-text-subtle">→</span>
+                  <span className="font-semibold text-text">
+                    {vente.client.pointsApres} pts
+                  </span>
+                  {vente.client.pointsAttribues != null &&
+                    vente.client.pointsAttribues > 0 && (
+                      <span className="text-xs text-success font-medium">
+                        (+{vente.client.pointsAttribues} pts)
+                      </span>
+                    )}
+                </div>
+              )}
+          </div>
+        </div>
+      )}
+
+      {/* Card articles */}
+      <div className="bg-white rounded-xl shadow-card p-5 space-y-4">
+        <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide">
+          Articles
+        </h2>
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-500 border-b text-xs uppercase">
-                <th className="pb-3 font-semibold">Produit</th>
-                <th className="pb-3 font-semibold">SKU</th>
-                <th className="pb-3 font-semibold text-right">Prix unit.</th>
-                <th className="pb-3 font-semibold text-center">Qté</th>
-                <th className="pb-3 font-semibold text-right">Remise</th>
-                <th className="pb-3 font-semibold text-right">Sous-total</th>
+              <tr className="border-b border-border text-left">
+                <th className="pb-3 font-semibold text-text-muted text-xs uppercase tracking-wide">
+                  SKU
+                </th>
+                <th className="pb-3 font-semibold text-text-muted text-xs uppercase tracking-wide">
+                  Produit
+                </th>
+                <th className="pb-3 font-semibold text-text-muted text-xs uppercase tracking-wide text-center">
+                  Qté
+                </th>
+                <th className="pb-3 font-semibold text-text-muted text-xs uppercase tracking-wide text-right">
+                  P.U.
+                </th>
+                <th className="pb-3 font-semibold text-text-muted text-xs uppercase tracking-wide text-right">
+                  Sous-total
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
-              {vente.lignes.map(l => (
-                <tr key={l.id} className="hover:bg-gray-50">
-                  <td className="py-3 font-medium text-gray-800">{l.produitNom}</td>
-                  <td className="py-3 font-mono text-gray-500 text-xs">{l.sku}</td>
-                  <td className="py-3 text-right text-gray-700">{formatCDF(l.prixUnitaire)}</td>
-                  <td className="py-3 text-center font-semibold">{l.quantite}</td>
-                  <td className="py-3 text-right text-green-600">{l.remise > 0 ? `-${l.remise}%` : '—'}</td>
-                  <td className="py-3 text-right font-bold text-gray-900">{formatCDF(l.sousTotal)}</td>
+            <tbody className="divide-y divide-border">
+              {vente.lignes.map((ligne) => (
+                <tr
+                  key={ligne.id}
+                  className={cn(
+                    'transition-colors',
+                    ligne.retournee && 'opacity-50',
+                  )}
+                >
+                  <td
+                    className={cn(
+                      'py-3 font-mono text-xs text-text-muted',
+                      ligne.retournee && 'line-through',
+                    )}
+                  >
+                    {ligne.produit.sku}
+                  </td>
+                  <td className="py-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className={cn(
+                          'font-medium text-text',
+                          ligne.retournee && 'line-through',
+                        )}
+                      >
+                        {ligne.produit.nom}
+                      </span>
+                      {ligne.retournee && (
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700">
+                          ↩ Retourné
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td
+                    className={cn(
+                      'py-3 text-center text-text',
+                      ligne.retournee && 'line-through',
+                    )}
+                  >
+                    {ligne.quantite}
+                  </td>
+                  <td
+                    className={cn(
+                      'py-3 text-right text-text-muted',
+                      ligne.retournee && 'line-through',
+                    )}
+                  >
+                    {formatCDF(ligne.prixUnitaire)}
+                  </td>
+                  <td
+                    className={cn(
+                      'py-3 text-right font-semibold text-text',
+                      ligne.retournee && 'line-through',
+                    )}
+                  >
+                    {formatCDF(ligne.sousTotal)}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="card">
-          <h2 className="font-semibold text-gray-800 mb-3">Récapitulatif</h2>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between text-gray-600"><span>Sous-total</span><span>{formatCDF(vente.sousTotal)}</span></div>
-            {vente.remiseMontant > 0 && (
-              <div className="flex justify-between text-green-600">
-                <span>Remise fidélité ({vente.remiseFidelite}%)</span>
-                <span>-{formatCDF(vente.remiseMontant)}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-black text-lg text-gray-900 border-t pt-2 mt-2">
-              <span>TOTAL</span><span>{formatCDF(vente.montantTotal)}</span>
-            </div>
-            {vente.pointsGagnes && vente.pointsGagnes > 0 && (
-              <div className="flex justify-between text-purple-600 text-xs">
-                <span>Points fidélité gagnés</span><span>+{vente.pointsGagnes} pts</span>
-              </div>
-            )}
+        {/* Pied du tableau */}
+        <div className="border-t border-border pt-4 space-y-2 text-sm">
+          <div className="flex justify-between text-text-muted">
+            <span>Sous-total</span>
+            <span>{formatCDF(vente.montantBrut)}</span>
           </div>
-        </div>
-        <div className="card">
-          <h2 className="font-semibold text-gray-800 mb-3">Paiement</h2>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-gray-600">Mode</span><span className="badge badge-info">{vente.modePaiement}</span></div>
-            {vente.montantRecu && (
-              <div className="flex justify-between"><span className="text-gray-600">Reçu</span><span className="font-semibold">{formatCDF(vente.montantRecu)}</span></div>
-            )}
-            {vente.monnaieRendue !== undefined && vente.monnaieRendue > 0 && (
-              <div className="flex justify-between"><span className="text-gray-600">Monnaie rendue</span><span className="font-semibold text-blue-600">{formatCDF(vente.monnaieRendue)}</span></div>
-            )}
+          {vente.remiseFidelite > 0 && (
+            <div className="flex justify-between text-success">
+              <span>Remise fidélité</span>
+              <span>-{formatCDF(vente.remiseFidelite)}</span>
+            </div>
+          )}
+          <div className="flex justify-between items-center font-bold text-lg text-text border-t border-border pt-2">
+            <span>Total</span>
+            <span>{formatCDF(vente.montantNet)}</span>
           </div>
         </div>
       </div>
