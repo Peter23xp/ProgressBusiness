@@ -1,0 +1,74 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { VentesService } from './ventes.service';
+import { CreateVenteDto, RetourDto } from './dto/vente.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Role } from '@prisma/client';
+
+@Controller('ventes')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.AGENT)
+export class VentesController {
+  constructor(private readonly ventesService: VentesService) {}
+
+  @Post()
+  createVente(@Body() dto: CreateVenteDto, @CurrentUser() user: any) {
+    return this.ventesService.createVente(dto, user.id);
+  }
+
+  @Get()
+  findAll(
+    @Query('siteId') siteId?: string,
+    @Query('dateDebut') dateDebut?: string,
+    @Query('dateFin') dateFin?: string,
+    @Query('modePaiement') modePaiement?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.ventesService.findAll({
+      siteId,
+      dateDebut,
+      dateFin,
+      modePaiement,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+    });
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.ventesService.findOne(id);
+  }
+
+  @Get(':id/receipt')
+  getReceipt(@Param('id') id: string) {
+    return this.ventesService.getReceipt(id);
+  }
+
+  @Post(':id/sms-recu')
+  sendSmsRecu(
+    @Param('id') id: string,
+    @Body('telephone') telephone: string,
+  ) {
+    return this.ventesService.sendSmsRecu(id, telephone);
+  }
+
+  @Post(':id/retour')
+  createRetour(
+    @Param('id') venteId: string,
+    @Body() dto: RetourDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.ventesService.createRetour(venteId, dto, user.id);
+  }
+}

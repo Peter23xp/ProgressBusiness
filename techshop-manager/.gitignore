@@ -1,0 +1,37 @@
+node_modules/
+dist/
+build/
+.env
+*.env.local
+*.env.development.local
+*.env.test.local
+*.env.production.local
+
+# Backend
+backend/node_modules/
+backend/dist/
+backend/.env
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Prisma
+backend/prisma/*.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Exports temp
+/tmp/techshop-exports/

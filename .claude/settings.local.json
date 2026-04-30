@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(gh repo *)",
+      "WebFetch(domain:github.com)",
+      "Bash(git clone *)",
+      "Read(//tmp/impeccable/dist/**)",
+      "Read(//tmp/impeccable/dist/claude-code/**)",
+      "Bash(mkdir -p \"D:/PETER/Progress app/.claude/skills\")",
+      "Bash(cp -r /tmp/impeccable/.claude/skills/impeccable \"D:/PETER/Progress app/.claude/skills/\")",
+      "Bash(node .claude/skills/impeccable/scripts/load-context.mjs)",
+      "Bash(echo \"frontend exit: $?\")",
+      "Bash(echo \"backend exit: $?\")"
+    ]
+  }
+}

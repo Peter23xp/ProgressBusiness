@@ -1,0 +1,131 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Body,
+  Query,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ClientsService } from './clients.service';
+import { UpdateClientDto, OnboardingFormationDto, OnboardingFicheDto } from './dto/client.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Role } from '@prisma/client';
+
+@Controller('clients')
+@UseGuards(JwtAuthGuard, RolesGuard)
+export class ClientsController {
+  constructor(private readonly clientsService: ClientsService) {}
+
+  @Get()
+  @Roles(Role.AGENT)
+  findAll(
+    @Query('siteId') siteId?: string,
+    @Query('statut') statut?: string,
+    @Query('niveau') niveau?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @CurrentUser() user?: any,
+  ) {
+    return this.clientsService.findAll(
+      {
+        siteId,
+        statut,
+        niveau,
+        search,
+        page: page ? parseInt(page, 10) : 1,
+        limit: limit ? parseInt(limit, 10) : 50,
+      },
+      user,
+    );
+  }
+
+  @Get('check-phone/:phone')
+  checkPhone(@Param('phone') phone: string) {
+    return this.clientsService.checkPhone(phone);
+  }
+
+  @Post('onboarding/recit')
+  onboardingRecit(@Body() body: any) {
+    return this.clientsService.onboardingRecit(body);
+  }
+
+  @Post('import/preview')
+  @UseInterceptors(FileInterceptor('file'))
+  importPreview(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 })],
+        fileIsRequired: true,
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    return this.clientsService.importPreview(file);
+  }
+
+  @Post('import/execute')
+  @UseInterceptors(FileInterceptor('file'))
+  importExecute(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 })],
+        fileIsRequired: true,
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    return this.clientsService.importExecute(file);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.clientsService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateClientDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.clientsService.update(id, dto, user);
+  }
+
+  @Post(':id/onboarding/formation')
+  onboardingFormation(
+    @Param('id') clientId: string,
+    @Body() dto: OnboardingFormationDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.clientsService.onboardingFormation(clientId, dto, user.id);
+  }
+
+  @Post(':id/onboarding/fiche')
+  onboardingFiche(
+    @Param('id') clientId: string,
+    @Body() dto: OnboardingFicheDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.clientsService.onboardingFiche(clientId, dto, user.id);
+  }
+
+  @Post(':id/onboarding/activate')
+  onboardingActivate(
+    @Param('id') clientId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.clientsService.onboardingActivate(clientId, user.id);
+  }
+}

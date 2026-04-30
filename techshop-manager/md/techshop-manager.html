@@ -1,0 +1,2613 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TechShop Manager — Goma · Bukavu · Kinshasa</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --primary:#1E3A5F;
+    --accent:#2E86C1;
+    --success:#27AE60;
+    --warning:#E67E22;
+    --danger:#E74C3C;
+    --bg:#F4F6F9;
+    --sidebar-bg:#1E3A5F;
+    --sidebar-text:#ECF0F1;
+    --card:#FFFFFF;
+    --border:#E1E5EB;
+    --text:#2C3E50;
+    --muted:#7F8C8D;
+    --shadow:0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --shadow-md:0 4px 12px rgba(0,0,0,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:14px;
+    line-height:1.5;
+  }
+  a{color:inherit;text-decoration:none}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+
+  /* ================= LAYOUT ================= */
+  .app{display:flex;min-height:100vh}
+  .sidebar{
+    width:240px;background:var(--sidebar-bg);color:var(--sidebar-text);
+    display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:50;
+  }
+  .sidebar-brand{
+    padding:20px 18px;display:flex;align-items:center;gap:10px;
+    border-bottom:1px solid rgba(255,255,255,.08);
+  }
+  .sidebar-brand .logo{
+    width:36px;height:36px;border-radius:8px;background:var(--accent);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;
+  }
+  .sidebar-brand h1{font-size:15px;font-weight:600;letter-spacing:.2px}
+  .sidebar-brand small{display:block;color:#B6C2CE;font-size:11px;font-weight:400}
+
+  .nav{flex:1;overflow-y:auto;padding:10px 8px}
+  .nav-item{margin:2px 0}
+  .nav-link{
+    display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;
+    color:#D5DCE3;font-size:13.5px;cursor:pointer;width:100%;text-align:left;
+    transition:background .15s,color .15s;
+  }
+  .nav-link:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav-link.active{background:var(--accent);color:#fff}
+  .nav-link svg{width:18px;height:18px;flex-shrink:0}
+  .nav-link .chev{margin-left:auto;transition:transform .2s}
+  .nav-link.open .chev{transform:rotate(90deg)}
+  .nav-sub{display:none;padding-left:38px;margin:4px 0 6px}
+  .nav-sub.open{display:block}
+  .nav-sub button{
+    display:block;padding:6px 10px;color:#B6C2CE;font-size:12.5px;border-radius:4px;
+    width:100%;text-align:left;
+  }
+  .nav-sub button:hover{color:#fff;background:rgba(255,255,255,.05)}
+  .nav-sub button.active{color:#fff;background:rgba(46,134,193,.35)}
+
+  .sidebar-footer{
+    border-top:1px solid rgba(255,255,255,.08);padding:14px 16px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .avatar{
+    width:36px;height:36px;border-radius:50%;background:var(--accent);
+    color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex-shrink:0;
+  }
+  .sidebar-footer .info{flex:1;min-width:0}
+  .sidebar-footer .info b{display:block;font-size:13px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sidebar-footer .info span{font-size:11px;color:#B6C2CE}
+  .logout{color:#B6C2CE;padding:6px;border-radius:4px}
+  .logout:hover{color:#fff;background:rgba(255,255,255,.06)}
+
+  /* ================= MAIN ================= */
+  .main{flex:1;margin-left:240px;display:flex;flex-direction:column;min-width:0}
+  .header{
+    background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:60px;
+    display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:30;
+  }
+  .header .page-title{font-size:16px;font-weight:600;color:var(--primary)}
+  .header .site-pill{
+    background:var(--bg);padding:6px 12px;border-radius:20px;font-size:12.5px;
+    display:flex;align-items:center;gap:6px;color:var(--primary);font-weight:500;
+  }
+  .header .site-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--success)}
+  .header .right{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .role-select{
+    padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;
+    background:#fff;color:var(--text);cursor:pointer;
+  }
+  .role-select:focus{outline:none;border-color:var(--accent)}
+  .header .user{display:flex;align-items:center;gap:10px}
+  .header .user .name{font-size:13px;font-weight:500}
+  .header .user .role{font-size:11px;color:var(--muted)}
+
+  .content{padding:24px;flex:1}
+
+  /* ================= COMMON ================= */
+  .card{background:var(--card);border-radius:8px;box-shadow:var(--shadow);padding:18px}
+  .card h3{font-size:14px;font-weight:600;color:var(--primary);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+  .grid{display:grid;gap:16px}
+  .grid-4{grid-template-columns:repeat(4,1fr)}
+  .grid-2-60-40{grid-template-columns:60% 1fr}
+  .grid-2{grid-template-columns:1fr 1fr}
+  @media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-2-60-40,.grid-2{grid-template-columns:1fr}}
+
+  .kpi{cursor:pointer;transition:transform .15s,box-shadow .15s}
+  .kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+  .kpi .label{color:var(--muted);font-size:12.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:500}
+  .kpi .value{font-size:24px;font-weight:700;color:var(--primary);margin-top:6px}
+  .kpi .sub{font-size:12px;margin-top:6px;color:var(--muted)}
+  .kpi .sub.up{color:var(--success)}
+  .kpi .sub.warn{color:var(--warning)}
+  .kpi .icon{
+    float:right;width:40px;height:40px;border-radius:8px;
+    background:rgba(46,134,193,.1);color:var(--accent);
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  /* badges */
+  .badge{
+    display:inline-block;padding:3px 9px;border-radius:12px;font-size:11.5px;font-weight:500;
+  }
+  .badge-success{background:rgba(39,174,96,.12);color:var(--success)}
+  .badge-warning{background:rgba(230,126,34,.12);color:var(--warning)}
+  .badge-danger{background:rgba(231,76,60,.12);color:var(--danger)}
+  .badge-info{background:rgba(46,134,193,.12);color:var(--accent)}
+  .badge-bronze{background:#F5E6D3;color:#8B5A2B}
+  .badge-argent{background:#E8E8E8;color:#5A5A5A}
+  .badge-or{background:#FCF3CF;color:#9A7D0A}
+  .badge-platine{background:#D6EAF8;color:#1B4F72}
+
+  /* tables */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{
+    text-align:left;padding:10px 12px;background:var(--bg);color:var(--primary);
+    font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.3px;
+    border-bottom:1px solid var(--border);cursor:pointer;user-select:none;
+  }
+  thead th:hover{background:#EAEEF3}
+  thead th .sort{opacity:.4;font-size:10px;margin-left:4px}
+  tbody td{padding:11px 12px;border-bottom:1px solid var(--border)}
+  tbody tr:nth-child(even){background:#FAFBFD}
+  tbody tr:hover{background:#F0F5FB}
+
+  /* buttons */
+  .btn{
+    display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:6px;
+    font-size:13px;font-weight:500;transition:opacity .15s,background .15s;
+  }
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{background:#2477AB}
+  .btn-secondary{background:#fff;color:var(--primary);border:1px solid var(--border)}
+  .btn-secondary:hover{background:var(--bg)}
+  .btn-success{background:var(--success);color:#fff}
+  .btn-success:hover{background:#229954}
+  .btn-danger{background:var(--danger);color:#fff}
+  .btn-icon{padding:6px;border-radius:4px;color:var(--muted)}
+  .btn-icon:hover{background:var(--bg);color:var(--primary)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+
+  /* forms */
+  .form-group{margin-bottom:14px}
+  .form-group label{display:block;font-size:12.5px;font-weight:500;color:var(--primary);margin-bottom:5px}
+  .form-group label .req{color:var(--danger)}
+  .form-control{
+    width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:6px;
+    font-size:13.5px;font-family:inherit;background:#fff;color:var(--text);transition:border-color .15s,box-shadow .15s;
+  }
+  .form-control:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(46,134,193,.12)}
+  .form-error{color:var(--danger);font-size:11.5px;margin-top:4px;display:none}
+  .form-error.show{display:block}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+
+  /* page */
+  .page{display:none}
+  .page.active{display:block}
+  .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .page-header h2{font-size:20px;color:var(--primary);font-weight:600}
+  .page-header p{color:var(--muted);font-size:13px;margin-top:2px}
+
+  /* dashboard lists */
+  .list-item{
+    display:flex;align-items:center;gap:12px;padding:10px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .list-item:last-child{border-bottom:none}
+  .list-item .info{flex:1;min-width:0}
+  .list-item .info b{display:block;font-size:13px;color:var(--primary)}
+  .list-item .info span{font-size:11.5px;color:var(--muted)}
+
+  /* filters */
+  .filters{
+    display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;
+  }
+  .filters .form-control{width:auto;min-width:160px}
+  .filters .search{flex:1;min-width:240px;position:relative}
+  .filters .search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted)}
+  .filters .search input{padding-left:34px}
+
+  /* pagination */
+  .pagination{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:12.5px;color:var(--muted)}
+  .pagination .pages{display:flex;gap:4px}
+  .pagination button{padding:5px 10px;border:1px solid var(--border);border-radius:4px;background:#fff;font-size:12px}
+  .pagination button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  /* wizard */
+  .wizard-steps{
+    display:flex;align-items:center;margin-bottom:24px;gap:8px;
+  }
+  .wizard-step{flex:1;display:flex;align-items:center;gap:10px;position:relative}
+  .wizard-step .num{
+    width:32px;height:32px;border-radius:50%;background:#E1E5EB;color:var(--muted);
+    display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;
+    flex-shrink:0;transition:.2s;
+  }
+  .wizard-step .lbl{font-size:12.5px;color:var(--muted);font-weight:500}
+  .wizard-step.active .num{background:var(--accent);color:#fff}
+  .wizard-step.active .lbl{color:var(--primary)}
+  .wizard-step.done .num{background:var(--success);color:#fff}
+  .wizard-step.done .lbl{color:var(--primary)}
+  .wizard-step:not(:last-child)::after{
+    content:'';flex:1;height:2px;background:#E1E5EB;margin:0 4px;
+  }
+  .wizard-step.done:not(:last-child)::after{background:var(--success)}
+  .wizard-actions{display:flex;justify-content:space-between;margin-top:20px;padding-top:18px;border-top:1px solid var(--border)}
+  .checkbox-row{display:flex;align-items:center;gap:8px;padding:6px 0}
+  .checkbox-row input{width:16px;height:16px;accent-color:var(--accent)}
+
+  /* modal */
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(30,58,95,.5);z-index:100;
+    align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-overlay.active{display:flex}
+  .modal{background:#fff;border-radius:10px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .modal-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+  .modal-header h3{font-size:16px;color:var(--primary);font-weight:600}
+  .modal-body{padding:20px}
+  .modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+
+  /* POS */
+  .pos-grid{display:grid;grid-template-columns:65% 1fr;gap:16px}
+  @media(max-width:1100px){.pos-grid{grid-template-columns:1fr}}
+  .pos-search-results{
+    max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;margin-top:6px;background:#fff;
+  }
+  .pos-search-results .result{
+    padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;
+  }
+  .pos-search-results .result:hover{background:var(--bg)}
+  .pos-search-results .result:last-child{border-bottom:none}
+  .pos-cart-item{
+    display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;
+    padding:10px 0;border-bottom:1px solid var(--border);
+  }
+  .qty-control{display:flex;align-items:center;gap:6px}
+  .qty-control button{
+    width:24px;height:24px;border-radius:4px;background:var(--bg);color:var(--primary);font-weight:600;
+  }
+  .qty-control button:hover{background:var(--accent);color:#fff}
+  .qty-control span{min-width:24px;text-align:center;font-weight:500}
+  .pos-summary-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13.5px}
+  .pos-summary-row.total{font-size:18px;font-weight:700;color:var(--primary);padding-top:10px;margin-top:6px;border-top:2px solid var(--border)}
+  .empty{text-align:center;padding:30px;color:var(--muted);font-size:13px}
+
+  /* QR placeholder */
+  .qr-placeholder{
+    width:140px;height:140px;background:
+      repeating-conic-gradient(var(--primary) 0% 25%, #fff 0% 50%) 0/14px 14px;
+    border:4px solid #fff;outline:1px solid var(--border);margin:10px auto;
+  }
+
+  /* stock tabs */
+  .stock-tabs{display:flex;gap:0;border-bottom:none;margin-bottom:0}
+  .stock-tab{
+    padding:9px 18px;font-size:13px;font-weight:500;color:var(--muted);
+    border:1px solid var(--border);background:#fff;border-bottom:none;
+    border-radius:6px 6px 0 0;cursor:pointer;margin-right:4px;
+    transition:color .15s,background .15s;
+  }
+  .stock-tab:hover{color:var(--primary);background:var(--bg)}
+  .stock-tab.active{background:#fff;color:var(--accent);border-color:var(--border);border-bottom:2px solid #fff;position:relative;z-index:1}
+  .stock-tab-content{display:none}
+  .stock-tab-content.active{display:block}
+  .stock-tab-content > .card{margin-top:-1px}
+
+  /* nav badge */
+  .nav-badge{
+    background:#E74C3C;color:#fff;font-size:10px;font-weight:700;
+    padding:1px 6px;border-radius:10px;margin-left:auto;margin-right:4px;
+  }
+
+  /* referral tree */
+  .ref-tree{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .ref-node{
+    background:rgba(46,134,193,.08);border:1px solid rgba(46,134,193,.2);
+    border-radius:6px;padding:6px 10px;font-size:12px;color:var(--primary);font-weight:500;
+  }
+
+  /* tier cards */
+  .tier-card{
+    border-radius:10px;padding:18px;color:#fff;position:relative;overflow:hidden;
+  }
+  .tier-bronze{background:linear-gradient(135deg,#CD7F32,#A0522D)}
+  .tier-argent{background:linear-gradient(135deg,#8E9EAB,#5A6A7A)}
+  .tier-or{background:linear-gradient(135deg,#F9CA24,#C8A300);color:#3D2B00}
+  .tier-platine{background:linear-gradient(135deg,#1B4F72,#2E86C1)}
+  .tier-card .tier-name{font-size:18px;font-weight:700;margin-bottom:4px}
+  .tier-card .tier-range{font-size:12px;opacity:.85;margin-bottom:12px}
+  .tier-card .tier-perk{font-size:12.5px;margin:3px 0;opacity:.9}
+  .tier-card .tier-icon{position:absolute;right:14px;top:14px;font-size:32px;opacity:.25}
+
+  /* settings */
+  .settings-section{margin-bottom:28px}
+  .settings-section h4{font-size:13px;font-weight:600;color:var(--primary);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+
+  /* Hidden role-based */
+  .role-hidden{display:none !important}
+
+  /* utility */
+  .mt-12{margin-top:12px}.mt-16{margin-top:16px}.mb-12{margin-bottom:12px}
+  .text-right{text-align:right}.text-center{text-align:center}
+  .text-success{color:var(--success)}.text-danger{color:var(--danger)}.text-warning{color:var(--warning)}
+  .text-muted{color:var(--muted)}
+  .fw-600{font-weight:600}
+  .small{font-size:12px}
+</style>
+</head>
+<body>
+
+<!-- ===== TOAST ===== -->
+<div id="toast" style="position:fixed;bottom:24px;right:24px;background:var(--primary);color:#fff;padding:12px 18px;border-radius:6px;box-shadow:var(--shadow-md);font-size:13px;z-index:200;display:none"></div>
+
+<div class="app">
+
+  <!-- =================== SIDEBAR =================== -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">TS</div>
+      <div>
+        <h1>TechShop Manager</h1>
+        <small>Goma · RDC</small>
+      </div>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="nav-item">
+        <button class="nav-link active" data-page="dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>
+          Tableau de bord
+        </button>
+      </div>
+
+      <div class="nav-item">
+        <button class="nav-link" data-toggle="clients">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          Clients
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="nav-sub" id="sub-clients">
+          <button data-page="clients">Liste clients</button>
+          <button data-page="onboarding">Nouvel enregistrement</button>
+        </div>
+      </div>
+
+      <div class="nav-item">
+        <button class="nav-link" data-toggle="onb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          Onboarding
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="nav-sub" id="sub-onb">
+          <button data-toast="3 clients en attente d'onboarding">En attente</button>
+          <button data-toast="2 formations programmées aujourd'hui">Formations du jour</button>
+        </div>
+      </div>
+
+      <div class="nav-item">
+        <button class="nav-link" data-toggle="parr">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Parrainage
+          <span class="nav-badge">5</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="nav-sub" id="sub-parr">
+          <button data-page="parrainage">Parrainages actifs</button>
+          <button data-page="parrainage">Récompenses à verser</button>
+        </div>
+      </div>
+
+      <div class="nav-item">
+        <button class="nav-link" data-toggle="fid">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Fidélité
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="nav-sub" id="sub-fid">
+          <button data-page="fidelite">Points & niveaux</button>
+          <button data-page="fidelite">Avantages par niveau</button>
+        </div>
+      </div>
+
+      <div class="nav-item">
+        <button class="nav-link" data-toggle="stocks">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          Stocks
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="nav-sub" id="sub-stocks">
+          <button data-page="inventory" data-tab="inventaire">Inventaire</button>
+          <button data-page="inventory" data-tab="mouvements">Mouvements</button>
+          <button data-page="inventory" data-tab="transferts">Transferts inter-sites</button>
+        </div>
+      </div>
+
+      <div class="nav-item">
+        <button class="nav-link" data-toggle="ventes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+          Ventes
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="nav-sub" id="sub-ventes">
+          <button data-page="pos">Nouvelle vente</button>
+          <button data-toast="Historique des ventes — bientôt">Historique</button>
+        </div>
+      </div>
+
+      <div class="nav-item role-manager role-admin">
+        <button class="nav-link" data-page="rapports">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Rapports
+        </button>
+      </div>
+
+      <div class="nav-item role-admin">
+        <button class="nav-link" data-page="parametres">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          Paramètres
+        </button>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="avatar" id="agent-avatar">MK</div>
+      <div class="info">
+        <b id="agent-name">Marie Kahindo</b>
+        <span id="agent-site">Goma · Agent</span>
+      </div>
+      <button class="logout" title="Déconnexion" onclick="showToast('Déconnexion simulée')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- =================== MAIN =================== -->
+  <div class="main">
+
+    <!-- HEADER -->
+    <header class="header">
+      <div class="page-title" id="pageTitle">Tableau de bord</div>
+      <div class="site-pill">
+        <span class="dot"></span>
+        Site actif : <b id="siteActif">Goma</b>
+      </div>
+      <div class="right">
+        <select class="role-select" id="roleSelect">
+          <option value="agent">👤 Agent</option>
+          <option value="manager">🧑‍💼 Gérant</option>
+          <option value="admin">👑 Admin</option>
+        </select>
+        <select class="role-select" id="siteSelect">
+          <option>Goma</option>
+          <option>Bukavu</option>
+          <option>Kinshasa</option>
+        </select>
+        <div class="user">
+          <div class="avatar" style="width:34px;height:34px">MK</div>
+          <div>
+            <div class="name">Marie Kahindo</div>
+            <div class="role" id="userRole">Agent</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- ============ DASHBOARD ============ -->
+      <section class="page active" id="page-dashboard">
+        <div class="page-header">
+          <div>
+            <h2>Tableau de bord</h2>
+            <p>Vue d'ensemble — <span id="todayDate"></span></p>
+          </div>
+          <button class="btn btn-secondary" onclick="showToast('Données actualisées')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            Actualiser
+          </button>
+        </div>
+
+        <!-- KPIs -->
+        <div class="grid grid-4">
+          <div class="card kpi" onclick="navigate('clients')">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            </div>
+            <div class="label">Clients actifs</div>
+            <div class="value">1 247</div>
+            <div class="sub up">▲ +12 ce mois</div>
+          </div>
+          <div class="card kpi" onclick="navigate('pos')">
+            <div class="icon" style="background:rgba(39,174,96,.1);color:var(--success)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+            </div>
+            <div class="label">Ventes aujourd'hui</div>
+            <div class="value">3 450 000 <span style="font-size:13px;color:var(--muted)">CDF</span></div>
+            <div class="sub">8 transactions</div>
+          </div>
+          <div class="card kpi" onclick="navigate('inventory')" id="kpiStock">
+            <div class="icon" style="background:rgba(230,126,34,.1);color:var(--warning)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+            </div>
+            <div class="label" id="kpiStockLabel">Stock total</div>
+            <div class="value" id="kpiStockVal">892 <span style="font-size:13px;color:var(--muted)">articles</span></div>
+            <div class="sub warn" id="kpiStockSub">⚠ 3 alertes stock</div>
+          </div>
+          <div class="card kpi" onclick="showToast('Module parrainage')">
+            <div class="icon" style="background:rgba(46,134,193,.1);color:var(--accent)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </div>
+            <div class="label">Parrainages du mois</div>
+            <div class="value">34</div>
+            <div class="sub up">nouveaux filleuls</div>
+          </div>
+        </div>
+
+        <!-- Row 2 -->
+        <div class="grid grid-2-60-40 mt-16">
+          <div class="card">
+            <h3>Ventes des 7 derniers jours</h3>
+            <div style="height:280px"><canvas id="salesChart"></canvas></div>
+          </div>
+          <div class="card">
+            <h3>Derniers clients enregistrés <a class="small" style="color:var(--accent);cursor:pointer" onclick="navigate('clients')">Voir tous →</a></h3>
+            <div id="recentClients"></div>
+          </div>
+        </div>
+
+        <!-- Row 3 -->
+        <div class="grid grid-2 mt-16">
+          <div class="card">
+            <h3>Alertes stock <a class="small" style="color:var(--accent);cursor:pointer" onclick="navigate('inventory')">Inventaire →</a></h3>
+            <table>
+              <thead><tr><th>Produit</th><th>Site</th><th>Stock</th><th>Seuil</th></tr></thead>
+              <tbody id="alertStockBody"></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <h3>Récompenses parrainage à verser <span class="badge badge-warning">5 en attente</span></h3>
+            <table>
+              <thead><tr><th>Parrain</th><th>Filleul</th><th class="text-right">Montant</th></tr></thead>
+              <tbody id="rewardsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ CLIENTS ============ -->
+      <section class="page" id="page-clients">
+        <div class="page-header">
+          <div>
+            <h2>Liste des clients</h2>
+            <p>Gestion et suivi de tous les clients enregistrés</p>
+          </div>
+          <button class="btn btn-primary" onclick="navigate('onboarding')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nouveau client
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="filters">
+            <div class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input class="form-control" placeholder="Rechercher par nom, matricule, téléphone..." id="clientSearch"/>
+            </div>
+            <select class="form-control" id="filterSite">
+              <option value="">Tous les sites</option>
+              <option>Goma</option><option>Bukavu</option><option>Kinshasa</option>
+            </select>
+            <select class="form-control" id="filterStatus">
+              <option value="">Tous statuts</option>
+              <option>Actif</option><option>En cours</option><option>Suspendu</option>
+            </select>
+            <select class="form-control" id="filterLevel">
+              <option value="">Tous niveaux</option>
+              <option>Bronze</option><option>Argent</option><option>Or</option><option>Platine</option>
+            </select>
+          </div>
+
+          <table id="clientsTable">
+            <thead>
+              <tr>
+                <th data-sort="matricule">Matricule <span class="sort">⇅</span></th>
+                <th data-sort="nom">Nom complet <span class="sort">⇅</span></th>
+                <th>Téléphone</th>
+                <th data-sort="site">Site <span class="sort">⇅</span></th>
+                <th>Statut</th>
+                <th>Niveau</th>
+                <th data-sort="date">Date inscription <span class="sort">⇅</span></th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="clientsBody"></tbody>
+          </table>
+
+          <div class="pagination">
+            <span>Affichage de 1 à 8 sur 1 247 clients</span>
+            <div class="pages">
+              <button>‹</button>
+              <button class="active">1</button>
+              <button>2</button>
+              <button>3</button>
+              <button>...</button>
+              <button>156</button>
+              <button>›</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ ONBOARDING WIZARD ============ -->
+      <section class="page" id="page-onboarding">
+        <div class="page-header">
+          <div>
+            <h2>Onboarding nouveau client</h2>
+            <p>Récit → Formation → Fiche → Activation</p>
+          </div>
+          <button class="btn btn-secondary" onclick="navigate('clients')">← Retour à la liste</button>
+        </div>
+
+        <div class="card">
+          <div class="wizard-steps" id="wizardSteps">
+            <div class="wizard-step active" data-step="1"><div class="num">1</div><div class="lbl">Achat du récit</div></div>
+            <div class="wizard-step" data-step="2"><div class="num">2</div><div class="lbl">Formation</div></div>
+            <div class="wizard-step" data-step="3"><div class="num">3</div><div class="lbl">Achat de la fiche</div></div>
+            <div class="wizard-step" data-step="4"><div class="num">4</div><div class="lbl">Activation</div></div>
+          </div>
+
+          <!-- Step 1 -->
+          <div class="wizard-content" data-step="1">
+            <h3 style="margin-bottom:14px">Étape 1 — Achat du récit</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Nom <span class="req">*</span></label>
+                <input class="form-control" id="ob_nom" placeholder="Ex: Mutombo"/>
+                <div class="form-error" data-for="ob_nom">Champ requis</div>
+              </div>
+              <div class="form-group">
+                <label>Prénom <span class="req">*</span></label>
+                <input class="form-control" id="ob_prenom" placeholder="Ex: Jean"/>
+                <div class="form-error" data-for="ob_prenom">Champ requis</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Téléphone <span class="req">*</span></label>
+                <input class="form-control" id="ob_tel" placeholder="+243 9XX XXX XXX"/>
+                <div class="form-error" data-for="ob_tel">Champ requis</div>
+              </div>
+              <div class="form-group">
+                <label>Email (optionnel)</label>
+                <input class="form-control" id="ob_email" placeholder="exemple@mail.com"/>
+              </div>
+            </div>
+            <div class="form-row-3">
+              <div class="form-group">
+                <label>Matricule externe</label>
+                <input class="form-control" placeholder="Optionnel"/>
+              </div>
+              <div class="form-group">
+                <label>Code parrain</label>
+                <input class="form-control" placeholder="Ex: TSG-2847"/>
+              </div>
+              <div class="form-group">
+                <label>Site d'inscription <span class="req">*</span></label>
+                <select class="form-control" id="ob_site">
+                  <option value="">— Sélectionner —</option>
+                  <option>Goma</option><option>Bukavu</option><option>Kinshasa</option>
+                </select>
+                <div class="form-error" data-for="ob_site">Sélection requise</div>
+              </div>
+            </div>
+            <div class="form-row-3">
+              <div class="form-group">
+                <label>Montant récit payé (CDF) <span class="req">*</span></label>
+                <input class="form-control" id="ob_montant" type="number" placeholder="Ex: 5000"/>
+                <div class="form-error" data-for="ob_montant">Champ requis</div>
+              </div>
+              <div class="form-group">
+                <label>Mode de paiement <span class="req">*</span></label>
+                <select class="form-control" id="ob_mode">
+                  <option value="">— Sélectionner —</option>
+                  <option>Cash</option><option>Mobile Money (M-Pesa)</option><option>Mobile Money (Airtel Money)</option><option>Mobile Money (Orange Money)</option>
+                </select>
+                <div class="form-error" data-for="ob_mode">Sélection requise</div>
+              </div>
+              <div class="form-group">
+                <label>Agent validateur</label>
+                <input class="form-control" value="Marie Kahindo" disabled/>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="wizard-content" data-step="2" style="display:none">
+            <h3 style="margin-bottom:14px">Étape 2 — Formation</h3>
+            <div class="card" style="background:var(--bg);box-shadow:none">
+              <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                <div><span class="text-muted small">Client :</span> <b id="recapNom">—</b></div>
+                <div><span class="text-muted small">Date formation :</span> <b id="todayLabel">—</b></div>
+              </div>
+            </div>
+            <div class="form-group mt-16">
+              <label>Formateur assigné <span class="req">*</span></label>
+              <select class="form-control" id="ob_formateur">
+                <option value="">— Sélectionner un formateur —</option>
+                <option>Patrick Bashizi (Goma)</option>
+                <option>Esther Mwamba (Bukavu)</option>
+                <option>Joseph Kasongo (Kinshasa)</option>
+              </select>
+              <div class="form-error" data-for="ob_formateur">Sélection requise</div>
+            </div>
+            <div class="mt-12">
+              <label style="display:block;font-size:12.5px;font-weight:500;color:var(--primary);margin-bottom:6px">Points de formation couverts</label>
+              <div class="checkbox-row"><input type="checkbox" id="fp1"/><label for="fp1">Programme de parrainage et code unique</label></div>
+              <div class="checkbox-row"><input type="checkbox" id="fp2"/><label for="fp2">Système de fidélité (points & niveaux)</label></div>
+              <div class="checkbox-row"><input type="checkbox" id="fp3"/><label for="fp3">Présentation des produits et garanties</label></div>
+              <div class="checkbox-row"><input type="checkbox" id="fp4"/><label for="fp4">Politique de retour et SAV</label></div>
+            </div>
+            <div class="mt-12" style="border-top:1px dashed var(--border);padding-top:12px">
+              <div class="checkbox-row">
+                <input type="checkbox" id="ob_signature"/>
+                <label for="ob_signature"><b>Signature numérique :</b> Je confirme que la formation a été dispensée et comprise par le client.</label>
+              </div>
+              <div class="form-error" data-for="ob_signature">Signature requise pour continuer</div>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="wizard-content" data-step="3" style="display:none">
+            <h3 style="margin-bottom:14px">Étape 3 — Achat de la fiche</h3>
+
+            <!-- recap banner -->
+            <div class="card" style="background:var(--bg);box-shadow:none;margin-bottom:16px">
+              <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;align-items:center">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div class="avatar" style="width:36px;height:36px;font-size:13px;background:var(--accent)" id="s3_avatar">—</div>
+                  <div>
+                    <b id="s3_nom">—</b>
+                    <div class="small text-muted" id="s3_tel">—</div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:20px;flex-wrap:wrap">
+                  <div><span class="text-muted small">Site</span><div class="fw-600" id="s3_site">—</div></div>
+                  <div><span class="text-muted small">Récit payé</span><div class="fw-600 text-success" id="s3_recit">—</div></div>
+                  <div><span class="text-muted small">Formation</span><div class="fw-600 text-success" id="s3_form">—</div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row-3">
+              <div class="form-group">
+                <label>Montant fiche (CDF) <span class="req">*</span></label>
+                <input class="form-control" id="ob_fiche_montant" type="number" placeholder="Ex: 10000"/>
+                <div class="form-error" data-for="ob_fiche_montant">Champ requis</div>
+              </div>
+              <div class="form-group">
+                <label>Mode de paiement <span class="req">*</span></label>
+                <select class="form-control" id="ob_fiche_mode">
+                  <option value="">— Sélectionner —</option>
+                  <option>Cash</option>
+                  <option>Mobile Money (M-Pesa)</option>
+                  <option>Mobile Money (Airtel Money)</option>
+                  <option>Mobile Money (Orange Money)</option>
+                </select>
+                <div class="form-error" data-for="ob_fiche_mode">Sélection requise</div>
+              </div>
+              <div class="form-group">
+                <label>Référence paiement</label>
+                <input class="form-control" id="ob_ref" placeholder="N° transaction"/>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+              <button class="btn btn-secondary" onclick="showToast('Reçu fiche généré ✓ (#REC-' + Math.floor(Math.random()*9000+1000) + ')')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Générer reçu fiche
+              </button>
+              <span class="small text-muted">Le reçu peut être imprimé ou envoyé par SMS</span>
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="wizard-content" data-step="4" style="display:none">
+            <h3 style="margin-bottom:14px">Étape 4 — Activation & récapitulatif</h3>
+            <div class="grid grid-2">
+              <div class="card" style="background:var(--bg);box-shadow:none">
+                <h3 style="font-size:13px">Profil créé</h3>
+                <div class="list-item"><span class="text-muted">Nom complet :</span> <b id="r4_nom" style="margin-left:auto">—</b></div>
+                <div class="list-item"><span class="text-muted">Téléphone :</span> <b id="r4_tel" style="margin-left:auto">—</b></div>
+                <div class="list-item"><span class="text-muted">Site :</span> <b id="r4_site" style="margin-left:auto">—</b></div>
+                <div class="list-item"><span class="text-muted">Code parrain généré :</span> <b id="r4_code" style="margin-left:auto;color:var(--accent);font-family:monospace">TSG-2847</b></div>
+                <div class="list-item"><span class="text-muted">Niveau initial :</span> <span class="badge badge-bronze">Bronze</span></div>
+                <div class="list-item"><span class="text-muted">Points de départ :</span> <b style="margin-left:auto">100 pts</b></div>
+              </div>
+              <div class="card text-center" style="background:var(--bg);box-shadow:none">
+                <h3 style="font-size:13px;justify-content:center">QR Code client</h3>
+                <div class="qr-placeholder"></div>
+                <div class="text-muted small">Scanner pour accéder au profil</div>
+              </div>
+            </div>
+            <div class="mt-16" style="display:flex;gap:10px;justify-content:center">
+              <button class="btn btn-success" onclick="activateClient()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="20 6 9 17 4 12"/></svg>
+                Activer le compte
+              </button>
+              <button class="btn btn-secondary" onclick="showToast('Fiche client envoyée à l\\'imprimante')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Imprimer la fiche
+              </button>
+            </div>
+          </div>
+
+          <div class="wizard-actions">
+            <button class="btn btn-secondary" id="prevStep" onclick="prevStep()" disabled>← Précédent</button>
+            <button class="btn btn-primary" id="nextStep" onclick="nextStep()">Suivant →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ INVENTORY ============ -->
+      <section class="page" id="page-inventory">
+        <div class="page-header">
+          <div>
+            <h2>Gestion des stocks</h2>
+            <p>Inventaire, mouvements et transferts inter-sites</p>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-secondary" onclick="openModal('modalSortie')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              Sortie de stock
+            </button>
+            <button class="btn btn-secondary" onclick="openModal('modalEntree')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Entrée de stock
+            </button>
+            <button class="btn btn-secondary" onclick="openModal('modalTransfert')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+              Transfert
+            </button>
+            <button class="btn btn-primary" onclick="openModal('modalAddProduit')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nouveau produit
+            </button>
+          </div>
+        </div>
+
+        <!-- Stock KPIs -->
+        <div class="grid grid-4 mb-12" id="stockKpis"></div>
+
+        <!-- Tabs -->
+        <div class="stock-tabs" id="stockTabs">
+          <button class="stock-tab active" data-tab="inventaire">Inventaire</button>
+          <button class="stock-tab" data-tab="mouvements">Mouvements</button>
+          <button class="stock-tab" data-tab="transferts">Transferts inter-sites</button>
+        </div>
+
+        <!-- TAB: Inventaire -->
+        <div class="stock-tab-content active" id="tab-inventaire">
+          <div class="card" style="border-radius:0 8px 8px 8px">
+            <div class="filters">
+              <div class="search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input class="form-control" placeholder="Rechercher SKU ou nom de produit..." id="invSearch"/>
+              </div>
+              <select class="form-control" id="invSite">
+                <option value="">Tous les sites</option>
+                <option>Goma</option><option>Bukavu</option><option>Kinshasa</option>
+              </select>
+              <select class="form-control" id="invCat">
+                <option value="">Toutes catégories</option>
+                <option>Smartphones</option><option>Accessoires</option><option>Audio</option><option>Câbles</option><option>Énergie</option>
+              </select>
+              <select class="form-control" id="invStatut">
+                <option value="">Tous statuts</option>
+                <option>OK</option><option>Stock faible</option><option>Rupture</option>
+              </select>
+            </div>
+
+            <table id="invTable">
+              <thead>
+                <tr>
+                  <th data-sort="sku">SKU <span class="sort">⇅</span></th>
+                  <th data-sort="nom">Produit <span class="sort">⇅</span></th>
+                  <th>Catégorie</th>
+                  <th class="text-right">Prix unit.</th>
+                  <th class="text-right">Goma</th>
+                  <th class="text-right">Bukavu</th>
+                  <th class="text-right">Kinshasa</th>
+                  <th class="text-right">Total</th>
+                  <th class="text-right">Valeur stock</th>
+                  <th class="text-right">Seuil</th>
+                  <th>Statut</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="invBody"></tbody>
+            </table>
+            <div class="pagination" id="invPagination">
+              <span id="invPaginationInfo"></span>
+              <div class="pages" id="invPages"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Mouvements -->
+        <div class="stock-tab-content" id="tab-mouvements">
+          <div class="card" style="border-radius:0 8px 8px 8px">
+            <div class="filters">
+              <div class="search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input class="form-control" placeholder="Rechercher un produit..." id="mvtSearch"/>
+              </div>
+              <select class="form-control" id="mvtType">
+                <option value="">Tous types</option>
+                <option value="Entrée">Entrée</option>
+                <option value="Sortie">Sortie vente</option>
+                <option value="Ajustement">Ajustement</option>
+                <option value="Transfert">Transfert</option>
+              </select>
+              <select class="form-control" id="mvtSite">
+                <option value="">Tous les sites</option>
+                <option>Goma</option><option>Bukavu</option><option>Kinshasa</option>
+              </select>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Référence</th>
+                  <th>Produit</th>
+                  <th>Type</th>
+                  <th>Site</th>
+                  <th class="text-right">Qté</th>
+                  <th class="text-right">Stock après</th>
+                  <th>Agent</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody id="mvtBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB: Transferts -->
+        <div class="stock-tab-content" id="tab-transferts">
+          <div class="card" style="border-radius:0 8px 8px 8px">
+            <div class="filters">
+              <div class="search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input class="form-control" placeholder="Rechercher un transfert..." id="trfSearch"/>
+              </div>
+              <select class="form-control" id="trfStatut">
+                <option value="">Tous statuts</option>
+                <option>En transit</option><option>Livré</option><option>Annulé</option>
+              </select>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Réf.</th>
+                  <th>Date</th>
+                  <th>Produit</th>
+                  <th>Origine</th>
+                  <th>Destination</th>
+                  <th class="text-right">Qté</th>
+                  <th>Statut</th>
+                  <th>Agent</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="trfBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ POS / NOUVELLE VENTE ============ -->
+      <section class="page" id="page-pos">
+        <div class="page-header">
+          <div>
+            <h2>Nouvelle vente</h2>
+            <p>Caisse — Site : <b id="posSite">Goma</b></p>
+          </div>
+          <button class="btn btn-secondary" onclick="resetCart()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/></svg>
+            Vider le panier
+          </button>
+        </div>
+
+        <div class="pos-grid">
+          <!-- Left -->
+          <div class="card">
+            <h3>Recherche produit</h3>
+            <input class="form-control" id="posSearch" placeholder="Tapez le nom d'un produit (ex: Samsung, câble, écouteurs...)"/>
+            <div class="pos-search-results" id="posResults" style="display:none"></div>
+
+            <h3 class="mt-16">Panier</h3>
+            <div id="cartItems">
+              <div class="empty">Aucun article dans le panier. Recherchez un produit ci-dessus pour commencer.</div>
+            </div>
+          </div>
+
+          <!-- Right -->
+          <div class="card">
+            <h3>Récapitulatif</h3>
+            <div class="form-group">
+              <label>Client (nom ou téléphone)</label>
+              <input class="form-control" id="posClientSearch" placeholder="Rechercher un client..."/>
+              <div id="posClientInfo" class="mt-12" style="display:none"></div>
+            </div>
+
+            <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px">
+              <div class="pos-summary-row"><span>Sous-total</span><b id="posSubtotal">0 CDF</b></div>
+              <div class="pos-summary-row"><span>Remise fidélité</span><b id="posDiscount" class="text-success">- 0 CDF</b></div>
+              <div class="pos-summary-row total"><span>Total</span><b id="posTotal">0 CDF</b></div>
+            </div>
+
+            <div class="form-group mt-16">
+              <label>Mode de paiement</label>
+              <select class="form-control" id="posPayment">
+                <option>Cash</option>
+                <option>Mobile Money (M-Pesa)</option>
+                <option>Mobile Money (Airtel)</option>
+                <option>Mobile Money (Orange)</option>
+                <option>Crédit</option>
+              </select>
+            </div>
+
+            <button class="btn btn-success" style="width:100%;justify-content:center;padding:12px" onclick="finalizeSale()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><polyline points="20 6 9 17 4 12"/></svg>
+              Finaliser la vente
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ PARRAINAGE ============ -->
+      <section class="page" id="page-parrainage">
+        <div class="page-header">
+          <div>
+            <h2>Programme de parrainage</h2>
+            <p>Suivi des parrains, filleuls et récompenses à verser</p>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('modalReward')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="20 6 9 17 4 12"/></svg>
+            Valider une récompense
+          </button>
+        </div>
+
+        <div class="grid grid-4 mb-12">
+          <div class="card kpi">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></div>
+            <div class="label">Parrainages actifs</div>
+            <div class="value">34</div>
+            <div class="sub up">▲ +8 ce mois</div>
+          </div>
+          <div class="card kpi">
+            <div class="icon" style="background:rgba(231,76,60,.1);color:var(--danger)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+            <div class="label">Récompenses à verser</div>
+            <div class="value">5</div>
+            <div class="sub warn">75 000 CDF en attente</div>
+          </div>
+          <div class="card kpi">
+            <div class="icon" style="background:rgba(39,174,96,.1);color:var(--success)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <div class="label">Versées ce mois</div>
+            <div class="value">12</div>
+            <div class="sub up">180 000 CDF versés</div>
+          </div>
+          <div class="card kpi">
+            <div class="icon" style="background:rgba(46,134,193,.1);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+            <div class="label">Meilleur parrain</div>
+            <div class="value" style="font-size:15px">Mutombo Jean</div>
+            <div class="sub">3 filleuls actifs</div>
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <h3>Récompenses en attente <span class="badge badge-danger">5</span></h3>
+            <table>
+              <thead><tr><th>Parrain</th><th>Filleul</th><th>Site</th><th class="text-right">Montant</th><th>Action</th></tr></thead>
+              <tbody id="parrRewardsBody"></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <h3>Arbre de parrainage</h3>
+            <div id="parrTree"></div>
+          </div>
+        </div>
+
+        <div class="card mt-16">
+          <h3>Historique complet des parrainages</h3>
+          <div class="filters">
+            <div class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input class="form-control" id="parrSearch" placeholder="Rechercher parrain ou filleul..."/>
+            </div>
+            <select class="form-control" id="parrSite"><option value="">Tous les sites</option><option>Goma</option><option>Bukavu</option><option>Kinshasa</option></select>
+          </div>
+          <table>
+            <thead><tr><th>Parrain</th><th>Matricule parrain</th><th>Filleul</th><th>Site</th><th>Date</th><th>Statut récompense</th></tr></thead>
+            <tbody id="parrHistoryBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ FIDELITE ============ -->
+      <section class="page" id="page-fidelite">
+        <div class="page-header">
+          <div>
+            <h2>Programme de fidélité</h2>
+            <p>Niveaux Bronze · Argent · Or · Platine — points et avantages</p>
+          </div>
+        </div>
+
+        <div class="grid grid-4 mb-12">
+          <div class="tier-card tier-bronze">
+            <div class="tier-icon">🥉</div>
+            <div class="tier-name">Bronze</div>
+            <div class="tier-range">0 — 499 points</div>
+            <div class="tier-perk">✓ Accès aux offres de base</div>
+            <div class="tier-perk">✓ Pas de remise sur achats</div>
+            <div class="tier-perk">✓ Parrainage : 10 000 CDF/filleul</div>
+            <div style="margin-top:12px;font-size:22px;font-weight:700">848 clients</div>
+          </div>
+          <div class="tier-card tier-argent">
+            <div class="tier-icon">🥈</div>
+            <div class="tier-name">Argent</div>
+            <div class="tier-range">500 — 1 499 points</div>
+            <div class="tier-perk">✓ Remise 2% sur achats</div>
+            <div class="tier-perk">✓ Priorité SAV</div>
+            <div class="tier-perk">✓ Parrainage : 12 000 CDF/filleul</div>
+            <div style="margin-top:12px;font-size:22px;font-weight:700">265 clients</div>
+          </div>
+          <div class="tier-card tier-or">
+            <div class="tier-icon">🥇</div>
+            <div class="tier-name">Or</div>
+            <div class="tier-range">1 500 — 4 999 points</div>
+            <div class="tier-perk">✓ Remise 5% sur achats</div>
+            <div class="tier-perk">✓ Livraison prioritaire</div>
+            <div class="tier-perk">✓ Parrainage : 15 000 CDF/filleul</div>
+            <div style="margin-top:12px;font-size:22px;font-weight:700">110 clients</div>
+          </div>
+          <div class="tier-card tier-platine">
+            <div class="tier-icon">💎</div>
+            <div class="tier-name">Platine</div>
+            <div class="tier-range">5 000+ points</div>
+            <div class="tier-perk">✓ Remise 10% sur achats</div>
+            <div class="tier-perk">✓ Accès produits en avant-première</div>
+            <div class="tier-perk">✓ Parrainage : 20 000 CDF/filleul</div>
+            <div style="margin-top:12px;font-size:22px;font-weight:700">24 clients</div>
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <h3>Top clients par points</h3>
+            <table>
+              <thead><tr><th>Client</th><th>Matricule</th><th>Niveau</th><th class="text-right">Points</th></tr></thead>
+              <tbody id="fidTopBody"></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <h3>Règles d'accumulation de points</h3>
+            <table>
+              <thead><tr><th>Action</th><th class="text-right">Points gagnés</th></tr></thead>
+              <tbody>
+                <tr><td>Inscription (achat récit + fiche)</td><td class="text-right fw-600 text-success">+100 pts</td></tr>
+                <tr><td>Achat produit (par tranche de 10 000 CDF)</td><td class="text-right fw-600 text-success">+10 pts</td></tr>
+                <tr><td>Parrainage d'un filleul actif</td><td class="text-right fw-600 text-success">+50 pts</td></tr>
+                <tr><td>Achat du filleul (par tranche de 50 000 CDF)</td><td class="text-right fw-600 text-success">+20 pts</td></tr>
+                <tr><td>Anniversaire client</td><td class="text-right fw-600 text-success">+25 pts</td></tr>
+                <tr><td>Échange de points (1 000 pts)</td><td class="text-right fw-600 text-danger">−1 000 pts</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ RAPPORTS ============ -->
+      <section class="page" id="page-rapports">
+        <div class="page-header">
+          <div>
+            <h2>Rapports & Analytics</h2>
+            <p>Synthèse des performances par site et par période</p>
+          </div>
+          <div style="display:flex;gap:10px">
+            <select class="role-select" id="rapPeriode">
+              <option>Ce mois</option><option>Mois dernier</option><option>Ce trimestre</option><option>Cette année</option>
+            </select>
+            <button class="btn btn-secondary" onclick="showToast('Export Excel — bientôt disponible')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Exporter
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-4 mb-12">
+          <div class="card kpi">
+            <div class="label">Chiffre d'affaires</div>
+            <div class="value">48,2M <span style="font-size:13px;color:var(--muted)">CDF</span></div>
+            <div class="sub up">▲ +18% vs mois dernier</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Nouveaux clients</div>
+            <div class="value">127</div>
+            <div class="sub up">▲ +12 vs mois dernier</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Taux de rétention</div>
+            <div class="value">84%</div>
+            <div class="sub up">▲ +3 pts</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Panier moyen</div>
+            <div class="value">127 500 <span style="font-size:13px;color:var(--muted)">CDF</span></div>
+            <div class="sub">par transaction</div>
+          </div>
+        </div>
+
+        <div class="grid grid-2-60-40 mt-16">
+          <div class="card">
+            <h3>Ventes par site — 30 derniers jours</h3>
+            <div style="height:260px"><canvas id="rapChart"></canvas></div>
+          </div>
+          <div class="card">
+            <h3>Répartition par catégorie produit</h3>
+            <div style="height:260px"><canvas id="catChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="card mt-16">
+          <h3>Classement des agents — ventes ce mois</h3>
+          <table>
+            <thead><tr><th>#</th><th>Agent</th><th>Site</th><th class="text-right">Transactions</th><th class="text-right">Montant</th><th class="text-right">Clients enregistrés</th></tr></thead>
+            <tbody>
+              <tr><td>🥇 1</td><td><b>Marie Kahindo</b></td><td>Goma</td><td class="text-right">48</td><td class="text-right fw-600">12 400 000 CDF</td><td class="text-right">14</td></tr>
+              <tr><td>🥈 2</td><td><b>Joseph Kasongo</b></td><td>Kinshasa</td><td class="text-right">41</td><td class="text-right fw-600">10 800 000 CDF</td><td class="text-right">11</td></tr>
+              <tr><td>🥉 3</td><td><b>Esther Mwamba</b></td><td>Bukavu</td><td class="text-right">37</td><td class="text-right fw-600">9 100 000 CDF</td><td class="text-right">9</td></tr>
+              <tr><td>4</td><td><b>Patrick Bashizi</b></td><td>Goma</td><td class="text-right">29</td><td class="text-right fw-600">7 200 000 CDF</td><td class="text-right">7</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ PARAMETRES ============ -->
+      <section class="page" id="page-parametres">
+        <div class="page-header">
+          <div>
+            <h2>Paramètres système</h2>
+            <p>Configuration de l'application — réservé Admin</p>
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="settings-section">
+              <h4>Sites & points de vente</h4>
+              <table>
+                <thead><tr><th>Ville</th><th>Statut</th><th>Agents</th><th>Action</th></tr></thead>
+                <tbody>
+                  <tr><td><b>Goma</b></td><td><span class="badge badge-success">Actif</span></td><td>4 agents</td><td><button class="btn-icon" onclick="showToast('Modifier Goma')">✎</button></td></tr>
+                  <tr><td><b>Bukavu</b></td><td><span class="badge badge-success">Actif</span></td><td>3 agents</td><td><button class="btn-icon" onclick="showToast('Modifier Bukavu')">✎</button></td></tr>
+                  <tr><td><b>Kinshasa</b></td><td><span class="badge badge-success">Actif</span></td><td>5 agents</td><td><button class="btn-icon" onclick="showToast('Modifier Kinshasa')">✎</button></td></tr>
+                </tbody>
+              </table>
+              <button class="btn btn-secondary" style="margin-top:12px" onclick="showToast('Ajouter un site')">+ Ajouter un site</button>
+            </div>
+
+            <div class="settings-section">
+              <h4>Programme de parrainage</h4>
+              <div class="form-row">
+                <div class="form-group"><label>Récompense Bronze (CDF)</label><input class="form-control" value="10000"/></div>
+                <div class="form-group"><label>Récompense Argent (CDF)</label><input class="form-control" value="12000"/></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Récompense Or (CDF)</label><input class="form-control" value="15000"/></div>
+                <div class="form-group"><label>Récompense Platine (CDF)</label><input class="form-control" value="20000"/></div>
+              </div>
+              <button class="btn btn-primary" onclick="showToast('Paramètres parrainage sauvegardés ✓')">Sauvegarder</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="settings-section">
+              <h4>Seuils de fidélité (points)</h4>
+              <div class="form-row">
+                <div class="form-group"><label>Argent — minimum</label><input class="form-control" value="500"/></div>
+                <div class="form-group"><label>Or — minimum</label><input class="form-control" value="1500"/></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Platine — minimum</label><input class="form-control" value="5000"/></div>
+                <div class="form-group"><label>Points à l'inscription</label><input class="form-control" value="100"/></div>
+              </div>
+              <button class="btn btn-primary" onclick="showToast('Seuils de fidélité sauvegardés ✓')">Sauvegarder</button>
+            </div>
+
+            <div class="settings-section">
+              <h4>Tarifs onboarding (CDF)</h4>
+              <div class="form-row">
+                <div class="form-group"><label>Prix du récit</label><input class="form-control" value="5000"/></div>
+                <div class="form-group"><label>Prix de la fiche</label><input class="form-control" value="10000"/></div>
+              </div>
+              <button class="btn btn-primary" onclick="showToast('Tarifs onboarding sauvegardés ✓')">Sauvegarder</button>
+            </div>
+
+            <div class="settings-section">
+              <h4>Matricules externes</h4>
+              <div class="checkbox-row"><input type="checkbox" id="setMatricule" checked/><label for="setMatricule">Accepter les matricules d'une application externe (optionnel à la saisie)</label></div>
+              <div class="form-group mt-12"><label>Préfixe format matricule externe</label><input class="form-control" placeholder="Ex: EXT-"/></div>
+              <button class="btn btn-primary" onclick="showToast('Config matricules sauvegardée ✓')">Sauvegarder</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============ MODALES ============ -->
+<div class="modal-overlay" id="modalSortie">
+  <div class="modal">
+    <div class="modal-header"><h3>Sortie de stock</h3><button class="btn-icon" onclick="closeModal('modalSortie')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Produit <span class="req">*</span></label>
+        <select class="form-control" id="sortProduit">
+          <option value="">— Sélectionner —</option>
+          <option>Smartphone Samsung A15 (SMP-001)</option>
+          <option>Smartphone Tecno Spark 20 (SMP-002)</option>
+          <option>Chargeur USB-C 65W (ACC-101)</option>
+          <option>Écouteurs Bluetooth JBL (AUD-201)</option>
+          <option>Batterie externe 20000mAh (NRG-401)</option>
+        </select></div>
+      <div class="form-row">
+        <div class="form-group"><label>Site concerné <span class="req">*</span></label>
+          <select class="form-control"><option>Goma</option><option>Bukavu</option><option>Kinshasa</option></select></div>
+        <div class="form-group"><label>Quantité <span class="req">*</span></label>
+          <input class="form-control" type="number" min="1" value="1"/></div>
+      </div>
+      <div class="form-group"><label>Motif de sortie <span class="req">*</span></label>
+        <select class="form-control">
+          <option>Vente directe</option>
+          <option>Retour fournisseur</option>
+          <option>Produit défectueux / SAV</option>
+          <option>Perte / vol</option>
+          <option>Ajustement inventaire</option>
+        </select></div>
+      <div class="form-group"><label>Note (optionnel)</label>
+        <input class="form-control" placeholder="Ex: N° bon de retour, client concerné..."/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalSortie')">Annuler</button>
+      <button class="btn btn-danger" onclick="closeModal('modalSortie');showToast('Sortie enregistrée ✓ (MVT-' + Math.floor(Math.random()*9000+1000) + ')')">Enregistrer la sortie</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalAddProduit">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header"><h3>Nouveau produit</h3><button class="btn-icon" onclick="closeModal('modalAddProduit')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>SKU <span class="req">*</span></label>
+          <input class="form-control" placeholder="Ex: SMP-003"/></div>
+        <div class="form-group"><label>Catégorie <span class="req">*</span></label>
+          <select class="form-control">
+            <option value="">— Sélectionner —</option>
+            <option>Smartphones</option><option>Accessoires</option><option>Audio</option><option>Câbles</option><option>Énergie</option>
+          </select></div>
+      </div>
+      <div class="form-group"><label>Nom du produit <span class="req">*</span></label>
+        <input class="form-control" placeholder="Ex: Smartphone Itel A70"/></div>
+      <div class="form-row">
+        <div class="form-group"><label>Prix de vente (CDF) <span class="req">*</span></label>
+          <input class="form-control" type="number" placeholder="Ex: 285000"/></div>
+        <div class="form-group"><label>Prix d'achat (CDF)</label>
+          <input class="form-control" type="number" placeholder="Ex: 200000"/></div>
+      </div>
+      <div class="form-group"><label>Seuil d'alerte stock <span class="req">*</span></label>
+        <input class="form-control" type="number" placeholder="Ex: 5"/></div>
+      <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+        <label style="display:block;font-size:12.5px;font-weight:500;color:var(--primary);margin-bottom:10px">Stock initial par site</label>
+        <div class="form-row-3">
+          <div class="form-group"><label>Goma</label><input class="form-control" type="number" value="0"/></div>
+          <div class="form-group"><label>Bukavu</label><input class="form-control" type="number" value="0"/></div>
+          <div class="form-group"><label>Kinshasa</label><input class="form-control" type="number" value="0"/></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalAddProduit')">Annuler</button>
+      <button class="btn btn-primary" onclick="closeModal('modalAddProduit');showToast('Produit ajouté au catalogue ✓')">Ajouter le produit</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalEditProduit">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header"><h3>Modifier le produit</h3><button class="btn-icon" onclick="closeModal('modalEditProduit')">✕</button></div>
+    <div class="modal-body" id="editProduitBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalEditProduit')">Annuler</button>
+      <button class="btn btn-primary" onclick="closeModal('modalEditProduit');showToast('Produit mis à jour ✓')">Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalTransfert">
+  <div class="modal">
+    <div class="modal-header"><h3>Nouveau transfert inter-sites</h3><button class="btn-icon" onclick="closeModal('modalTransfert')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>Site d'origine <span class="req">*</span></label>
+          <select class="form-control"><option>Goma</option><option>Bukavu</option><option>Kinshasa</option></select></div>
+        <div class="form-group"><label>Site de destination <span class="req">*</span></label>
+          <select class="form-control"><option>Bukavu</option><option>Kinshasa</option><option>Goma</option></select></div>
+      </div>
+      <div class="form-group"><label>Produit <span class="req">*</span></label>
+        <select class="form-control">
+          <option>Smartphone Samsung A15 (Stock Goma: 12)</option>
+          <option>Chargeur USB-C 65W (Stock Goma: 3)</option>
+          <option>Écouteurs Bluetooth JBL (Stock Goma: 14)</option>
+          <option>Câble USB-C 1m (Stock Goma: 42)</option>
+        </select></div>
+      <div class="form-row">
+        <div class="form-group"><label>Quantité <span class="req">*</span></label>
+          <input class="form-control" type="number" min="1" value="1"/></div>
+        <div class="form-group"><label>Date d'expédition prévue</label>
+          <input class="form-control" type="date"/></div>
+      </div>
+      <div class="form-group"><label>Note / référence bon de transport</label>
+        <input class="form-control" placeholder="Ex: BT-2026-041"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalTransfert')">Annuler</button>
+      <button class="btn btn-primary" onclick="closeModal('modalTransfert');showToast('Transfert créé ✓ (TR-' + Math.floor(Math.random()*9000+1000) + ')')">Créer le transfert</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalEntree">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-header"><h3>Entrée de stock</h3><button class="btn-icon" onclick="closeModal('modalEntree')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>Produit <span class="req">*</span></label>
+          <select class="form-control">
+            <option value="">— Sélectionner —</option>
+            <option>Smartphone Samsung A15 (SMP-001)</option>
+            <option>Smartphone Tecno Spark 20 (SMP-002)</option>
+            <option>Chargeur USB-C 65W (ACC-101)</option>
+            <option>Écouteurs Bluetooth JBL (AUD-201)</option>
+            <option>Casque Sony WH-1000 (AUD-202)</option>
+            <option>Câble HDMI 2m (CBL-301)</option>
+            <option>Câble USB-C 1m (CBL-302)</option>
+            <option>Batterie externe 20000mAh (NRG-401)</option>
+            <option>Panneau solaire portable 60W (NRG-402)</option>
+            <option>Coque protection universelle (ACC-102)</option>
+          </select></div>
+        <div class="form-group"><label>Site de réception <span class="req">*</span></label>
+          <select class="form-control"><option>Goma</option><option>Bukavu</option><option>Kinshasa</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Quantité reçue <span class="req">*</span></label>
+          <input class="form-control" type="number" min="1" value="10"/></div>
+        <div class="form-group"><label>Date de réception <span class="req">*</span></label>
+          <input class="form-control" type="date"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Prix d'achat unitaire (CDF)</label>
+          <input class="form-control" type="number" placeholder="Optionnel"/></div>
+        <div class="form-group"><label>Fournisseur</label>
+          <input class="form-control" placeholder="Ex: TechDistrib RDC"/></div>
+      </div>
+      <div class="form-group"><label>N° bon de livraison</label>
+        <input class="form-control" placeholder="BL-..."/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalEntree')">Annuler</button>
+      <button class="btn btn-success" onclick="closeModal('modalEntree');showToast('Entrée enregistrée ✓ (MVT-' + Math.floor(Math.random()*9000+1000) + ')')">Enregistrer l'entrée</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalReward">
+  <div class="modal">
+    <div class="modal-header"><h3>Valider une récompense parrainage</h3><button class="btn-icon" onclick="closeModal('modalReward')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Parrain <span class="req">*</span></label>
+        <select class="form-control">
+          <option>Mutombo Jean (TSG-2847)</option>
+          <option>Tshisekedi Nadine (TSG-3012)</option>
+          <option>Kabila Marie (TSB-1932)</option>
+        </select></div>
+      <div class="form-group"><label>Filleul concerné <span class="req">*</span></label>
+        <select class="form-control">
+          <option>Bashizi Esther (TSK-4789)</option>
+          <option>Mwamba Aline (TSB-2345)</option>
+          <option>Kasongo Patrick (TSG-3145)</option>
+        </select></div>
+      <div class="form-row">
+        <div class="form-group"><label>Montant à verser (CDF)</label><input class="form-control" value="15000" readonly/></div>
+        <div class="form-group"><label>Mode de versement</label>
+          <select class="form-control"><option>Cash</option><option>Mobile Money (M-Pesa)</option><option>Mobile Money (Airtel)</option></select></div>
+      </div>
+      <div class="form-group"><label>Référence transaction</label><input class="form-control" placeholder="N° confirmation"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalReward')">Annuler</button>
+      <button class="btn btn-success" onclick="closeModal('modalReward');showToast('Récompense versée ✓ — +50 pts ajoutés au parrain')">Confirmer le versement</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalProfile">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header"><h3>Profil client</h3><button class="btn-icon" onclick="closeModal('modalProfile')">✕</button></div>
+    <div class="modal-body" id="modalProfileBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalProfile')">Fermer</button>
+      <button class="btn btn-primary" onclick="closeModal('modalProfile');showToast('Modification en cours...')">Modifier</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalSale">
+  <div class="modal">
+    <div class="modal-header"><h3>Confirmation de vente</h3><button class="btn-icon" onclick="closeModal('modalSale')">✕</button></div>
+    <div class="modal-body" id="saleSummary"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalSale')">Fermer</button>
+      <button class="btn btn-primary" onclick="closeModal('modalSale');resetCart();showToast('Reçu envoyé à l\\'imprimante')">
+        🖨 Imprimer reçu
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= DATA ================= */
+const clients = [
+  {mat:'TSG-2847',nom:'Mutombo Jean',tel:'+243 970 123 456',site:'Goma',statut:'Actif',niv:'Or',date:'2024-11-12'},
+  {mat:'TSB-1932',nom:'Kabila Marie',tel:'+243 824 555 102',site:'Bukavu',statut:'Actif',niv:'Argent',date:'2025-01-05'},
+  {mat:'TSK-4501',nom:'Lukunku Pierre',tel:'+243 998 776 211',site:'Kinshasa',statut:'En cours',niv:'Bronze',date:'2025-02-20'},
+  {mat:'TSG-3012',nom:'Tshisekedi Nadine',tel:'+243 974 332 891',site:'Goma',statut:'Actif',niv:'Platine',date:'2024-08-30'},
+  {mat:'TSB-2210',nom:'Mwilu Joseph',tel:'+243 821 444 909',site:'Bukavu',statut:'Suspendu',niv:'Bronze',date:'2025-03-15'},
+  {mat:'TSK-4789',nom:'Bashizi Esther',tel:'+243 990 121 334',site:'Kinshasa',statut:'Actif',niv:'Or',date:'2025-04-02'},
+  {mat:'TSG-3145',nom:'Kasongo Patrick',tel:'+243 977 882 661',site:'Goma',statut:'Actif',niv:'Argent',date:'2025-03-28'},
+  {mat:'TSB-2345',nom:'Mwamba Aline',tel:'+243 825 110 909',site:'Bukavu',statut:'En cours',niv:'Bronze',date:'2026-04-15'},
+];
+
+const recentClientsData = clients.slice().reverse().slice(0,5);
+
+const stockAlerts = [
+  {p:'Chargeur USB-C 65W',s:'Goma',a:3,seuil:10},
+  {p:'Écouteurs Bluetooth JBL',s:'Bukavu',a:2,seuil:8},
+  {p:'Câble HDMI 2m',s:'Kinshasa',a:1,seuil:5},
+  {p:'Batterie externe 20000mAh',s:'Goma',a:4,seuil:6},
+  {p:'Smartphone Samsung A15',s:'Bukavu',a:0,seuil:3},
+];
+
+const rewards = [
+  {parr:'Mutombo Jean',fil:'Bashizi Esther',m:'15 000 CDF'},
+  {parr:'Tshisekedi Nadine',fil:'Mwamba Aline',m:'15 000 CDF'},
+  {parr:'Kabila Marie',fil:'Kasongo Patrick',m:'10 000 CDF'},
+  {parr:'Mutombo Jean',fil:'Lukunku Pierre',m:'15 000 CDF'},
+  {parr:'Bashizi Esther',fil:'Mwilu Joseph',m:'10 000 CDF'},
+];
+
+const products = [
+  {sku:'SMP-001',nom:'Smartphone Samsung A15',cat:'Smartphones',prix:485000,goma:12,bukavu:0,kinshasa:8,seuil:3},
+  {sku:'SMP-002',nom:'Smartphone Tecno Spark 20',cat:'Smartphones',prix:320000,goma:18,bukavu:9,kinshasa:14,seuil:5},
+  {sku:'ACC-101',nom:'Chargeur USB-C 65W',cat:'Accessoires',prix:42000,goma:3,bukavu:22,kinshasa:18,seuil:10},
+  {sku:'AUD-201',nom:'Écouteurs Bluetooth JBL',cat:'Audio',prix:78000,goma:14,bukavu:2,kinshasa:11,seuil:8},
+  {sku:'AUD-202',nom:'Casque Sony WH-1000',cat:'Audio',prix:425000,goma:6,bukavu:4,kinshasa:9,seuil:3},
+  {sku:'CBL-301',nom:'Câble HDMI 2m',cat:'Câbles',prix:18000,goma:25,bukavu:14,kinshasa:1,seuil:5},
+  {sku:'CBL-302',nom:'Câble USB-C 1m',cat:'Câbles',prix:12000,goma:42,bukavu:38,kinshasa:30,seuil:10},
+  {sku:'NRG-401',nom:'Batterie externe 20000mAh',cat:'Énergie',prix:95000,goma:4,bukavu:11,kinshasa:7,seuil:6},
+  {sku:'NRG-402',nom:'Panneau solaire portable 60W',cat:'Énergie',prix:280000,goma:8,bukavu:5,kinshasa:6,seuil:3},
+  {sku:'ACC-102',nom:'Coque protection universelle',cat:'Accessoires',prix:9500,goma:55,bukavu:48,kinshasa:62,seuil:15},
+];
+
+/* ================= NAV ================= */
+const pageTitles = {
+  dashboard:'Tableau de bord',
+  clients:'Liste des clients',
+  onboarding:'Onboarding nouveau client',
+  inventory:'Inventaire des stocks',
+  pos:'Nouvelle vente',
+  parrainage:'Programme de parrainage',
+  fidelite:'Programme de fidélité',
+  rapports:'Rapports & Analytics',
+  parametres:'Paramètres système',
+};
+
+let rapChartInst, catChartInst;
+function navigate(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const target = document.getElementById('page-'+page);
+  if(target) target.classList.add('active');
+  document.querySelectorAll('.nav-link').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.nav-sub button').forEach(b=>b.classList.remove('active'));
+  const navBtn = document.querySelector(`.nav-link[data-page="${page}"]`);
+  if(navBtn) navBtn.classList.add('active');
+  const subBtn = document.querySelector(`.nav-sub button[data-page="${page}"]`);
+  if(subBtn){ subBtn.classList.add('active'); }
+  document.getElementById('pageTitle').textContent = pageTitles[page] || '';
+  if(page==='rapports' && !rapChartInst) initRapCharts();
+  if(page==='parrainage') renderParrainage();
+  if(page==='fidelite') renderFidelite();
+  if(page==='inventory'){ renderStockKpis(); renderInventory(); renderMouvements(); renderTransferts(); }
+  if(page==='onboarding'){
+    generatedCode = '';
+    document.querySelectorAll('#page-onboarding input, #page-onboarding select').forEach(el=>{
+      if(el.disabled) return;
+      if(el.type==='checkbox') el.checked=false; else el.value='';
+    });
+    setStep(1);
+  }
+  window.scrollTo(0,0);
+}
+
+document.querySelectorAll('[data-page]').forEach(el=>{
+  el.addEventListener('click',()=>{
+    navigate(el.dataset.page);
+    if(el.dataset.tab) switchStockTab(el.dataset.tab);
+  });
+});
+document.querySelectorAll('[data-toggle]').forEach(el=>{
+  el.addEventListener('click',()=>{
+    const sub = document.getElementById('sub-'+el.dataset.toggle);
+    if(sub){ sub.classList.toggle('open'); el.classList.toggle('open'); }
+  });
+});
+document.querySelectorAll('[data-toast]').forEach(el=>{
+  el.addEventListener('click',()=>showToast(el.dataset.toast));
+});
+
+/* ================= TOAST ================= */
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.style.display='none',2800);
+}
+
+/* ================= ROLE & SITE ACCESS ================= */
+// Simulated agent-to-site assignments (set by admin in real system)
+const agentProfiles = {
+  agent:   {nom:'Marie Kahindo',   site:'Goma',     initiales:'MK'},
+  manager: {nom:'Patrick Bashizi', site:'Goma',     initiales:'PB'},
+  admin:   {nom:'Admin Système',   site:null,       initiales:'AD'},
+};
+
+function getCurrentRole(){ return document.getElementById('roleSelect').value; }
+function getCurrentSite(){
+  const role = getCurrentRole();
+  if(role==='admin') return document.getElementById('siteSelect').value || '';
+  return agentProfiles[role].site;
+}
+function canSeeAllSites(){ return getCurrentRole()==='admin'; }
+
+function applyRole(){
+  const role = getCurrentRole();
+  const profile = agentProfiles[role];
+  const site = getCurrentSite();
+
+  // update sidebar identity
+  document.getElementById('agent-name').textContent = profile.nom;
+  document.getElementById('agent-avatar').textContent = profile.initiales;
+  document.getElementById('agent-site').textContent = site + ' · ' + {agent:'Agent',manager:'Gérant',admin:'Admin'}[role];
+  document.getElementById('userRole').textContent = {agent:'Agent',manager:'Gérant',admin:'Admin'}[role];
+
+  // update header site pill
+  document.getElementById('siteActif').textContent = site || 'Tous';
+  document.getElementById('posSite').textContent = site || 'Tous';
+
+  // lock/unlock site selector — only admin can change site
+  const sel = document.getElementById('siteSelect');
+  if(role==='admin'){
+    sel.disabled = false;
+    sel.style.opacity = '1';
+    sel.title = '';
+  } else {
+    sel.disabled = true;
+    sel.value = site;
+    sel.style.opacity = '0.5';
+    sel.title = 'Site assigné par l\'admin — non modifiable';
+  }
+
+  // show/hide nav items by role
+  document.querySelectorAll('.role-manager, .role-admin').forEach(el=>el.classList.add('role-hidden'));
+  if(role==='manager') document.querySelectorAll('.role-manager').forEach(el=>el.classList.remove('role-hidden'));
+  if(role==='admin') document.querySelectorAll('.role-manager, .role-admin').forEach(el=>el.classList.remove('role-hidden'));
+
+  // re-render all data with new site scope
+  renderRecentClients();
+  renderStockAlerts();
+  renderRewards();
+  renderDashboardKpis();
+  renderClients();
+  renderStockKpis();
+  renderInventory();
+  renderMouvements();
+  renderTransferts();
+  renderCart();
+  updateInvSiteColumns();
+}
+
+function renderDashboardKpis(){
+  const site = getCurrentSite();
+  const allSites = canSeeAllSites();
+  // clients actifs sur ce site
+  const actifs = clients.filter(c=> (!site||c.site===site) && c.statut==='Actif').length;
+  const total  = clients.filter(c=> !site||c.site===site).length;
+  // stock
+  const getQ = p => allSites ? p.goma+p.bukavu+p.kinshasa : (p[site.toLowerCase()]||0);
+  const stockTot = products.reduce((s,p)=>s+getQ(p),0);
+  const alertes  = products.filter(p=>{const q=getQ(p);return q>0&&q<=p.seuil*2;}).length;
+  const ruptures = products.filter(p=>getQ(p)===0).length;
+
+  document.getElementById('kpiStockLabel').textContent = allSites ? 'Stock total' : 'Stock — '+site;
+  document.getElementById('kpiStockVal').innerHTML = `${stockTot.toLocaleString('fr-FR')} <span style="font-size:13px;color:var(--muted)">articles</span>`;
+  document.getElementById('kpiStockSub').innerHTML = alertes>0||ruptures>0
+    ? `<span class="text-warning">⚠ ${alertes} alertes${ruptures?', '+ruptures+' ruptures':''}</span>`
+    : '<span class="text-success">Tous les stocks OK</span>';
+}
+
+document.getElementById('roleSelect').addEventListener('change',applyRole);
+document.getElementById('siteSelect').addEventListener('change',()=>{
+  const s = document.getElementById('siteSelect').value;
+  document.getElementById('siteActif').textContent = s;
+  document.getElementById('posSite').textContent = s;
+  applyRole();
+  showToast('Site actif : '+s);
+});
+
+function updateInvSiteColumns(){
+  const all = canSeeAllSites();
+  const site = getCurrentSite();
+  const ths = document.querySelectorAll('#invTable thead th');
+  // indices: 4=Goma, 5=Bukavu, 6=Kinshasa, 7=Total
+  const colMap = {4:'Goma', 5:'Bukavu', 6:'Kinshasa'};
+  Object.entries(colMap).forEach(([ci, sn])=>{
+    const show = all || sn===site;
+    if(ths[ci]) ths[ci].style.display = show ? '' : 'none';
+  });
+  // hide "Total" column for agents (they only have 1 site col so total is redundant)
+  if(ths[7]) ths[7].style.display = all ? '' : 'none';
+}
+
+/* ================= DASHBOARD ================= */
+function initials(name){
+  return name.split(' ').slice(0,2).map(s=>s[0]).join('').toUpperCase();
+}
+function statusBadge(s){
+  const map={'Actif':'success','En cours':'warning','Suspendu':'danger'};
+  return `<span class="badge badge-${map[s]||'info'}">${s}</span>`;
+}
+function levelBadge(l){
+  const map={Bronze:'bronze',Argent:'argent',Or:'or',Platine:'platine'};
+  return `<span class="badge badge-${map[l]||'info'}">${l}</span>`;
+}
+function fmtCDF(n){ return n.toLocaleString('fr-FR') + ' CDF'; }
+
+function renderRecentClients(){
+  const site = getCurrentSite();
+  const list = clients.slice().reverse().filter(c=> !site || c.site===site).slice(0,5);
+  document.getElementById('recentClients').innerHTML = list.length ? list.map(c=>`
+    <div class="list-item">
+      <div class="avatar" style="background:hsl(${c.nom.charCodeAt(0)*7%360},45%,50%)">${initials(c.nom)}</div>
+      <div class="info"><b>${c.nom}</b><span>${c.site} · ${c.date}</span></div>
+      ${statusBadge(c.statut)}
+    </div>
+  `).join('') : '<div class="empty">Aucun client sur ce site</div>';
+}
+
+function renderStockAlerts(){
+  const site = getCurrentSite();
+  const list = stockAlerts.filter(a=> !site || a.s===site);
+  document.getElementById('alertStockBody').innerHTML = list.length ? list.map(a=>`
+    <tr>
+      <td><b>${a.p}</b></td>
+      <td>${a.s}</td>
+      <td><span class="${a.a===0?'text-danger':'text-warning'} fw-600">${a.a}</span></td>
+      <td>${a.seuil}</td>
+    </tr>
+  `).join('') : `<tr><td colspan="4" class="empty">Aucune alerte sur ce site</td></tr>`;
+}
+
+function renderRewards(){
+  const site = getCurrentSite();
+  // filter rewards by parrain's site
+  const siteByClient = {};
+  clients.forEach(c=>siteByClient[c.nom]=c.site);
+  const list = rewards.filter(r=> !site || siteByClient[r.parr]===site || siteByClient[r.fil]===site);
+  document.getElementById('rewardsBody').innerHTML = list.length ? list.map(r=>`
+    <tr>
+      <td><b>${r.parr}</b></td>
+      <td>${r.fil}</td>
+      <td class="text-right text-success fw-600">${r.m}</td>
+    </tr>
+  `).join('') : `<tr><td colspan="3" class="empty">Aucune récompense en attente</td></tr>`;
+}
+
+function initChart(){
+  const ctx = document.getElementById('salesChart');
+  if(!ctx) return;
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'],
+      datasets:[
+        {label:'Goma',data:[1200,1800,1500,2100,1900,2400,1700],backgroundColor:'#1E3A5F'},
+        {label:'Bukavu',data:[800,1100,950,1300,1200,1600,1100],backgroundColor:'#2E86C1'},
+        {label:'Kinshasa',data:[1500,2000,1800,2300,2100,2700,1900],backgroundColor:'#27AE60'},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
+      scales:{
+        y:{ticks:{callback:v=>(v/1000)+'k'}, grid:{color:'#EEF2F7'}},
+        x:{grid:{display:false}}
+      }
+    }
+  });
+}
+
+/* ================= CLIENTS ================= */
+let clientsSorted = clients.slice();
+function renderClients(){
+  const role = getCurrentRole();
+  const siteLock = getCurrentSite();
+  // lock/unlock site filter
+  const siteFilter = document.getElementById('filterSite');
+  if(role!=='admin'){
+    siteFilter.value = siteLock;
+    siteFilter.disabled = true;
+    siteFilter.style.opacity = '0.5';
+    siteFilter.title = 'Filtré sur votre site';
+  } else {
+    siteFilter.disabled = false;
+    siteFilter.style.opacity = '1';
+    siteFilter.title = '';
+  }
+  const search = (document.getElementById('clientSearch').value||'').toLowerCase();
+  const fs = role!=='admin' ? siteLock : siteFilter.value;
+  const fst = document.getElementById('filterStatus').value;
+  const fl = document.getElementById('filterLevel').value;
+  const list = clientsSorted.filter(c=>
+    (!search || c.nom.toLowerCase().includes(search) || c.mat.toLowerCase().includes(search) || c.tel.includes(search)) &&
+    (!fs || c.site===fs) && (!fst || c.statut===fst) && (!fl || c.niv===fl)
+  );
+  document.getElementById('clientsBody').innerHTML = list.length ? list.map(c=>`
+    <tr>
+      <td><span style="font-family:monospace;color:var(--accent);font-weight:600">${c.mat}</span></td>
+      <td><b>${c.nom}</b></td>
+      <td>${c.tel}</td>
+      <td>${c.site}</td>
+      <td>${statusBadge(c.statut)}</td>
+      <td>${levelBadge(c.niv)}</td>
+      <td>${c.date}</td>
+      <td>
+        <button class="btn-icon" title="Voir le profil" onclick="openClientProfile('${c.mat}')">👁</button>
+        <button class="btn-icon" title="Éditer" onclick="showToast('Édition de ${c.nom}')">✎</button>
+      </td>
+    </tr>
+  `).join('') : `<tr><td colspan="8" class="empty">Aucun client trouvé</td></tr>`;
+}
+['clientSearch','filterSite','filterStatus','filterLevel'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',renderClients);
+  document.getElementById(id).addEventListener('change',renderClients);
+});
+
+/* sort */
+let sortDir = {};
+document.querySelectorAll('#clientsTable thead th[data-sort]').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const k = th.dataset.sort;
+    sortDir[k] = !sortDir[k];
+    clientsSorted.sort((a,b)=>{
+      const va = (a[k]||'').toString(), vb = (b[k]||'').toString();
+      return sortDir[k] ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+    renderClients();
+  });
+});
+
+/* ================= ONBOARDING WIZARD ================= */
+let currentStep = 1;
+let generatedCode = '';
+function setStep(n){
+  currentStep = n;
+  document.querySelectorAll('.wizard-step').forEach(s=>{
+    const sn = +s.dataset.step;
+    s.classList.toggle('active', sn===n);
+    s.classList.toggle('done', sn<n);
+  });
+  document.querySelectorAll('.wizard-content').forEach(c=>{
+    c.style.display = (+c.dataset.step===n)?'block':'none';
+  });
+  document.getElementById('prevStep').disabled = (n===1);
+  document.getElementById('nextStep').textContent = (n===4)?'Terminer ✓':'Suivant →';
+
+  const nom  = (document.getElementById('ob_prenom').value||'')+' '+(document.getElementById('ob_nom').value||'');
+  const tel  = document.getElementById('ob_tel').value||'—';
+  const site = document.getElementById('ob_site').value||'—';
+  const recitAmt = document.getElementById('ob_montant').value;
+  const formateur = document.getElementById('ob_formateur') ? document.getElementById('ob_formateur').value : '';
+
+  if(n===2){
+    document.getElementById('recapNom').textContent = nom.trim()||'—';
+    document.getElementById('todayLabel').textContent = new Date().toLocaleDateString('fr-FR');
+  }
+  if(n===3){
+    const av = nom.trim().split(' ').slice(0,2).map(s=>s[0]||'').join('').toUpperCase()||'?';
+    document.getElementById('s3_avatar').textContent = av;
+    document.getElementById('s3_nom').textContent = nom.trim()||'—';
+    document.getElementById('s3_tel').textContent = tel;
+    document.getElementById('s3_site').textContent = site;
+    document.getElementById('s3_recit').textContent = recitAmt ? Number(recitAmt).toLocaleString('fr-FR')+' CDF ✓' : '—';
+    document.getElementById('s3_form').textContent = formateur ? 'Complétée ✓' : '—';
+  }
+  if(n===4){
+    if(!generatedCode){
+      const sitePrefix = {Goma:'TSG',Bukavu:'TSB',Kinshasa:'TSK'}[site]||'TSG';
+      generatedCode = sitePrefix+'-'+Math.floor(1000+Math.random()*9000);
+    }
+    document.getElementById('r4_nom').textContent = nom.trim()||'—';
+    document.getElementById('r4_tel').textContent = tel;
+    document.getElementById('r4_site').textContent = site;
+    document.getElementById('r4_code').textContent = generatedCode;
+  }
+}
+function validateStep(n){
+  let ok = true;
+  document.querySelectorAll('.form-error').forEach(e=>e.classList.remove('show'));
+  const required = {
+    1:['ob_nom','ob_prenom','ob_tel','ob_site','ob_montant','ob_mode'],
+    2:['ob_formateur','ob_signature'],
+    3:['ob_fiche_montant','ob_fiche_mode'],
+    4:[]
+  };
+  (required[n]||[]).forEach(id=>{
+    const el = document.getElementById(id);
+    let v = el.type==='checkbox' ? el.checked : (el.value||'').trim();
+    if(!v){
+      ok = false;
+      const err = document.querySelector(`.form-error[data-for="${id}"]`);
+      if(err) err.classList.add('show');
+    }
+  });
+  if(!ok) showToast('Veuillez compléter les champs obligatoires');
+  return ok;
+}
+function nextStep(){
+  if(!validateStep(currentStep)) return;
+  if(currentStep===4){ activateClient(); return; }
+  setStep(currentStep+1);
+}
+function prevStep(){ if(currentStep>1) setStep(currentStep-1); }
+function activateClient(){
+  showToast('✓ Compte client activé — Code '+document.getElementById('r4_code').textContent);
+  setTimeout(()=>{
+    generatedCode = '';
+    document.querySelectorAll('#page-onboarding input, #page-onboarding select').forEach(el=>{
+      if(el.disabled) return;
+      if(el.type==='checkbox') el.checked=false; else el.value='';
+    });
+    setStep(1);
+    navigate('clients');
+  },1500);
+}
+
+/* ================= INVENTORY ================= */
+function stockStatusForSite(p, site, allSites){
+  const q = allSites ? p.goma+p.bukavu+p.kinshasa : (p[site.toLowerCase()]||0);
+  if(q===0) return {b:'danger',l:'Rupture'};
+  if(q <= p.seuil*2) return {b:'warning',l:'Stock faible'};
+  return {b:'success',l:'OK'};
+}
+
+function renderStockKpis(){
+  const site = getCurrentSite();
+  const allSites = canSeeAllSites();
+  const getQ = p => allSites ? p.goma+p.bukavu+p.kinshasa : (p[site.toLowerCase()]||0);
+  const totalVal = products.reduce((s,p)=>s+getQ(p)*p.prix,0);
+  const ruptures = products.filter(p=>getQ(p)===0).length;
+  const alertes  = products.filter(p=>{const q=getQ(p);return q>0&&q<=p.seuil*2;}).length;
+  const totalArt = products.reduce((s,p)=>s+getQ(p),0);
+  document.getElementById('stockKpis').innerHTML = `
+    <div class="card kpi" onclick="switchStockTab('inventaire')">
+      <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg></div>
+      <div class="label">Articles en stock${allSites?'':' — '+site}</div>
+      <div class="value">${totalArt.toLocaleString('fr-FR')}</div>
+      <div class="sub">${products.length} références</div>
+    </div>
+    <div class="card kpi">
+      <div class="icon" style="background:rgba(39,174,96,.1);color:var(--success)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+      <div class="label">Valeur du stock</div>
+      <div class="value" style="font-size:18px">${(totalVal/1000000).toFixed(1)}M <span style="font-size:12px;color:var(--muted)">CDF</span></div>
+      <div class="sub">${allSites?'Tous sites':'Site '+site}</div>
+    </div>
+    <div class="card kpi" onclick="document.getElementById('invStatut').value='Stock faible';renderInventory()">
+      <div class="icon" style="background:rgba(230,126,34,.1);color:var(--warning)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div class="label">Alertes stock faible</div>
+      <div class="value" style="color:var(--warning)">${alertes}</div>
+      <div class="sub warn">Cliquer pour filtrer</div>
+    </div>
+    <div class="card kpi" onclick="document.getElementById('invStatut').value='Rupture';renderInventory()">
+      <div class="icon" style="background:rgba(231,76,60,.1);color:var(--danger)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+      <div class="label">Ruptures de stock</div>
+      <div class="value" style="color:var(--danger)">${ruptures}</div>
+      <div class="sub warn">Réapprovisionnement urgent</div>
+    </div>
+  `;
+}
+
+const mouvements = [
+  {date:'2026-04-29',ref:'MVT-8821',produit:'Smartphone Samsung A15',type:'Sortie',site:'Goma',qte:-2,apres:12,agent:'Marie Kahindo',note:'Vente V-291045'},
+  {date:'2026-04-28',ref:'MVT-8820',produit:'Câble USB-C 1m',type:'Entrée',site:'Bukavu',qte:+20,apres:38,agent:'Esther Mwamba',note:'BL-2026-0118 / TechDistrib RDC'},
+  {date:'2026-04-27',ref:'MVT-8815',produit:'Écouteurs Bluetooth JBL',type:'Transfert',site:'Goma → Bukavu',qte:-5,apres:14,agent:'Marie Kahindo',note:'TR-4412'},
+  {date:'2026-04-26',ref:'MVT-8810',produit:'Batterie externe 20000mAh',type:'Sortie',site:'Goma',qte:-1,apres:4,agent:'Patrick Bashizi',note:'Vente V-290988'},
+  {date:'2026-04-25',ref:'MVT-8805',produit:'Chargeur USB-C 65W',type:'Entrée',site:'Goma',qte:+10,apres:3,agent:'Marie Kahindo',note:'BL-2026-0117'},
+  {date:'2026-04-24',ref:'MVT-8801',produit:'Smartphone Tecno Spark 20',type:'Sortie',site:'Kinshasa',qte:-3,apres:14,agent:'Joseph Kasongo',note:'Vente V-290877'},
+  {date:'2026-04-23',ref:'MVT-8799',produit:'Casque Sony WH-1000',type:'Ajustement',site:'Bukavu',qte:-1,apres:4,agent:'Esther Mwamba',note:'Produit défectueux retour SAV'},
+  {date:'2026-04-22',ref:'MVT-8792',produit:'Panneau solaire portable 60W',type:'Entrée',site:'Kinshasa',qte:+5,apres:6,agent:'Joseph Kasongo',note:'BL-2026-0114 / SolarTech'},
+  {date:'2026-04-21',ref:'MVT-8788',produit:'Coque protection universelle',type:'Sortie',site:'Goma',qte:-8,apres:55,agent:'Patrick Bashizi',note:'Vente groupée V-290741'},
+  {date:'2026-04-20',ref:'MVT-8780',produit:'Câble HDMI 2m',type:'Sortie',site:'Kinshasa',qte:-4,apres:1,agent:'Joseph Kasongo',note:'Vente V-290698'},
+];
+
+const transferts = [
+  {ref:'TR-4412',date:'2026-04-27',produit:'Écouteurs Bluetooth JBL',origine:'Goma',dest:'Bukavu',qte:5,statut:'Livré',agent:'Marie Kahindo'},
+  {ref:'TR-4398',date:'2026-04-20',produit:'Câble USB-C 1m',origine:'Goma',dest:'Kinshasa',qte:15,statut:'Livré',agent:'Patrick Bashizi'},
+  {ref:'TR-4421',date:'2026-04-29',produit:'Smartphone Tecno Spark 20',origine:'Kinshasa',dest:'Bukavu',qte:3,statut:'En transit',agent:'Joseph Kasongo'},
+  {ref:'TR-4388',date:'2026-04-15',produit:'Batterie externe 20000mAh',origine:'Bukavu',dest:'Goma',qte:4,statut:'Livré',agent:'Esther Mwamba'},
+  {ref:'TR-4430',date:'2026-04-29',produit:'Chargeur USB-C 65W',origine:'Bukavu',dest:'Goma',qte:8,statut:'En transit',agent:'Esther Mwamba'},
+  {ref:'TR-4372',date:'2026-04-10',produit:'Coque protection universelle',origine:'Kinshasa',dest:'Bukavu',qte:20,statut:'Livré',agent:'Joseph Kasongo'},
+  {ref:'TR-4360',date:'2026-04-05',produit:'Câble HDMI 2m',origine:'Goma',dest:'Kinshasa',qte:10,statut:'Annulé',agent:'Marie Kahindo'},
+];
+
+function stockStatus(p){
+  const total = p.goma+p.bukavu+p.kinshasa;
+  if(total===0) return {b:'danger',l:'Rupture'};
+  if(total <= p.seuil*2) return {b:'warning',l:'Stock faible'};
+  return {b:'success',l:'OK'};
+}
+
+function switchStockTab(tab){
+  document.querySelectorAll('.stock-tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
+  document.querySelectorAll('.stock-tab-content').forEach(c=>c.classList.toggle('active', c.id==='tab-'+tab));
+}
+document.querySelectorAll('.stock-tab').forEach(t=>{
+  t.addEventListener('click',()=>switchStockTab(t.dataset.tab));
+});
+
+let invSorted = products.slice();
+let invPage = 1;
+const invPerPage = 8;
+
+function renderInventory(){
+  const role = getCurrentRole();
+  const siteLock = getCurrentSite();
+  const allSites = canSeeAllSites();
+
+  // lock/unlock site filter in inventory
+  const invSiteEl = document.getElementById('invSite');
+  if(!allSites){
+    invSiteEl.value = siteLock;
+    invSiteEl.disabled = true;
+    invSiteEl.style.opacity = '0.5';
+  } else {
+    invSiteEl.disabled = false;
+    invSiteEl.style.opacity = '1';
+  }
+
+  const s = (document.getElementById('invSearch').value||'').toLowerCase();
+  const cat = document.getElementById('invCat').value;
+  const statut = document.getElementById('invStatut').value;
+
+  const list = invSorted.filter(p=>{
+    // for non-admin: only show products that have stock on their site
+    const siteQ = allSites ? (p.goma+p.bukavu+p.kinshasa) : (p[siteLock.toLowerCase()]||0);
+    const st = stockStatusForSite(p, siteLock, allSites);
+    return (!s || p.nom.toLowerCase().includes(s) || p.sku.toLowerCase().includes(s)) &&
+      (!cat || p.cat===cat) &&
+      (!statut || st.l===statut);
+  });
+
+  const total = list.length;
+  const start = (invPage-1)*invPerPage;
+  const page = list.slice(start, start+invPerPage);
+
+  document.getElementById('invBody').innerHTML = page.map(p=>{
+    const st = stockStatusForSite(p, siteLock, allSites);
+    const siteQ = {goma:p.goma, bukavu:p.bukavu, kinshasa:p.kinshasa};
+    const totalQ = allSites ? p.goma+p.bukavu+p.kinshasa : (p[siteLock.toLowerCase()]||0);
+    const valeur = totalQ * p.prix;
+    const rowStyle = st.b==='danger' ? 'background:#FEF0EE' : st.b==='warning' ? 'background:#FEF9EE' : '';
+
+    // site columns: show all for admin/manager, only own column for agent
+    const gomaCell   = allSites ? `<td class="text-right"><b>${p.goma}</b></td>` : (siteLock==='Goma' ? `<td class="text-right fw-600">${p.goma}</td>` : '');
+    const bukavuCell = allSites ? `<td class="text-right"><b>${p.bukavu}</b></td>` : (siteLock==='Bukavu' ? `<td class="text-right fw-600">${p.bukavu}</td>` : '');
+    const kinCell    = allSites ? `<td class="text-right"><b>${p.kinshasa}</b></td>` : (siteLock==='Kinshasa' ? `<td class="text-right fw-600">${p.kinshasa}</td>` : '');
+    const totalCell  = allSites ? `<td class="text-right fw-600">${totalQ}</td>` : '';
+    const valCell    = `<td class="text-right" style="color:var(--primary);font-weight:600">${(valeur/1000).toFixed(0)}k CDF</td>`;
+
+    const editBtn = allSites ? `<button class="btn-icon" title="Modifier" onclick="openEditProduit('${p.sku}')">✎</button>` : '';
+
+    return `<tr style="${rowStyle}">
+      <td><span style="font-family:monospace;color:var(--accent);font-size:12px">${p.sku}</span></td>
+      <td><b>${p.nom}</b></td>
+      <td><span class="badge badge-info" style="font-size:11px">${p.cat}</span></td>
+      <td class="text-right text-muted">${fmtCDF(p.prix)}</td>
+      ${gomaCell}${bukavuCell}${kinCell}
+      ${totalCell}
+      ${valCell}
+      <td class="text-right text-muted">${p.seuil}</td>
+      <td><span class="badge badge-${st.b}">${st.l}</span></td>
+      <td>
+        ${editBtn}
+        <button class="btn-icon" title="Entrée" onclick="openModal('modalEntree')">+</button>
+        <button class="btn-icon" title="Sortie" onclick="openModal('modalSortie')">−</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  updateInvSiteColumns();
+  document.getElementById('invPaginationInfo').textContent =
+    `Affichage de ${Math.min(start+1,total)} à ${Math.min(start+invPerPage,total)} sur ${total} produits`;
+  const totalPages = Math.ceil(total/invPerPage);
+  document.getElementById('invPages').innerHTML =
+    `<button ${invPage<=1?'disabled':''} onclick="invPage--;renderInventory()">‹</button>` +
+    Array.from({length:Math.min(totalPages,5)},(_,i)=>{
+      const p=i+1;
+      return `<button class="${p===invPage?'active':''}" onclick="invPage=${p};renderInventory()">${p}</button>`;
+    }).join('') +
+    `<button ${invPage>=totalPages?'disabled':''} onclick="invPage++;renderInventory()">›</button>`;
+}
+
+['invSearch','invSite','invCat','invStatut'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',()=>{invPage=1;renderInventory();});
+  document.getElementById(id).addEventListener('change',()=>{invPage=1;renderInventory();});
+});
+document.querySelectorAll('#invTable thead th[data-sort]').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const k = th.dataset.sort;
+    sortDir['inv-'+k] = !sortDir['inv-'+k];
+    invSorted.sort((a,b)=>{
+      const va=(a[k]||'').toString(), vb=(b[k]||'').toString();
+      return sortDir['inv-'+k] ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+    invPage=1; renderInventory();
+  });
+});
+
+function openEditProduit(sku){
+  const p = products.find(x=>x.sku===sku);
+  if(!p) return;
+  document.getElementById('editProduitBody').innerHTML = `
+    <div class="form-row">
+      <div class="form-group"><label>SKU</label><input class="form-control" value="${p.sku}" disabled/></div>
+      <div class="form-group"><label>Catégorie</label>
+        <select class="form-control">
+          <option ${p.cat==='Smartphones'?'selected':''}>Smartphones</option>
+          <option ${p.cat==='Accessoires'?'selected':''}>Accessoires</option>
+          <option ${p.cat==='Audio'?'selected':''}>Audio</option>
+          <option ${p.cat==='Câbles'?'selected':''}>Câbles</option>
+          <option ${p.cat==='Énergie'?'selected':''}>Énergie</option>
+        </select></div>
+    </div>
+    <div class="form-group"><label>Nom du produit</label>
+      <input class="form-control" value="${p.nom}"/></div>
+    <div class="form-row">
+      <div class="form-group"><label>Prix de vente (CDF)</label>
+        <input class="form-control" type="number" value="${p.prix}"/></div>
+      <div class="form-group"><label>Seuil d'alerte</label>
+        <input class="form-control" type="number" value="${p.seuil}"/></div>
+    </div>
+    <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+      <label style="display:block;font-size:12.5px;font-weight:500;color:var(--primary);margin-bottom:10px">Stock actuel (lecture)</label>
+      <div class="form-row-3">
+        <div class="form-group"><label>Goma</label><input class="form-control" value="${p.goma}" disabled/></div>
+        <div class="form-group"><label>Bukavu</label><input class="form-control" value="${p.bukavu}" disabled/></div>
+        <div class="form-group"><label>Kinshasa</label><input class="form-control" value="${p.kinshasa}" disabled/></div>
+      </div>
+      <div class="small text-muted">Pour modifier le stock, utilisez Entrée / Sortie / Transfert.</div>
+    </div>
+  `;
+  openModal('modalEditProduit');
+}
+
+function renderMouvements(){
+  const siteLock = getCurrentSite();
+  const allSites = canSeeAllSites();
+  const mvtSiteEl = document.getElementById('mvtSite');
+  if(!allSites){
+    mvtSiteEl.value = siteLock;
+    mvtSiteEl.disabled = true;
+    mvtSiteEl.style.opacity = '0.5';
+  } else {
+    mvtSiteEl.disabled = false;
+    mvtSiteEl.style.opacity = '1';
+  }
+  const s = (document.getElementById('mvtSearch').value||'').toLowerCase();
+  const type = document.getElementById('mvtType').value;
+  const site = allSites ? mvtSiteEl.value : siteLock;
+  const list = mouvements.filter(m=>
+    (!s || m.produit.toLowerCase().includes(s) || m.ref.toLowerCase().includes(s)) &&
+    (!type || m.type===type) &&
+    (!site || m.site.includes(site))
+  );
+  document.getElementById('mvtBody').innerHTML = list.length ? list.map(m=>{
+    const typeMap = {Entrée:'success',Sortie:'danger',Ajustement:'warning',Transfert:'info'};
+    const signe = m.qte>0 ? `<span class="text-success fw-600">+${m.qte}</span>` : `<span class="text-danger fw-600">${m.qte}</span>`;
+    return `<tr>
+      <td>${m.date}</td>
+      <td><span style="font-family:monospace;color:var(--accent);font-size:12px">${m.ref}</span></td>
+      <td><b>${m.produit}</b></td>
+      <td><span class="badge badge-${typeMap[m.type]||'info'}">${m.type}</span></td>
+      <td>${m.site}</td>
+      <td class="text-right">${signe}</td>
+      <td class="text-right fw-600">${m.apres}</td>
+      <td>${m.agent}</td>
+      <td class="text-muted small">${m.note}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="9" class="empty">Aucun mouvement trouvé</td></tr>`;
+}
+['mvtSearch','mvtType','mvtSite'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',renderMouvements);
+  document.getElementById(id).addEventListener('change',renderMouvements);
+});
+
+function renderTransferts(){
+  const siteLock = getCurrentSite();
+  const allSites = canSeeAllSites();
+  const s = (document.getElementById('trfSearch').value||'').toLowerCase();
+  const statut = document.getElementById('trfStatut').value;
+  const list = transferts.filter(t=>
+    (!s || t.ref.toLowerCase().includes(s) || t.produit.toLowerCase().includes(s)) &&
+    (!statut || t.statut===statut) &&
+    (allSites || t.origine===siteLock || t.dest===siteLock)
+  );
+  document.getElementById('trfBody').innerHTML = list.length ? list.map(t=>{
+    const sMap = {'En transit':'warning','Livré':'success','Annulé':'danger'};
+    const action = t.statut==='En transit'
+      ? `<button class="btn btn-success" style="padding:4px 10px;font-size:12px" onclick="showToast('Transfert ${t.ref} marqué Livré ✓')">Marquer livré</button>`
+      : `<span class="text-muted small">—</span>`;
+    return `<tr>
+      <td><span style="font-family:monospace;color:var(--accent);font-size:12px">${t.ref}</span></td>
+      <td>${t.date}</td>
+      <td><b>${t.produit}</b></td>
+      <td>${t.origine}</td>
+      <td>${t.dest}</td>
+      <td class="text-right fw-600">${t.qte}</td>
+      <td><span class="badge badge-${sMap[t.statut]||'info'}">${t.statut}</span></td>
+      <td>${t.agent}</td>
+      <td>${action}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="9" class="empty">Aucun transfert trouvé</td></tr>`;
+}
+['trfSearch','trfStatut'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',renderTransferts);
+  document.getElementById(id).addEventListener('change',renderTransferts);
+});
+
+/* ================= MODALS ================= */
+function openModal(id){ document.getElementById(id).classList.add('active'); }
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.modal-overlay').forEach(o=>{
+  o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('active'); });
+});
+
+/* ================= POS ================= */
+let cart = [];
+let posClient = null;
+
+document.getElementById('posSearch').addEventListener('input',e=>{
+  const q = e.target.value.toLowerCase().trim();
+  const box = document.getElementById('posResults');
+  if(!q){ box.style.display='none'; return; }
+  const matches = products.filter(p=>p.nom.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)).slice(0,6);
+  if(!matches.length){ box.innerHTML='<div class="result text-muted">Aucun produit</div>'; box.style.display='block'; return; }
+  const posSiteLock = getCurrentSite();
+  const posAllSites = canSeeAllSites();
+  box.innerHTML = matches.map(p=>{
+    const siteQ = posAllSites ? p.goma+p.bukavu+p.kinshasa : (p[posSiteLock.toLowerCase()]||0);
+    const stockLabel = posAllSites ? `Stock total : ${p.goma+p.bukavu+p.kinshasa}` : `Stock ${posSiteLock} : ${siteQ}`;
+    const outOfStock = siteQ === 0;
+    return `<div class="result${outOfStock?' role-hidden':''}" onclick="${outOfStock?'showToast(\'Rupture de stock sur ce site\')':('addToCart(\''+p.sku+'\')')}">
+      <div><b>${p.nom}</b><div class="small ${outOfStock?'text-danger':'text-muted'}">${p.sku} · ${stockLabel}${outOfStock?' — RUPTURE':''}</div></div>
+      <div class="fw-600" style="color:var(--primary)">${fmtCDF(p.prix)}</div>
+    </div>`;
+  }).join('');
+  box.style.display='block';
+});
+
+function addToCart(sku){
+  const p = products.find(x=>x.sku===sku);
+  if(!p) return;
+  const existing = cart.find(c=>c.sku===sku);
+  if(existing){ existing.qty++; } else { cart.push({sku:p.sku,nom:p.nom,prix:p.prix,qty:1}); }
+  document.getElementById('posSearch').value='';
+  document.getElementById('posResults').style.display='none';
+  renderCart();
+}
+function changeQty(sku,d){
+  const item = cart.find(c=>c.sku===sku);
+  if(!item) return;
+  item.qty += d;
+  if(item.qty<=0) cart = cart.filter(c=>c.sku!==sku);
+  renderCart();
+}
+function removeFromCart(sku){
+  cart = cart.filter(c=>c.sku!==sku);
+  renderCart();
+}
+function resetCart(){ cart=[]; posClient=null; document.getElementById('posClientSearch').value=''; document.getElementById('posClientInfo').style.display='none'; renderCart(); }
+
+function renderCart(){
+  const box = document.getElementById('cartItems');
+  if(!cart.length){
+    box.innerHTML = `<div class="empty">Aucun article dans le panier. Recherchez un produit ci-dessus pour commencer.</div>`;
+  } else {
+    box.innerHTML = cart.map(c=>`
+      <div class="pos-cart-item">
+        <div><b>${c.nom}</b><div class="small text-muted">${fmtCDF(c.prix)} l'unité</div></div>
+        <div class="qty-control">
+          <button onclick="changeQty('${c.sku}',-1)">−</button>
+          <span>${c.qty}</span>
+          <button onclick="changeQty('${c.sku}',1)">+</button>
+        </div>
+        <div class="fw-600" style="min-width:110px;text-align:right">${fmtCDF(c.prix*c.qty)}</div>
+        <button class="btn-icon" onclick="removeFromCart('${c.sku}')" title="Supprimer">🗑</button>
+      </div>
+    `).join('');
+  }
+  const sub = cart.reduce((s,c)=>s+c.prix*c.qty,0);
+  let disc = 0;
+  if(posClient){
+    const map = {Bronze:0,Argent:0.02,Or:0.05,Platine:0.10};
+    disc = Math.round(sub * (map[posClient.niv]||0));
+  }
+  document.getElementById('posSubtotal').textContent = fmtCDF(sub);
+  document.getElementById('posDiscount').textContent = '- '+fmtCDF(disc);
+  document.getElementById('posTotal').textContent = fmtCDF(sub-disc);
+}
+
+document.getElementById('posClientSearch').addEventListener('input',e=>{
+  const q = e.target.value.toLowerCase().trim();
+  const info = document.getElementById('posClientInfo');
+  if(!q){ posClient=null; info.style.display='none'; renderCart(); return; }
+  const c = clients.find(x=>x.nom.toLowerCase().includes(q) || x.tel.includes(q) || x.mat.toLowerCase().includes(q));
+  if(c){
+    posClient = c;
+    const points = {Bronze:120,Argent:540,Or:1280,Platine:3450}[c.niv]||0;
+    info.style.display='block';
+    info.innerHTML = `
+      <div class="card" style="background:var(--bg);box-shadow:none;padding:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="avatar">${initials(c.nom)}</div>
+          <div style="flex:1">
+            <b>${c.nom}</b><div class="small text-muted">${c.mat} · ${c.tel}</div>
+          </div>
+          ${levelBadge(c.niv)}
+        </div>
+        <div class="small mt-12"><b>${points}</b> points disponibles</div>
+      </div>`;
+  } else {
+    posClient=null;
+    info.style.display='block';
+    info.innerHTML = `<div class="small text-muted" style="padding:8px">Aucun client trouvé. La vente sera enregistrée comme vente comptoir.</div>`;
+  }
+  renderCart();
+});
+
+function finalizeSale(){
+  if(!cart.length){ showToast('Le panier est vide'); return; }
+  const sub = cart.reduce((s,c)=>s+c.prix*c.qty,0);
+  const disc = posClient ? Math.round(sub * ({Bronze:0,Argent:0.02,Or:0.05,Platine:0.10}[posClient.niv]||0)) : 0;
+  const total = sub-disc;
+  const ref = 'V-'+Date.now().toString().slice(-6);
+  const ptsGagnes = posClient ? Math.floor(total/10000)*10 : 0;
+  document.getElementById('saleSummary').innerHTML = `
+    <div class="card" style="background:var(--bg);box-shadow:none;padding:14px;margin-bottom:14px">
+      <div class="pos-summary-row"><span>Référence</span><b>${ref}</b></div>
+      <div class="pos-summary-row"><span>Client</span><b>${posClient?posClient.nom:'Vente comptoir'}</b></div>
+      <div class="pos-summary-row"><span>Articles</span><b>${cart.reduce((s,c)=>s+c.qty,0)}</b></div>
+      <div class="pos-summary-row"><span>Mode de paiement</span><b>${document.getElementById('posPayment').value}</b></div>
+      ${posClient?`<div class="pos-summary-row"><span>Points fidélité gagnés</span><b class="text-success">+${ptsGagnes} pts</b></div>`:''}
+    </div>
+    <table>
+      <thead><tr><th>Produit</th><th class="text-right">Qté</th><th class="text-right">Total</th></tr></thead>
+      <tbody>${cart.map(c=>`<tr><td>${c.nom}</td><td class="text-right">${c.qty}</td><td class="text-right">${fmtCDF(c.prix*c.qty)}</td></tr>`).join('')}</tbody>
+    </table>
+    <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:10px">
+      <div class="pos-summary-row"><span>Sous-total</span><b>${fmtCDF(sub)}</b></div>
+      <div class="pos-summary-row"><span>Remise fidélité</span><b class="text-success">- ${fmtCDF(disc)}</b></div>
+      <div class="pos-summary-row total"><span>Total à payer</span><b>${fmtCDF(total)}</b></div>
+    </div>`;
+  openModal('modalSale');
+}
+
+/* ================= CLIENT PROFILE ================= */
+const clientPoints = {Bronze:120,Argent:540,Or:1280,Platine:3450};
+const parrainData = {
+  'TSG-2847':['Bashizi Esther','Lukunku Pierre'],
+  'TSG-3012':['Mwamba Aline'],
+  'TSB-1932':['Kasongo Patrick'],
+};
+function openClientProfile(mat){
+  const c = clients.find(x=>x.mat===mat);
+  if(!c) return;
+  const pts = clientPoints[c.niv]||0;
+  const filleuls = parrainData[mat]||[];
+  const nextLevel = {Bronze:'Argent (500 pts)',Argent:'Or (1 500 pts)',Or:'Platine (5 000 pts)',Platine:'Niveau maximum'};
+  const nextPts = {Bronze:500,Argent:1500,Or:5000,Platine:pts}[c.niv]||500;
+  const pct = Math.min(100,Math.round(pts/nextPts*100));
+  document.getElementById('modalProfileBody').innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px">
+      <div class="avatar" style="width:56px;height:56px;font-size:20px;background:hsl(${c.nom.charCodeAt(0)*7%360},45%,50%)">${initials(c.nom)}</div>
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--primary)">${c.nom}</div>
+        <div style="font-family:monospace;color:var(--accent);margin:2px 0">${c.mat}</div>
+        <div style="display:flex;gap:8px;margin-top:4px">${statusBadge(c.statut)} ${levelBadge(c.niv)}</div>
+      </div>
+    </div>
+    <div class="grid grid-2">
+      <div>
+        <div class="text-muted small">Téléphone</div><div class="fw-600">${c.tel}</div>
+        <div class="text-muted small" style="margin-top:8px">Site</div><div class="fw-600">${c.site}</div>
+        <div class="text-muted small" style="margin-top:8px">Date d'inscription</div><div class="fw-600">${c.date}</div>
+      </div>
+      <div>
+        <div class="text-muted small">Points fidélité</div>
+        <div class="fw-600" style="font-size:20px;color:var(--primary)">${pts.toLocaleString('fr-FR')} pts</div>
+        <div class="text-muted small" style="margin-top:4px">Prochain niveau : ${nextLevel[c.niv]}</div>
+        <div style="background:var(--border);border-radius:4px;height:8px;margin-top:6px">
+          <div style="background:var(--accent);border-radius:4px;height:8px;width:${pct}%"></div>
+        </div>
+        <div class="small text-muted" style="margin-top:4px">${pct}% vers ${nextLevel[c.niv]}</div>
+      </div>
+    </div>
+    ${filleuls.length ? `<div style="margin-top:14px"><div class="text-muted small">Filleuls parrainés</div><div class="ref-tree">${filleuls.map(f=>`<span class="ref-node">${f}</span>`).join('')}</div></div>`:''}
+  `;
+  openModal('modalProfile');
+}
+
+/* ================= PARRAINAGE ================= */
+const parrHistory = [
+  {parr:'Mutombo Jean',matParr:'TSG-2847',fil:'Bashizi Esther',site:'Goma',date:'2025-03-12',statut:'Versée'},
+  {parr:'Tshisekedi Nadine',matParr:'TSG-3012',fil:'Mwamba Aline',site:'Goma',date:'2026-04-15',statut:'En attente'},
+  {parr:'Kabila Marie',matParr:'TSB-1932',fil:'Kasongo Patrick',site:'Bukavu',date:'2025-03-28',statut:'Versée'},
+  {parr:'Mutombo Jean',matParr:'TSG-2847',fil:'Lukunku Pierre',site:'Goma',date:'2025-02-20',statut:'En attente'},
+  {parr:'Bashizi Esther',matParr:'TSK-4789',fil:'Mwilu Joseph',site:'Kinshasa',date:'2025-03-15',statut:'En attente'},
+];
+function renderParrainage(){
+  document.getElementById('parrRewardsBody').innerHTML = rewards.map(r=>`
+    <tr>
+      <td><b>${r.parr}</b></td>
+      <td>${r.fil}</td>
+      <td>Goma</td>
+      <td class="text-right fw-600 text-success">${r.m}</td>
+      <td><button class="btn btn-success" style="padding:4px 10px;font-size:12px" onclick="openModal('modalReward')">Verser</button></td>
+    </tr>
+  `).join('');
+  const treeHtml = Object.entries(parrainData).map(([mat,fils])=>{
+    const parr = clients.find(c=>c.mat===mat);
+    if(!parr) return '';
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <div class="avatar" style="width:28px;height:28px;font-size:11px">${initials(parr.nom)}</div>
+        <b>${parr.nom}</b> ${levelBadge(parr.niv)}
+      </div>
+      <div style="padding-left:36px"><div class="ref-tree">${fils.map(f=>`<span class="ref-node">↳ ${f}</span>`).join('')}</div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('parrTree').innerHTML = treeHtml;
+  const q = (document.getElementById('parrSearch').value||'').toLowerCase();
+  const fs = document.getElementById('parrSite').value;
+  const filtered = parrHistory.filter(p=>
+    (!q || p.parr.toLowerCase().includes(q) || p.fil.toLowerCase().includes(q)) &&
+    (!fs || p.site===fs)
+  );
+  document.getElementById('parrHistoryBody').innerHTML = filtered.map(p=>`
+    <tr>
+      <td><b>${p.parr}</b></td>
+      <td><span style="font-family:monospace;color:var(--accent)">${p.matParr}</span></td>
+      <td>${p.fil}</td>
+      <td>${p.site}</td>
+      <td>${p.date}</td>
+      <td><span class="badge badge-${p.statut==='Versée'?'success':'warning'}">${p.statut}</span></td>
+    </tr>
+  `).join('');
+}
+['parrSearch','parrSite'].forEach(id=>document.getElementById(id).addEventListener('input',renderParrainage));
+['parrSite'].forEach(id=>document.getElementById(id).addEventListener('change',renderParrainage));
+
+/* ================= FIDELITE ================= */
+const fidTop = [
+  {nom:'Tshisekedi Nadine',mat:'TSG-3012',niv:'Platine',pts:3450},
+  {nom:'Bashizi Esther',mat:'TSK-4789',niv:'Or',pts:1280},
+  {nom:'Mutombo Jean',mat:'TSG-2847',niv:'Or',pts:1120},
+  {nom:'Kabila Marie',mat:'TSB-1932',niv:'Argent',pts:540},
+  {nom:'Kasongo Patrick',mat:'TSG-3145',niv:'Argent',pts:480},
+];
+function renderFidelite(){
+  document.getElementById('fidTopBody').innerHTML = fidTop.map((c,i)=>`
+    <tr>
+      <td><b>${c.nom}</b></td>
+      <td><span style="font-family:monospace;color:var(--accent)">${c.mat}</span></td>
+      <td>${levelBadge(c.niv)}</td>
+      <td class="text-right fw-600">${c.pts.toLocaleString('fr-FR')} pts</td>
+    </tr>
+  `).join('');
+}
+
+/* ================= RAPPORTS CHARTS ================= */
+function initRapCharts(){
+  const ctx1 = document.getElementById('rapChart');
+  const ctx2 = document.getElementById('catChart');
+  if(ctx1){
+    rapChartInst = new Chart(ctx1,{
+      type:'line',
+      data:{
+        labels:['1 Avr','5 Avr','10 Avr','15 Avr','20 Avr','25 Avr','29 Avr'],
+        datasets:[
+          {label:'Goma',data:[3.2,4.1,3.8,5.2,4.9,6.1,5.8],borderColor:'#1E3A5F',backgroundColor:'rgba(30,58,95,.08)',tension:.4,fill:true},
+          {label:'Bukavu',data:[2.1,2.8,2.5,3.4,3.1,3.9,3.6],borderColor:'#2E86C1',backgroundColor:'rgba(46,134,193,.08)',tension:.4,fill:true},
+          {label:'Kinshasa',data:[4.0,5.2,4.8,6.3,5.9,7.2,6.8],borderColor:'#27AE60',backgroundColor:'rgba(39,174,96,.08)',tension:.4,fill:true},
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},scales:{y:{ticks:{callback:v=>v+'M CDF'},grid:{color:'#EEF2F7'}},x:{grid:{display:false}}}}
+    });
+  }
+  if(ctx2){
+    catChartInst = new Chart(ctx2,{
+      type:'doughnut',
+      data:{
+        labels:['Smartphones','Accessoires','Audio','Énergie','Câbles'],
+        datasets:[{data:[42,22,18,11,7],backgroundColor:['#1E3A5F','#2E86C1','#27AE60','#E67E22','#9B59B6'],borderWidth:2,borderColor:'#fff'}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}}}}
+    });
+  }
+}
+
+/* ================= INIT ================= */
+function init(){
+  // date
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  // expand client menu by default
+  document.getElementById('sub-clients').classList.add('open');
+  document.querySelector('[data-toggle="clients"]').classList.add('open');
+
+  renderRecentClients();
+  renderStockAlerts();
+  renderRewards();
+  initChart();
+  renderClients();
+  renderStockKpis();
+  renderInventory();
+  renderMouvements();
+  renderTransferts();
+  renderCart();
+  applyRole();
+}
+init();
+</script>
+</body>
+</html>
