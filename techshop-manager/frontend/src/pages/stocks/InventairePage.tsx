@@ -1,138 +1,368 @@
 import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { Package, Plus, ArrowRightLeft, Search } from 'lucide-react';
-import { api } from '@/lib/api';
-import { statutStockColor } from '@/lib/utils';
+import {
+  Search, Plus, ArrowRightLeft, RefreshCw,
+  Package, AlertCircle, ChevronDown, ChevronUp,
+} from 'lucide-react';
+import { useAuthStore } from '@/store/auth.store';
+import { useDebounce } from '@/hooks/useDebounce';
+import { stocksApi, getStockStatut } from '@/lib/stocks.api';
+import { StockStatusBadge } from '@/components/stocks/StockStatusBadge';
+import { cn, formatCDF } from '@/lib/utils';
+import type { StatutStock } from '@/types';
 
-interface StockItem {
-  id: string;
-  produit: { id: string; nom: string; sku: string; categorie: string };
-  site: { id: string; nom: string };
-  quantite: number;
-  seuil: number;
-  statut: 'OK' | 'ALERTE' | 'RUPTURE';
-}
-
-interface PaginatedStocks {
-  data: StockItem[];
-  total: number;
-}
+const CATEGORIES = ['Smartphones', 'Accessoires', 'Audio', 'Informatique', 'Autre'];
+const LIMIT = 50;
 
 export default function InventairePage() {
-  const [search, setSearch] = useState('');
-  const [site, setSite] = useState('');
-  const [categorie, setCategorie] = useState('');
-  const [statut, setStatut] = useState('');
+  const navigate = useNavigate();
+  const { user, hasRole } = useAuthStore();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const { data, isLoading } = useQuery<PaginatedStocks>({
-    queryKey: ['stocks', { search, site, categorie, statut }],
-    queryFn: () => api.get('/stocks', { params: { search, site, categorie, statut } }).then(r => r.data),
+  const [search, setSearch] = useState(searchParams.get('search') ?? '');
+  const [categorie, setCategorie] = useState(searchParams.get('categorie') ?? '');
+  const [statut, setStatut] = useState<StatutStock | ''>(
+    (searchParams.get('statut') as StatutStock | '') ?? '',
+  );
+  const [page, setPage] = useState(1);
+  const [sortField, setSortField] = useState<'nom' | 'quantite'>('quantite');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const debouncedSearch = useDebounce(search, 300);
+
+  const canWrite = hasRole('GERANT');
+  const canSeeSites = hasRole('DIRECTEUR_REGIONAL');
+  const siteId = canSeeSites ? undefined : (user?.siteId ?? undefined);
+
+  const { data, isLoading, isFetching, isError, refetch } = useQuery({
+    queryKey: ['stocks', { siteId, search: debouncedSearch, categorie, statut, page, sortField, sortOrder }],
+    queryFn: () => stocksApi.getInventory({
+      siteId,
+      search: debouncedSearch || undefined,
+      categorie: categorie || undefined,
+      statut: statut || undefined,
+      page,
+      limit: LIMIT,
+      sortBy: sortField,
+      sortOrder,
+    }),
+    staleTime: 2 * 60_000,
+    placeholderData: (prev) => prev,
   });
 
+  const stocks = data?.stocks ?? [];
+  const meta = data?.meta;
+
+  function toggleSort(field: 'nom' | 'quantite') {
+    if (sortField === field) {
+      setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+    setPage(1);
+  }
+
+  function SortIcon({ field }: { field: string }) {
+    if (sortField !== field) return <ChevronDown size={11} className="opacity-30" />;
+    return sortOrder === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />;
+  }
+
+  function handleSearch(v: string) {
+    setSearch(v);
+    setPage(1);
+    const p = new URLSearchParams(searchParams);
+    v ? p.set('search', v) : p.delete('search');
+    setSearchParams(p, { replace: true });
+  }
+
+  function handleCategorie(v: string) {
+    setCategorie(v);
+    setPage(1);
+    const p = new URLSearchParams(searchParams);
+    v ? p.set('categorie', v) : p.delete('categorie');
+    setSearchParams(p, { replace: true });
+  }
+
+  function handleStatut(v: StatutStock | '') {
+    setStatut(v);
+    setPage(1);
+    const p = new URLSearchParams(searchParams);
+    v ? p.set('statut', v) : p.delete('statut');
+    setSearchParams(p, { replace: true });
+  }
+
+  function resetFilters() {
+    setSearch(''); setCategorie(''); setStatut(''); setPage(1);
+    setSearchParams({}, { replace: true });
+  }
+
+  const hasFilters = !!(search || categorie || statut);
+  const totalAlertes = meta?.totalAlertes ?? 0;
+  const totalRuptures = meta?.totalRuptures ?? 0;
+
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Package size={26} className="text-blue-600" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Inventaire des stocks</h1>
-            <p className="text-sm text-gray-500">{data?.total ?? '...'} articles</p>
-          </div>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="page-header">
+        <div>
+          <h1 className="text-page-title text-primary">Stocks</h1>
+          <p className="mt-1 text-[13px] text-text-muted">
+            {user?.siteName ?? 'Tous les sites'}
+          </p>
         </div>
-        <div className="flex gap-3">
-          <Link to="/stocks/entree" className="btn-secondary flex items-center gap-2"><Plus size={16} /> Entrée stock</Link>
-          <Link to="/stocks/transfert" className="btn-primary flex items-center gap-2"><ArrowRightLeft size={16} /> Transfert</Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="btn-secondary"
+          >
+            <RefreshCw size={14} className={cn(isFetching && 'animate-spin')} />
+            Rafraîchir
+          </button>
+          {canWrite && (
+            <>
+              <button
+                type="button"
+                onClick={() => navigate('/stocks/entry')}
+                className="btn-secondary"
+              >
+                <Plus size={14} />
+                Entrée
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/stocks/transfer')}
+                className="btn-primary"
+              >
+                <ArrowRightLeft size={14} />
+                Transfert
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="card">
-        <div className="flex flex-wrap gap-3 mb-5">
-          <div className="relative flex-1 min-w-48">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input type="text" placeholder="Rechercher produit, SKU..."
-              value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <select value={site} onChange={e => setSite(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Tous les sites</option>
-            <option value="GOMA_CENTRE">Goma Centre</option>
-            <option value="GOMA_NORD">Goma Nord</option>
-            <option value="GISENYI">Gisenyi</option>
+      {/* Alertes summary */}
+      {(totalRuptures > 0 || totalAlertes > 0) && (
+        <div className="flex flex-wrap gap-2">
+          {totalRuptures > 0 && (
+            <button
+              type="button"
+              onClick={() => handleStatut('RUPTURE')}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold',
+                'bg-red-100 text-danger hover:bg-red-200 transition-colors',
+              )}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-danger" />
+              {totalRuptures} rupture{totalRuptures > 1 ? 's' : ''}
+            </button>
+          )}
+          {totalAlertes > 0 && (
+            <button
+              type="button"
+              onClick={() => handleStatut('ALERTE')}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold',
+                'bg-amber-100 text-warning hover:bg-amber-200 transition-colors',
+              )}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+              {totalAlertes} en alerte
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Filtres */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-subtle" />
+          <input
+            type="text"
+            placeholder="Rechercher par nom ou SKU..."
+            value={search}
+            onChange={e => handleSearch(e.target.value)}
+            className="pl-8 text-sm"
+          />
+        </div>
+
+        <div className="relative">
+          <select
+            value={categorie}
+            onChange={e => handleCategorie(e.target.value)}
+            className={cn('text-sm pr-8', categorie && 'border-primary-accent bg-primary-light/20')}
+          >
+            <option value="">Catégorie</option>
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <select value={categorie} onChange={e => setCategorie(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Toutes catégories</option>
-            <option value="TELEPHONIE">Téléphonie</option>
-            <option value="ACCESSOIRES">Accessoires</option>
-            <option value="INFORMATIQUE">Informatique</option>
-          </select>
-          <select value={statut} onChange={e => setStatut(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Tous les statuts</option>
+          <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-subtle" />
+        </div>
+
+        <div className="relative">
+          <select
+            value={statut}
+            onChange={e => handleStatut(e.target.value as StatutStock | '')}
+            className={cn('text-sm pr-8', statut && 'border-primary-accent bg-primary-light/20')}
+          >
+            <option value="">Statut</option>
             <option value="OK">OK</option>
             <option value="ALERTE">Alerte</option>
             <option value="RUPTURE">Rupture</option>
           </select>
+          <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-subtle" />
         </div>
 
-        {isLoading ? (
-          <div className="space-y-2">{[...Array(10)].map((_, i) => <div key={i} className="skeleton h-12 rounded" />)}</div>
-        ) : (
-          <div className="table-container">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-500 border-b text-xs uppercase tracking-wider">
-                  <th className="pb-3 font-semibold">SKU</th>
-                  <th className="pb-3 font-semibold">Produit</th>
-                  <th className="pb-3 font-semibold">Catégorie</th>
-                  <th className="pb-3 font-semibold">Site</th>
-                  <th className="pb-3 font-semibold text-center">Quantité</th>
-                  <th className="pb-3 font-semibold text-center">Seuil</th>
-                  <th className="pb-3 font-semibold">Statut</th>
-                  <th className="pb-3 font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {(data?.data || []).map(s => (
-                  <tr key={s.id} className={`hover:bg-gray-50 transition-colors ${
-                    s.statut === 'RUPTURE' ? 'bg-red-50' : s.statut === 'ALERTE' ? 'bg-orange-50' : ''
-                  }`}>
-                    <td className="py-3 font-mono text-xs text-gray-500">{s.produit.sku}</td>
-                    <td className="py-3">
-                      <Link to={`/stocks/produit/${s.produit.id}`} className="font-semibold text-blue-600 hover:underline">{s.produit.nom}</Link>
-                    </td>
-                    <td className="py-3 text-gray-500">{s.produit.categorie}</td>
-                    <td className="py-3 text-gray-600">{s.site.nom}</td>
-                    <td className="py-3 text-center">
-                      <span className={`font-black text-lg ${s.statut === 'RUPTURE' ? 'text-red-600' : s.statut === 'ALERTE' ? 'text-orange-600' : 'text-green-700'}`}>
-                        {s.quantite}
-                      </span>
-                    </td>
-                    <td className="py-3 text-center text-gray-500">{s.seuil}</td>
-                    <td className="py-3">
-                      <span className={`badge ${statutStockColor(s.statut)}`}>{s.statut}</span>
-                    </td>
-                    <td className="py-3">
-                      <div className="flex gap-2">
-                        <Link to="/stocks/entree" className="text-xs btn-secondary py-1 px-2">Entrée</Link>
-                        <Link to="/stocks/transfert" className="text-xs btn-secondary py-1 px-2">Transfert</Link>
-                      </div>
-                    </td>
+        {hasFilters && (
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="text-[12px] text-text-muted hover:text-danger transition-colors"
+          >
+            Réinitialiser
+          </button>
+        )}
+      </div>
+
+      {/* Erreur */}
+      {isError && (
+        <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-danger">
+          <AlertCircle size={16} />
+          Impossible de charger les stocks.
+          <button type="button" onClick={() => refetch()} className="ml-auto underline hover:no-underline">
+            Réessayer
+          </button>
+        </div>
+      )}
+
+      {/* Tableau */}
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>
+                <button
+                  type="button"
+                  onClick={() => toggleSort('nom')}
+                  className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                >
+                  Produit <SortIcon field="nom" />
+                </button>
+              </th>
+              <th>Catégorie</th>
+              <th className="text-right">Prix vente</th>
+              <th className="text-center">
+                <button
+                  type="button"
+                  onClick={() => toggleSort('quantite')}
+                  className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                >
+                  Stock <SortIcon field="quantite" />
+                </button>
+              </th>
+              <th className="text-center">Seuil</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading
+              ? Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i}>
+                    {Array.from({ length: 7 }).map((__, j) => (
+                      <td key={j}><div className="skeleton h-3 rounded w-full" /></td>
+                    ))}
                   </tr>
-                ))}
-                {(!data?.data || data.data.length === 0) && (
-                  <tr><td colSpan={8} className="py-12 text-center">
-                    <Package size={40} className="mx-auto text-gray-300 mb-2" />
-                    <p className="text-gray-400">Aucun article en stock</p>
-                  </td></tr>
-                )}
-              </tbody>
-            </table>
+                ))
+              : stocks.map(s => {
+                  const statut = getStockStatut(s.quantite, s.seuilAlerte);
+                  return (
+                    <tr
+                      key={`${s.produitId}-${s.siteId}`}
+                      onClick={() => navigate(`/stocks/${s.produitId}`)}
+                      className={cn(
+                        'cursor-pointer',
+                        statut === 'RUPTURE' && 'bg-red-50/70',
+                        statut === 'ALERTE' && 'bg-amber-50/70',
+                      )}
+                    >
+                      <td>
+                        <span className="font-mono text-[11px] text-text-muted">{s.sku}</span>
+                      </td>
+                      <td className="font-medium text-[13px]">{s.produitNom}</td>
+                      <td className="text-[12px] text-text-muted">{s.categorie}</td>
+                      <td className="text-right font-mono text-[12px]">{formatCDF(s.prixVente)}</td>
+                      <td className="text-center">
+                        <span className={cn(
+                          'font-black text-[18px] font-mono',
+                          statut === 'RUPTURE' && 'text-danger',
+                          statut === 'ALERTE' && 'text-warning',
+                          statut === 'OK' && 'text-success',
+                        )}>
+                          {s.quantite}
+                        </span>
+                      </td>
+                      <td className="text-center font-mono text-[12px] text-text-muted">
+                        {s.seuilAlerte}
+                      </td>
+                      <td>
+                        <StockStatusBadge statut={statut} size="sm" />
+                      </td>
+                    </tr>
+                  );
+                })
+            }
+          </tbody>
+        </table>
+
+        {!isLoading && stocks.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-text-muted">
+            <Package size={32} className="opacity-30" />
+            <p className="text-[13px] font-medium">
+              {hasFilters ? 'Aucun résultat pour ces critères.' : 'Aucun produit en stock sur ce site.'}
+            </p>
+            {hasFilters && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="text-[12px] text-primary-accent hover:underline"
+              >
+                Réinitialiser les filtres
+              </button>
+            )}
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {meta && meta.totalPages > 1 && (
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <p className="text-[12px] text-text-muted">
+            Page {meta.page} / {meta.totalPages} — {meta.total} produits
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={meta.page <= 1 || isFetching}
+              className="btn-secondary text-[12px] py-1.5 px-3"
+            >
+              Précédent
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
+              disabled={meta.page >= meta.totalPages || isFetching}
+              className="btn-secondary text-[12px] py-1.5 px-3"
+            >
+              Suivant
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

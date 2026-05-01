@@ -1,223 +1,330 @@
-import { useState, useEffect, useRef } from 'react';
-import { useForm } from 'react-hook-form';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRightLeft, Search, ArrowRight } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, ArrowRightLeft, AlertCircle, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { api, getErrorMessage } from '@/lib/api';
-
-interface TransfertFormData {
-  siteSourceId: string;
-  siteDestinationId: string;
-  produitId: string;
-  quantite: number;
-  motif: string;
-}
-
-interface Produit { id: string; nom: string; sku: string }
-interface StockPreview { siteNom: string; quantiteActuelle: number; quantiteApres: number }
+import { useAuthStore } from '@/store/auth.store';
+import { stocksApi, getStockStatut } from '@/lib/stocks.api';
+import { StockStatusBadge } from '@/components/stocks/StockStatusBadge';
+import { ProductSearchCombobox } from '@/components/stocks/ProductSearchCombobox';
+import { cn } from '@/lib/utils';
+import type { ProduitSearchResult } from '@/lib/stocks.api';
 
 const SITES = [
-  { id: 'GOMA_CENTRE', nom: 'Goma Centre' },
-  { id: 'GOMA_NORD', nom: 'Goma Nord' },
-  { id: 'GISENYI', nom: 'Gisenyi' },
+  { id: 'goma', nom: 'Goma' },
+  { id: 'bukavu', nom: 'Bukavu' },
+  { id: 'kinshasa', nom: 'Kinshasa' },
 ];
 
 export default function TransfertPage() {
   const navigate = useNavigate();
+  const { user, hasRole } = useAuthStore();
   const qc = useQueryClient();
-  const [prodSearch, setProdSearch] = useState('');
-  const [prodResults, setProdResults] = useState<Produit[]>([]);
-  const [selectedProd, setSelectedProd] = useState<Produit | null>(null);
-  const [preview, setPreview] = useState<{ source: StockPreview; dest: StockPreview } | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TransfertFormData>();
-  const watchSource = watch('siteSourceId');
-  const watchDest = watch('siteDestinationId');
-  const watchQty = watch('quantite');
-  const watchProd = watch('produitId');
+  const canAccess = hasRole('GERANT');
+  const canChooseSite = hasRole('DIRECTEUR_REGIONAL');
 
-  useEffect(() => {
-    if (!prodSearch.trim() || selectedProd) { setProdResults([]); return; }
-    clearTimeout(timer.current);
-    timer.current = setTimeout(async () => {
-      try {
-        const res = await api.get(`/produits/search?q=${encodeURIComponent(prodSearch)}`);
-        setProdResults(res.data);
-      } catch { setProdResults([]); }
-    }, 300);
-  }, [prodSearch, selectedProd]);
+  const defaultSiteId = user?.siteId ?? '';
+  const [siteSourceId, setSiteSourceId] = useState(canChooseSite ? '' : defaultSiteId);
+  const [siteDestId, setSiteDestId] = useState('');
+  const [produitId, setProduitId] = useState<string | null>(null);
+  const [selectedProduit, setSelectedProduit] = useState<ProduitSearchResult | null>(null);
+  const [quantite, setQuantite] = useState<number | ''>('');
+  const [motif, setMotif] = useState('');
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // Charger stock source et destination pour la prévisualisation
   const { data: stockSource } = useQuery({
-    queryKey: ['stock-preview', watchSource, watchProd],
-    queryFn: () => api.get(`/stocks/${watchSource}/${watchProd}`).then(r => r.data),
-    enabled: !!watchSource && !!watchProd,
+    queryKey: ['stock-site', siteSourceId, produitId],
+    queryFn: () => stocksApi.getInventory({ siteId: siteSourceId, search: selectedProduit?.sku }),
+    enabled: !!siteSourceId && !!produitId,
+    staleTime: 30_000,
+    select: d => d.stocks.find(s => s.produitId === produitId),
   });
 
   const { data: stockDest } = useQuery({
-    queryKey: ['stock-preview-dest', watchDest, watchProd],
-    queryFn: () => api.get(`/stocks/${watchDest}/${watchProd}`).then(r => r.data),
-    enabled: !!watchDest && !!watchProd,
+    queryKey: ['stock-site', siteDestId, produitId],
+    queryFn: () => stocksApi.getInventory({ siteId: siteDestId, search: selectedProduit?.sku }),
+    enabled: !!siteDestId && !!produitId,
+    staleTime: 30_000,
+    select: d => d.stocks.find(s => s.produitId === produitId),
   });
-
-  useEffect(() => {
-    if (stockSource && stockDest && watchQty) {
-      const qty = Number(watchQty);
-      setPreview({
-        source: { siteNom: SITES.find(s => s.id === watchSource)?.nom || watchSource, quantiteActuelle: stockSource.quantite, quantiteApres: stockSource.quantite - qty },
-        dest: { siteNom: SITES.find(s => s.id === watchDest)?.nom || watchDest, quantiteActuelle: stockDest.quantite, quantiteApres: stockDest.quantite + qty },
-      });
-    } else {
-      setPreview(null);
-    }
-  }, [stockSource, stockDest, watchQty, watchSource, watchDest]);
 
   const mutation = useMutation({
-    mutationFn: (data: TransfertFormData) => api.post('/stocks/transfert', data),
+    mutationFn: () => stocksApi.createTransfer({
+      siteSourceId,
+      siteDestinationId: siteDestId,
+      produitId: produitId!,
+      quantite: quantite as number,
+      motif: motif || undefined,
+    }),
     onSuccess: () => {
-      toast.success('Transfert initié avec succès.');
+      toast.success(`Transfert initié. Une notification a été envoyée au Gérant de ${SITES.find(s => s.id === siteDestId)?.nom}.`);
       qc.invalidateQueries({ queryKey: ['stocks'] });
-      navigate('/stocks');
+      qc.invalidateQueries({ queryKey: ['stock-alerts'] });
+      setConfirmOpen(false);
+      setTimeout(() => navigate('/stocks'), 1500);
     },
-    onError: (error) => toast.error(getErrorMessage(error) || 'Erreur lors du transfert.'),
+    onError: (error: any) => {
+      setConfirmOpen(false);
+      const code = error?.response?.data?.code;
+      if (code === 'ERR_STOCK_INSUFFISANT') {
+        toast.error('Stock insuffisant pour ce transfert.');
+      } else {
+        toast.error('Erreur lors du transfert.');
+      }
+    },
   });
 
-  const onSubmit = (data: TransfertFormData) => {
-    if (data.siteSourceId === data.siteDestinationId) {
-      toast.error('Les sites source et destination doivent être différents.');
-      return;
-    }
-    mutation.mutate(data);
-  };
+  if (!canAccess) {
+    return (
+      <div className="max-w-lg mx-auto py-20 text-center space-y-3">
+        <AlertCircle size={36} className="text-warning mx-auto opacity-60" />
+        <h2 className="text-[16px] font-bold text-primary">Accès refusé</h2>
+        <p className="text-[13px] text-text-muted">Cette page est réservée aux Gérants et Super-Admins.</p>
+        <button type="button" onClick={() => navigate('/stocks')} className="btn-secondary text-[13px]">
+          <ArrowLeft size={14} /> Retour
+        </button>
+      </div>
+    );
+  }
+
+  const samesSite = siteSourceId && siteDestId && siteSourceId === siteDestId;
+  const stockSourceActuel = stockSource?.quantite ?? (selectedProduit?.stockDisponible ?? 0);
+  const stockDestActuel = stockDest?.quantite ?? 0;
+  const seuilSource = stockSource?.seuilAlerte ?? 5;
+  const seuilDest = stockDest?.seuilAlerte ?? 5;
+
+  const qty = typeof quantite === 'number' ? quantite : 0;
+  const stockSourceApres = stockSourceActuel - qty;
+  const stockDestApres = stockDestActuel + qty;
+
+  const isInsuffisant = qty > 0 && stockSourceApres < 0;
+  const isAlertSource = qty > 0 && stockSourceApres >= 0 && stockSourceApres <= seuilSource && stockSourceActuel > seuilSource;
+  const canSubmit = !!produitId && !!siteSourceId && !!siteDestId && !samesSite && qty > 0 && !isInsuffisant;
+
+  const sourceNom = SITES.find(s => s.id === siteSourceId)?.nom ?? siteSourceId;
+  const destNom = SITES.find(s => s.id === siteDestId)?.nom ?? siteDestId;
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <div className="max-w-xl mx-auto space-y-5">
+      {/* Header */}
       <div className="flex items-center gap-3">
-        <ArrowRightLeft size={26} className="text-blue-600" />
+        <button
+          type="button"
+          onClick={() => navigate('/stocks')}
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-text-muted hover:border-border-strong hover:text-text transition-colors"
+        >
+          <ArrowLeft size={17} />
+        </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Transfert de stock</h1>
-          <p className="text-sm text-gray-500">Déplacer des articles entre sites</p>
+          <h1 className="text-[18px] font-extrabold text-primary">Transfert inter-sites</h1>
+          <p className="text-[12px] text-text-muted">Déplacer du stock entre deux sites</p>
         </div>
       </div>
 
-      <div className="card">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="form-group">
-              <label className="form-label">Site source *</label>
-              <select
-                className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.siteSourceId ? 'border-red-400' : 'border-gray-300'}`}
-                {...register('siteSourceId', { required: 'Site source requis' })}
-              >
-                <option value="">Sélectionner</option>
-                {SITES.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
-              </select>
-              {errors.siteSourceId && <p className="form-error">{errors.siteSourceId.message}</p>}
-            </div>
-            <div className="form-group">
-              <label className="form-label">Site destination *</label>
-              <select
-                className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.siteDestinationId ? 'border-red-400' : 'border-gray-300'}`}
-                {...register('siteDestinationId', { required: 'Site destination requis' })}
-              >
-                <option value="">Sélectionner</option>
-                {SITES.filter(s => s.id !== watchSource).map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
-              </select>
-              {errors.siteDestinationId && <p className="form-error">{errors.siteDestinationId.message}</p>}
-            </div>
-          </div>
-
+      <div className="card space-y-5">
+        {/* Sites */}
+        <div className="grid grid-cols-2 gap-4">
           <div className="form-group">
-            <label className="form-label">Produit *</label>
-            <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text" value={prodSearch}
-                onChange={e => { setProdSearch(e.target.value); setSelectedProd(null); setValue('produitId', ''); }}
-                placeholder="Rechercher un produit..."
-                className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <input type="hidden" {...register('produitId', { required: 'Produit requis' })} />
-              {prodResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 bg-white border rounded-xl shadow-lg z-10 mt-1 overflow-hidden">
-                  {prodResults.map(p => (
-                    <button key={p.id} type="button" onClick={() => { setSelectedProd(p); setValue('produitId', p.id); setProdSearch(p.nom); setProdResults([]); }}
-                      className="w-full p-3 text-left hover:bg-blue-50 border-b last:border-0">
-                      <p className="font-medium text-gray-800">{p.nom}</p>
-                      <p className="text-xs text-gray-400 font-mono">{p.sku}</p>
-                    </button>
+            <label className="form-label">Site source *</label>
+            {canChooseSite ? (
+              <div className="relative">
+                <select
+                  value={siteSourceId}
+                  onChange={e => { setSiteSourceId(e.target.value); setProduitId(null); setSelectedProduit(null); }}
+                  className="text-sm"
+                >
+                  <option value="">Sélectionner</option>
+                  {SITES.filter(s => s.id !== siteDestId).map(s => (
+                    <option key={s.id} value={s.id}>{s.nom}</option>
                   ))}
-                </div>
-              )}
+                </select>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-slate-50">
+                <span className="text-[13px] font-medium">{user?.siteName ?? sourceNom}</span>
+                <span className="ml-auto text-[11px] text-text-subtle">(votre site)</span>
+              </div>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Site destination *</label>
+            <div className="relative">
+              <select
+                value={siteDestId}
+                onChange={e => setSiteDestId(e.target.value)}
+                className={cn('text-sm', samesSite && 'border-danger')}
+              >
+                <option value="">Sélectionner</option>
+                {SITES.filter(s => s.id !== siteSourceId).map(s => (
+                  <option key={s.id} value={s.id}>{s.nom}</option>
+                ))}
+              </select>
             </div>
-            {errors.produitId && <p className="form-error">{errors.produitId.message}</p>}
+            {samesSite && (
+              <p className="form-error">Le site de destination doit être différent du site source.</p>
+            )}
           </div>
+        </div>
 
-          <div className="form-group">
-            <label className="form-label">Quantité à transférer *</label>
-            <input
-              type="number" min={1}
-              placeholder="ex: 10"
-              className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.quantite ? 'border-red-400' : 'border-gray-300'}`}
-              {...register('quantite', { required: 'Quantité requise', valueAsNumber: true, min: { value: 1, message: 'Minimum 1' } })}
-            />
-            {errors.quantite && <p className="form-error">{errors.quantite.message}</p>}
-          </div>
+        {/* Produit */}
+        <div className="form-group">
+          <label className="form-label">Produit *</label>
+          <ProductSearchCombobox
+            siteId={siteSourceId || defaultSiteId}
+            value={produitId}
+            onChange={(id, prod) => { setProduitId(id); setSelectedProduit(prod); }}
+            disabled={!siteSourceId}
+          />
+        </div>
 
-          <div className="form-group">
-            <label className="form-label">Motif du transfert *</label>
-            <select
-              className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.motif ? 'border-red-400' : 'border-gray-300'}`}
-              {...register('motif', { required: 'Motif requis' })}
-            >
-              <option value="">Sélectionner un motif</option>
-              <option value="REEQUILIBRAGE">Rééquilibrage des stocks</option>
-              <option value="RUPTURE_SITE">Rupture dans le site destination</option>
-              <option value="PROMOTION">Promotion commerciale</option>
-              <option value="RETOUR_FOURNISSEUR">Retour fournisseur</option>
-              <option value="AUTRE">Autre</option>
-            </select>
-            {errors.motif && <p className="form-error">{errors.motif.message}</p>}
-          </div>
+        {/* Quantité */}
+        <div className="form-group">
+          <label className="form-label">Quantité à transférer *</label>
+          <input
+            type="number"
+            min={1}
+            max={stockSourceActuel}
+            placeholder="ex: 5"
+            value={quantite}
+            onChange={e => setQuantite(e.target.value ? parseInt(e.target.value) : '')}
+            className="text-center text-[18px] font-bold"
+          />
+        </div>
 
-          {preview && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <p className="text-sm font-semibold text-blue-700 mb-3">Aperçu après transfert</p>
-              <div className="flex items-center gap-4">
-                <div className="flex-1 bg-white rounded-lg p-3 border">
-                  <p className="text-xs text-gray-400 font-semibold uppercase">Source: {preview.source.siteNom}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-lg font-bold text-gray-700">{preview.source.quantiteActuelle}</span>
-                    <ArrowRight size={16} className="text-gray-400" />
-                    <span className={`text-lg font-bold ${preview.source.quantiteApres < 0 ? 'text-red-600' : 'text-orange-600'}`}>
-                      {preview.source.quantiteApres}
-                    </span>
-                  </div>
-                  {preview.source.quantiteApres < 0 && <p className="text-xs text-red-500 mt-1">Stock insuffisant !</p>}
+        {/* Motif */}
+        <div className="form-group">
+          <label className="form-label">Motif <span className="text-text-muted font-normal normal-case">(optionnel)</span></label>
+          <input
+            type="text"
+            placeholder="ex: Réapprovisionnement Bukavu"
+            value={motif}
+            onChange={e => setMotif(e.target.value)}
+          />
+        </div>
+
+        {/* Prévisualisation */}
+        {selectedProduit && siteSourceId && siteDestId && !samesSite && qty > 0 && (
+          <div className="rounded-xl border border-border bg-slate-50 p-4 space-y-3">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+              Récapitulatif — {selectedProduit.nom}
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-white border border-border p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">{sourceNom} (source)</p>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-black text-[18px]">{stockSourceActuel}</span>
+                  <span className="text-text-subtle">→</span>
+                  <span className={cn(
+                    'font-mono font-black text-[18px]',
+                    stockSourceApres < 0 ? 'text-danger' : 'text-text',
+                  )}>
+                    {stockSourceApres}
+                  </span>
                 </div>
-                <ArrowRight size={24} className="text-blue-500 flex-shrink-0" />
-                <div className="flex-1 bg-white rounded-lg p-3 border">
-                  <p className="text-xs text-gray-400 font-semibold uppercase">Dest: {preview.dest.siteNom}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-lg font-bold text-gray-700">{preview.dest.quantiteActuelle}</span>
-                    <ArrowRight size={16} className="text-gray-400" />
-                    <span className="text-lg font-bold text-green-600">{preview.dest.quantiteApres}</span>
-                  </div>
+                <div className="flex items-center gap-1 mt-1">
+                  <StockStatusBadge statut={getStockStatut(stockSourceActuel, seuilSource)} size="sm" />
+                  <span className="text-text-subtle text-[10px]">→</span>
+                  <StockStatusBadge statut={getStockStatut(Math.max(0, stockSourceApres), seuilSource)} size="sm" />
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-white border border-border p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">{destNom} (destination)</p>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-black text-[18px]">{stockDestActuel}</span>
+                  <span className="text-text-subtle">→</span>
+                  <span className="font-mono font-black text-[18px] text-success">{stockDestApres}</span>
+                </div>
+                <div className="flex items-center gap-1 mt-1">
+                  <StockStatusBadge statut={getStockStatut(stockDestActuel, seuilDest)} size="sm" />
+                  <span className="text-text-subtle text-[10px]">→</span>
+                  <StockStatusBadge statut={getStockStatut(stockDestApres, seuilDest)} size="sm" />
                 </div>
               </div>
             </div>
-          )}
 
-          <div className="flex justify-between gap-3 pt-4 border-t">
-            <button type="button" onClick={() => navigate('/stocks')} className="btn-secondary">Annuler</button>
-            <button type="submit" disabled={mutation.isLoading} className="btn-primary flex items-center gap-2">
-              {mutation.isLoading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-              <ArrowRightLeft size={16} /> Initier le transfert
-            </button>
+            {/* Alertes */}
+            {isInsuffisant && (
+              <div className="flex items-start gap-2.5 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5">
+                <AlertCircle size={14} className="text-danger flex-shrink-0 mt-0.5" />
+                <p className="text-[12px] text-danger font-medium">
+                  Stock insuffisant — {sourceNom} n'a que {stockSourceActuel} unités disponibles.
+                </p>
+              </div>
+            )}
+            {isAlertSource && !isInsuffisant && (
+              <div className="flex items-start gap-2.5 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5">
+                <AlertCircle size={14} className="text-warning flex-shrink-0 mt-0.5" />
+                <p className="text-[12px] text-warning font-medium">
+                  Ce transfert passera {sourceNom} en alerte (seuil : {seuilSource} unités).
+                </p>
+              </div>
+            )}
+            <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5">
+              <Info size={14} className="text-primary-accent flex-shrink-0 mt-0.5" />
+              <p className="text-[12px] text-primary-accent">
+                Le stock {destNom} sera mis à jour après confirmation de réception par le Gérant de {destNom}.
+              </p>
+            </div>
           </div>
-        </form>
+        )}
+
+        <div className="flex items-center justify-between pt-2 border-t border-border">
+          <button type="button" onClick={() => navigate('/stocks')} className="btn-secondary text-[13px]">
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+            disabled={!canSubmit}
+            className="btn-primary text-[13px]"
+          >
+            <ArrowRightLeft size={14} />
+            Initier le transfert
+          </button>
+        </div>
       </div>
+
+      {/* Confirmation */}
+      {confirmOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => !mutation.isPending && setConfirmOpen(false)}>
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-[15px] text-primary mb-4">Confirmer le transfert ?</h3>
+            <div className="space-y-2 text-[13px] bg-slate-50 rounded-xl p-4 mb-4">
+              <div className="flex justify-between">
+                <span className="text-text-muted">Produit</span>
+                <span className="font-medium">{selectedProduit?.nom}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-text-muted">De → Vers</span>
+                <span className="font-medium">{sourceNom} → {destNom}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-text-muted">Quantité</span>
+                <span className="font-bold">{quantite} unités</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 mb-5">
+              <AlertCircle size={13} className="text-warning flex-shrink-0 mt-0.5" />
+              <p className="text-[11px] text-warning">
+                Le stock {sourceNom} sera immédiatement décrémenté de {quantite} unités. Le stock {destNom} sera mis à jour après confirmation de réception.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setConfirmOpen(false)} disabled={mutation.isPending} className="btn-secondary flex-1">
+                Annuler
+              </button>
+              <button type="button" onClick={() => mutation.mutate()} disabled={mutation.isPending} className="btn-primary flex-1">
+                {mutation.isPending ? 'Transfert…' : '⇄ Confirmer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
