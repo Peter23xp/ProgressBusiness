@@ -79,11 +79,11 @@ export default function OnboardingFichePage() {
     }
   }, [config, setValue]);
 
-  const recitEtape     = client?.onboardingEtapes.find(e => e.etape === 'RECIT');
-  const formationEtape = client?.onboardingEtapes.find(e => e.etape === 'FORMATION');
-  const recitDone      = recitEtape?.statut === 'COMPLETE';
-  const formationDone  = formationEtape?.statut === 'COMPLETE';
-  const canSubmit      = recitDone && formationDone;
+  const recitEtape  = client?.onboardingEtapes.find(e => e.etape === 'RECIT');
+  const ficheEtape  = client?.onboardingEtapes.find(e => e.etape === 'FICHE');
+  const recitDone   = recitEtape?.statut === 'COMPLETE';
+  const ficheDone   = ficheEtape?.statut === 'COMPLETE';
+  const canSubmit   = recitDone && !ficheDone;
 
   const mutation = useMutation({
     mutationFn: (data: FormValues) =>
@@ -97,8 +97,7 @@ export default function OnboardingFichePage() {
       navigate(`/clients/${id}/activate`);
     },
     onError: (error: any) => {
-      const msg = getErrorMessage(error) || "Erreur lors de l'enregistrement.";
-      toast.error(msg);
+      toast.error(getErrorMessage(error) || "Erreur lors de l'enregistrement.");
     },
   });
 
@@ -137,12 +136,12 @@ export default function OnboardingFichePage() {
         </button>
         <div>
           <h1 className="text-[18px] font-extrabold text-primary leading-tight">Fiche client</h1>
-          <p className="text-[12px] text-text-muted">Étape 3 sur 4 — Achat de la fiche</p>
+          <p className="text-[12px] text-text-muted">Étape 2 sur 3 — Achat de la fiche</p>
         </div>
       </div>
 
       {/* Stepper */}
-      <OnboardingStepper currentStep={3} clientId={id} />
+      <OnboardingStepper currentStep={2} clientId={id} />
 
       {/* Carte client */}
       {client && (
@@ -164,44 +163,51 @@ export default function OnboardingFichePage() {
               </div>
             </div>
           </div>
-          {/* Confirmation étapes précédentes */}
-          <div className="flex flex-wrap items-center gap-4 mt-3">
-            <div className="flex items-center gap-1.5 text-[11px]">
-              {recitDone
-                ? <CheckCircle2 size={12} className="text-success" aria-hidden />
-                : <Clock size={12} className="text-warning" aria-hidden />}
-              <span className={recitDone ? 'text-success font-medium' : 'text-warning'}>
-                Récit {recitDone && recitEtape?.completeeAt ? `acheté le ${formatDate(recitEtape.completeeAt)}` : 'non complété'}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-[11px]">
-              {formationDone
-                ? <CheckCircle2 size={12} className="text-success" aria-hidden />
-                : <Clock size={12} className="text-warning" aria-hidden />}
-              <span className={formationDone ? 'text-success font-medium' : 'text-warning'}>
-                Formation {formationDone ? 'validée' : 'non complétée'}
-              </span>
-            </div>
+          {/* Statut récit */}
+          <div className="flex items-center gap-1.5 mt-3 text-[11px]">
+            {recitDone
+              ? <CheckCircle2 size={12} className="text-success" aria-hidden />
+              : <Clock size={12} className="text-warning" aria-hidden />}
+            <span className={recitDone ? 'text-success font-medium' : 'text-warning'}>
+              Récit {recitDone && recitEtape?.completeeAt ? `acheté le ${formatDate(recitEtape.completeeAt)}` : 'non complété'}
+            </span>
           </div>
         </div>
       )}
 
-      {/* Bannière protection */}
-      {!canSubmit && client && (
+      {/* Bannière — récit manquant */}
+      {!recitDone && client && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3" role="alert">
           <AlertTriangle size={15} className="text-warning flex-shrink-0 mt-0.5" aria-hidden />
           <div>
             <p className="text-[13px] text-warning font-medium">
-              {!recitDone
-                ? "L'étape Récit doit être complétée avant la fiche."
-                : "L'étape Formation doit être complétée avant la fiche."}
+              L'étape Récit doit être complétée avant la fiche.
             </p>
             <button
               type="button"
-              onClick={() => navigate(!recitDone ? '/clients/new/recit' : `/clients/${id}/formation`)}
+              onClick={() => navigate('/clients/new/recit')}
               className="text-[12px] font-semibold text-warning hover:underline mt-1"
             >
-              ← Reprendre depuis {!recitDone ? 'le Récit' : 'la Formation'}
+              ← Reprendre depuis le Récit
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bannière — fiche déjà faite */}
+      {ficheDone && client && (
+        <div className="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3" role="alert">
+          <CheckCircle2 size={15} className="text-success flex-shrink-0 mt-0.5" aria-hidden />
+          <div>
+            <p className="text-[13px] text-success font-medium">
+              La fiche a déjà été enregistrée pour ce client.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate(`/clients/${id}/activate`)}
+              className="text-[12px] font-semibold text-success hover:underline mt-1"
+            >
+              Passer à l'activation →
             </button>
           </div>
         </div>
@@ -255,7 +261,7 @@ export default function OnboardingFichePage() {
             </div>
           </div>
 
-          {/* Numéro transaction — conditionnel */}
+          {/* Numéro transaction */}
           {needsRef && (
             <div className="form-group">
               <label htmlFor="numeroTransaction" className="form-label">Numéro de transaction *</label>

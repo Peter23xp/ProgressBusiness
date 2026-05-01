@@ -60,6 +60,44 @@ export class ClientsController {
     return this.clientsService.search(q ?? '', statut);
   }
 
+  @Get('next-code')
+  @Roles(Role.AGENT)
+  getNextCode() {
+    return this.clientsService.getNextCode();
+  }
+
+  @Get('onboarding-queue')
+  @Roles(Role.AGENT)
+  getOnboardingQueue(
+    @Query('siteId') siteId?: string,
+    @CurrentUser() user?: any,
+  ) {
+    const effectiveSiteId = user?.role === Role.AGENT ? user.siteId : siteId;
+    return this.clientsService.getOnboardingQueue(effectiveSiteId);
+  }
+
+  @Get('paiements-onboarding')
+  @Roles(Role.AGENT)
+  getPaiementsOnboarding(
+    @Query('siteId') siteId?: string,
+    @Query('dateDebut') dateDebut?: string,
+    @Query('dateFin') dateFin?: string,
+    @Query('agentId') agentId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @CurrentUser() user?: any,
+  ) {
+    const effectiveSiteId = user?.role === Role.AGENT ? user.siteId : siteId;
+    return this.clientsService.getPaiementsOnboarding({
+      siteId: effectiveSiteId,
+      dateDebut,
+      dateFin,
+      agentId,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+    });
+  }
+
   @Get('check-phone/:phone')
   checkPhone(@Param('phone') phone: string) {
     return this.clientsService.checkPhone(phone);

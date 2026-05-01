@@ -137,7 +137,7 @@ export const parrainageApi = {
     api.get<{ topParrains: TopParrain[] }>('/parrainage/top', { params: filters }).then(r => r.data),
 
   getTree: (clientId: string) =>
-    api.get<ParrainageTreeResponse>(`/parrainage/tree/${clientId}`).then(r => r.data),
+    api.get<ParrainageTreeResponse>(`/parrainage/tree/${clientId}`, { params: { niveaux: 2 } }).then(r => r.data),
 
   getConfig: () =>
     api.get<{ config: ParrainageConfig; history: ConfigHistoryEntry[] }>('/parrainage/config').then(r => r.data),

@@ -381,13 +381,13 @@ export class ClientsService {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Client introuvable' });
     }
 
-    const formationEtape = client.onboardingEtapes.find(
-      (e) => e.etape === EtapeOnboarding.FORMATION,
+    const recitEtape = client.onboardingEtapes.find(
+      (e) => e.etape === EtapeOnboarding.RECIT,
     );
-    if (!formationEtape || formationEtape.statut !== StatutEtape.COMPLETE) {
+    if (!recitEtape || recitEtape.statut !== StatutEtape.COMPLETE) {
       throw new BadRequestException({
         code: 'ERR_BAD_REQUEST',
-        message: "L'étape FORMATION doit être complétée avant la fiche",
+        message: "L'étape RECIT doit être complétée avant la fiche",
       });
     }
 
@@ -508,6 +508,184 @@ export class ClientsService {
     });
 
     return this.findOne(activatedClient.id);
+  }
+
+  async getOnboardingQueue(siteId?: string) {
+    const where: any = { statut: 'EN_COURS' };
+    if (siteId) where.siteInscriptionId = siteId;
+
+    const clients = await this.prisma.client.findMany({
+      where,
+      orderBy: { createdAt: 'asc' },
+      include: {
+        siteInscription: { select: { id: true, nom: true } },
+        createdBy: { select: { id: true, nom: true } },
+        onboardingEtapes: {
+          select: { etape: true, statut: true, completeeAt: true, agentId: true },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    const queue = clients.map((c) => {
+      const etapesMap = Object.fromEntries(c.onboardingEtapes.map((e) => [e.etape, e]));
+      const recitDone = etapesMap['RECIT']?.statut === 'COMPLETE';
+      const ficheDone = etapesMap['FICHE']?.statut === 'COMPLETE';
+
+      let etapeActuelle: string;
+      let prochainRoute: string;
+      if (!recitDone) {
+        etapeActuelle = 'RECIT';
+        prochainRoute = `/clients/new/recit`;
+      } else if (!ficheDone) {
+        etapeActuelle = 'FICHE';
+        prochainRoute = `/clients/${c.id}/fiche`;
+      } else {
+        etapeActuelle = 'ACTIVATION';
+        prochainRoute = `/clients/${c.id}/activate`;
+      }
+
+      return {
+        id: c.id,
+        prenom: c.prenom,
+        nom: c.nom,
+        telephone: c.telephone,
+        site: c.siteInscription,
+        createdBy: c.createdBy,
+        createdAt: c.createdAt,
+        etapeActuelle,
+        prochainRoute,
+        etapes: {
+          recit:      etapesMap['RECIT']     ?? null,
+          fiche:      etapesMap['FICHE']     ?? null,
+          activation: etapesMap['ACTIVATION'] ?? null,
+        },
+      };
+    });
+
+    const stats = {
+      ficheEnAttente:      queue.filter((c) => c.etapeActuelle === 'FICHE').length,
+      activationEnAttente: queue.filter((c) => c.etapeActuelle === 'ACTIVATION').length,
+      total:               queue.length,
+    };
+
+    return { queue, stats };
+  }
+
+  async getPaiementsOnboarding(query: {
+    siteId?: string;
+    dateDebut?: string;
+    dateFin?: string;
+    agentId?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const { siteId, dateDebut, dateFin, agentId, page = 1, limit = 50 } = query;
+
+    const where: any = {
+      etape: { in: ['RECIT', 'FICHE'] },
+      statut: 'COMPLETE',
+      montant: { not: null },
+    };
+
+    if (siteId) where.siteId = siteId;
+    if (agentId) where.agentId = agentId;
+    if (dateDebut || dateFin) {
+      where.completeeAt = {};
+      if (dateDebut) where.completeeAt.gte = new Date(dateDebut);
+      if (dateFin)   where.completeeAt.lte = new Date(dateFin);
+    }
+
+    const [data, total, agg] = await Promise.all([
+      this.prisma.onboardingEtape.findMany({
+        where,
+        ...paginate(page, limit),
+        orderBy: { completeeAt: 'desc' },
+        include: {
+          client: { select: { id: true, prenom: true, nom: true, telephone: true } },
+          agent:  { select: { id: true, nom: true } },
+          site:   { select: { id: true, nom: true } },
+        },
+      }),
+      this.prisma.onboardingEtape.count({ where }),
+      this.prisma.onboardingEtape.aggregate({
+        where,
+        _sum: { montant: true },
+        _count: { id: true },
+      }),
+    ]);
+
+    // KPIs du jour
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [aggJour, aggRecit, aggFiche] = await Promise.all([
+      this.prisma.onboardingEtape.aggregate({
+        where: { ...where, completeeAt: { gte: today } },
+        _sum: { montant: true },
+        _count: { id: true },
+      }),
+      this.prisma.onboardingEtape.aggregate({
+        where: { ...where, etape: 'RECIT', completeeAt: { gte: today } },
+        _sum: { montant: true },
+        _count: { id: true },
+      }),
+      this.prisma.onboardingEtape.aggregate({
+        where: { ...where, etape: 'FICHE', completeeAt: { gte: today } },
+        _sum: { montant: true },
+        _count: { id: true },
+      }),
+    ]);
+
+    const paiements = data.map((e) => ({
+      id: e.id,
+      etape: e.etape,
+      montant: Number(e.montant ?? 0),
+      modePaiement: e.modePaiement,
+      referenceTransaction: e.referenceTransaction,
+      completeeAt: e.completeeAt,
+      client: e.client,
+      agent: e.agent,
+      site: e.site,
+    }));
+
+    return {
+      paiements,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      kpis: {
+        totalEncaisse:    Number(agg._sum.montant ?? 0),
+        totalEncaisseJour: Number(aggJour._sum.montant ?? 0),
+        nbRecitJour:       aggRecit._count.id,
+        nbFicheJour:       aggFiche._count.id,
+        montantRecitJour:  Number(aggRecit._sum.montant ?? 0),
+        montantFicheJour:  Number(aggFiche._sum.montant ?? 0),
+      },
+    };
+  }
+
+  async getNextCode(): Promise<{ nextCode: string }> {
+    const lastClient = await this.prisma.client.findFirst({
+      where: { codeParrain: { startsWith: 'TSG-' } },
+      orderBy: { dateActivation: 'desc' },
+      select: { codeParrain: true },
+    });
+
+    let nextNumber = 1;
+    if (lastClient?.codeParrain) {
+      const match = lastClient.codeParrain.match(/^TSG-(\d+)$/);
+      if (match) nextNumber = parseInt(match[1], 10) + 1;
+    }
+
+    // Find first available code (read-only preview)
+    let code: string;
+    let attempts = 0;
+    do {
+      code = `TSG-${String(nextNumber + attempts).padStart(4, '0')}`;
+      const exists = await this.prisma.client.findUnique({ where: { codeParrain: code } });
+      if (!exists) break;
+      attempts++;
+    } while (attempts < 100);
+
+    return { nextCode: code };
   }
 
   private async generateUniqueCodeParrain(): Promise<string> {

@@ -1,10 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle2, ChevronRight, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
@@ -44,9 +44,17 @@ const MODES = [
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+interface RecitSuccess {
+  id: string;
+  prenom: string;
+  nom: string;
+  telephone: string;
+}
+
 export default function OnboardingRecitPage() {
   const navigate   = useNavigate();
   const { user, hasRole } = useAuthStore();
+  const [sessionClients, setSessionClients] = useState<RecitSuccess[]>([]);
 
   const isAgent = user?.role === 'AGENT';
 
@@ -70,6 +78,8 @@ export default function OnboardingRecitPage() {
     watch,
     setError,
     setValue,
+    reset,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -93,16 +103,33 @@ export default function OnboardingRecitPage() {
 
   const mutation = useMutation({
     mutationFn: (data: FormValues) =>
-      api.post<{ client: { id: string }; etapeId: string }>('/clients/onboarding/recit', {
-        ...data,
-        email: data.email || undefined,
-        codeParrain: data.codeParrain || undefined,
-        matriculeExterne: data.matriculeExterne || undefined,
-        numeroRecu: data.numeroRecu || undefined,
-      }),
+      api.post<{ client: { id: string; prenom: string; nom: string; telephone: string }; etapeId: string }>(
+        '/clients/onboarding/recit',
+        {
+          ...data,
+          email: data.email || undefined,
+          codeParrain: data.codeParrain || undefined,
+          matriculeExterne: data.matriculeExterne || undefined,
+          numeroRecu: data.numeroRecu || undefined,
+        },
+      ),
     onSuccess: (res) => {
-      toast.success('Client créé avec succès ! Passage à la formation...');
-      setTimeout(() => navigate(`/clients/${res.data.client.id}/formation`), 1000);
+      const c = res.data.client;
+      setSessionClients(prev => [{ id: c.id, prenom: c.prenom, nom: c.nom, telephone: c.telephone }, ...prev]);
+      toast.success(`${c.prenom} ${c.nom} enregistré. Prochain client ?`);
+      // Réinitialiser seulement les champs personnels, garder site + mode paiement + montant
+      reset({
+        prenom: '',
+        nom: '',
+        telephone: '',
+        email: '',
+        codeParrain: '',
+        matriculeExterne: '',
+        siteId:       getValues('siteId'),
+        modePaiement: getValues('modePaiement'),
+        montantRecit: getValues('montantRecit'),
+        numeroRecu:   '',
+      });
     },
     onError: (error: any) => {
       const code = error?.response?.data?.code;
@@ -142,8 +169,12 @@ export default function OnboardingRecitPage() {
           <ArrowLeft size={17} aria-hidden />
         </button>
         <div>
-          <h1 className="text-[18px] font-extrabold text-primary leading-tight">Nouveau client</h1>
-          <p className="text-[12px] text-text-muted">Étape 1 sur 4 — Récit de vente</p>
+          <h1 className="text-[18px] font-extrabold text-primary leading-tight">Récit de vente</h1>
+          <p className="text-[12px] text-text-muted">
+            {sessionClients.length > 0
+              ? `${sessionClients.length} client${sessionClients.length > 1 ? 's' : ''} enregistré${sessionClients.length > 1 ? 's' : ''} — continuer avec le suivant`
+              : 'Étape 1 sur 3 — Enregistrez un client à la fois'}
+          </p>
         </div>
       </div>
 
@@ -353,7 +384,7 @@ export default function OnboardingRecitPage() {
               className="btn-secondary text-[13px]"
               tabIndex={disabled ? -1 : undefined}
             >
-              Annuler
+              Terminer
             </Link>
             <button
               type="submit"
@@ -361,11 +392,48 @@ export default function OnboardingRecitPage() {
               className="btn-primary text-[13px] flex items-center gap-2"
             >
               {disabled && <Loader2 size={14} className="animate-spin" aria-hidden />}
-              {disabled ? 'Enregistrement…' : 'Enregistrer & Passer à la Formation →'}
+              {disabled ? 'Enregistrement…' : '+ Enregistrer ce client'}
             </button>
           </div>
         </form>
       </div>
+
+      {/* Liste des clients enregistrés dans cette session */}
+      {sessionClients.length > 0 && (
+        <div className="rounded-xl border border-green-200 bg-green-50 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[13px] font-bold text-success flex items-center gap-2">
+              <Users size={14} aria-hidden />
+              {sessionClients.length} client{sessionClients.length > 1 ? 's' : ''} enregistré{sessionClients.length > 1 ? 's' : ''} ce soir
+            </h3>
+            <Link
+              to="/clients/queue"
+              className="text-[12px] font-semibold text-success hover:underline flex items-center gap-1"
+            >
+              Voir la file d'attente <ChevronRight size={12} />
+            </Link>
+          </div>
+          <ul className="space-y-1.5">
+            {sessionClients.map(c => (
+              <li key={c.id} className="flex items-center justify-between rounded-lg bg-white border border-green-100 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={13} className="text-success flex-shrink-0" aria-hidden />
+                  <div>
+                    <p className="text-[13px] font-semibold text-text">{c.prenom} {c.nom}</p>
+                    <p className="text-[11px] text-text-muted">{c.telephone}</p>
+                  </div>
+                </div>
+                <Link
+                  to={`/clients/${c.id}/fiche`}
+                  className="text-[11px] text-primary-accent hover:underline font-medium flex items-center gap-0.5"
+                >
+                  Fiche <ChevronRight size={11} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

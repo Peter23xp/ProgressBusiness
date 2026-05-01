@@ -391,12 +391,16 @@ model LigneVente {
 // ============================================
 
 model Retour {
-  id                String      @id @default(uuid())
-  motif             String
-  modeRemboursement ModePaiement
-  montantRembourse  Decimal     @db.Decimal(12, 2)
-  stockRemis        Boolean     @default(false)
-  createdAt         DateTime    @default(now())
+  id                   String   @id @default(uuid())
+  numeroAvoir          String?  @unique
+  motif                String
+  motifDescription     String?
+  modeRemboursement    String
+  referenceTransaction String?
+  montantRembourse     Decimal  @db.Decimal(12, 2)
+  stockRemis           Boolean  @default(false)
+  agentId              String?
+  createdAt            DateTime @default(now())
 
   venteId String
   vente   Vente  @relation(fields: [venteId], references: [id])

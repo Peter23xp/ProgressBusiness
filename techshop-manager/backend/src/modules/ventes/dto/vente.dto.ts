@@ -83,6 +83,15 @@ export class RetourDto {
   @IsNotEmpty()
   motif: string;
 
-  @IsEnum(ModePaiement)
-  modeRemboursement: ModePaiement;
+  @IsOptional()
+  @IsString()
+  motifDescription?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  modeRemboursement: string;
+
+  @IsOptional()
+  @IsString()
+  referenceTransaction?: string;
 }

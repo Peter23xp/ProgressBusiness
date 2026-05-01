@@ -3,19 +3,18 @@ import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface OnboardingStepperProps {
-  currentStep: 1 | 2 | 3 | 4;
+  currentStep: 1 | 2 | 3;
   clientId?: string;
 }
 
 const STEPS: {
   label: string;
-  step: 1 | 2 | 3 | 4;
+  step: 1 | 2 | 3;
   route: (id?: string) => string;
 }[] = [
   { label: 'Récit',      step: 1, route: ()   => '/clients/new/recit' },
-  { label: 'Formation',  step: 2, route: (id) => `/clients/${id}/formation` },
-  { label: 'Fiche',      step: 3, route: (id) => `/clients/${id}/fiche` },
-  { label: 'Activation', step: 4, route: (id) => `/clients/${id}/activate` },
+  { label: 'Fiche',      step: 2, route: (id) => `/clients/${id}/fiche` },
+  { label: 'Activation', step: 3, route: (id) => `/clients/${id}/activate` },
 ];
 
 export function OnboardingStepper({ currentStep, clientId }: OnboardingStepperProps) {

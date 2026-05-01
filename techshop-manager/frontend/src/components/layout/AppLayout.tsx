@@ -19,6 +19,9 @@ import {
   Menu,
   X,
   Zap,
+  Clock,
+  CreditCard,
+  RotateCcw,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { useUIStore } from '@/store/ui.store';
@@ -41,14 +44,17 @@ interface NavGroupDef {
 }
 
 const NAV_ITEMS: NavItemDef[] = [
-  { label: 'Dashboard',          icon: <LayoutDashboard size={16} />, to: '/dashboard',          minRole: 'AGENT' },
-  { label: 'Clients',            icon: <Users size={16} />,           to: '/clients',            minRole: 'AGENT' },
-  { label: 'Caisse POS',         icon: <ShoppingCart size={16} />,    to: '/sales/pos',          minRole: 'AGENT' },
-  { label: 'Ventes',             icon: <Receipt size={16} />,         to: '/sales',              minRole: 'GERANT' },
-  { label: 'Stocks',             icon: <Package size={16} />,         to: '/stocks',             minRole: 'AGENT' },
-  { label: 'Parrainage',         icon: <GitBranch size={16} />,       to: '/parrainage',         minRole: 'GERANT' },
-  { label: 'Fidélité',           icon: <Star size={16} />,            to: '/fidelite',           minRole: 'GERANT' },
-  { label: 'Rapports',           icon: <BarChart2 size={16} />,       to: '/reports',            minRole: 'GERANT' },
+  { label: 'Dashboard',            icon: <LayoutDashboard size={16} />, to: '/dashboard',          minRole: 'AGENT' },
+  { label: 'Clients',              icon: <Users size={16} />,           to: '/clients',            minRole: 'AGENT' },
+  { label: 'File onboarding',      icon: <Clock size={16} />,           to: '/clients/queue',      minRole: 'AGENT' },
+  { label: 'Paiements onboarding', icon: <CreditCard size={16} />,      to: '/clients/paiements',  minRole: 'GERANT' },
+  { label: 'Caisse POS',           icon: <ShoppingCart size={16} />,    to: '/sales/pos',              minRole: 'AGENT' },
+  { label: 'Ventes',               icon: <Receipt size={16} />,         to: '/sales',                  minRole: 'GERANT' },
+  { label: 'Journal retours',      icon: <RotateCcw size={16} />,       to: '/sales/journal-retours',  minRole: 'GERANT' },
+  { label: 'Stocks',               icon: <Package size={16} />,         to: '/stocks',             minRole: 'AGENT' },
+  { label: 'Parrainage',           icon: <GitBranch size={16} />,       to: '/parrainage',         minRole: 'GERANT' },
+  { label: 'Fidélité',             icon: <Star size={16} />,            to: '/fidelite',           minRole: 'GERANT' },
+  { label: 'Rapports',             icon: <BarChart2 size={16} />,       to: '/reports',            minRole: 'GERANT' },
 ];
 
 const SETTINGS_GROUP: NavGroupDef = {
@@ -82,10 +88,11 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
   const visibleSettingsChildren = SETTINGS_GROUP.children.filter((c) => hasRole(c.minRole));
   const showSettings = hasRole(SETTINGS_GROUP.minRole) && visibleSettingsChildren.length > 0;
 
-  // Split nav into groups
-  const mainItems    = visibleItems.slice(0, 2);
-  const opItems      = visibleItems.slice(2, 6);
-  const businessItems = visibleItems.slice(6);
+  // Split nav into groups by to-path prefix
+  const mainItems     = visibleItems.filter(i => i.to === '/dashboard');
+  const clientItems   = visibleItems.filter(i => i.to.startsWith('/clients'));
+  const opItems       = visibleItems.filter(i => ['/sales/pos', '/sales', '/sales/journal-retours', '/stocks'].includes(i.to));
+  const businessItems = visibleItems.filter(i => ['/parrainage', '/fidelite', '/reports'].includes(i.to));
 
   return (
     <aside className="sidebar flex flex-col shadow-sidebar">
@@ -124,7 +131,27 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  end={item.to === '/dashboard'}
+                  end
+                  onClick={onClose}
+                  className={({ isActive }) => cn('sidebar-link', isActive && 'active')}
+                >
+                  <span className="sidebar-icon">{item.icon}</span>
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </>
+        )}
+
+        {clientItems.length > 0 && (
+          <>
+            <NavSection label="Clients" />
+            <div className="space-y-0.5 px-2">
+              {clientItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === '/clients'}
                   onClick={onClose}
                   className={({ isActive }) => cn('sidebar-link', isActive && 'active')}
                 >

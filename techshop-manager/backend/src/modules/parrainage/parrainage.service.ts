@@ -197,7 +197,7 @@ export class ParrainageService {
     return { topParrains };
   }
 
-  async getTree(clientId: string, niveaux: 1 | 2) {
+  async getTree(clientId: string, niveaux: 1 | 2 = 2) {
     const client = await this.prisma.client.findUnique({
       where: { id: clientId },
       select: {
@@ -205,7 +205,8 @@ export class ParrainageService {
         prenom: true,
         nom: true,
         codeParrain: true,
-        niveauFidelite: true,
+        statut: true,
+        parrainId: true,
       },
     });
 
@@ -213,64 +214,141 @@ export class ParrainageService {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Client introuvable' });
     }
 
-    const parrainagesNiveau1 = await this.prisma.parrainage.findMany({
-      where: { parrainId: clientId, niveau: 1 },
+    // Récupérer le parrain parent si existant
+    let parrainParent: any = null;
+    if (client.parrainId) {
+      const parentParrainage = await this.prisma.parrainage.findUnique({
+        where: { filleulId: clientId },
+        include: {
+          parrain: { select: { id: true, prenom: true, nom: true, codeParrain: true } },
+        },
+      });
+      if (parentParrainage) {
+        parrainParent = {
+          id: parentParrainage.parrain.id,
+          prenom: parentParrainage.parrain.prenom,
+          nom: parentParrainage.parrain.nom,
+          codeParrain: parentParrainage.parrain.codeParrain ?? '',
+          recompenseRecue: Number(parentParrainage.recompenseValeur ?? 0),
+        };
+      }
+    }
+
+    // Filleuls niveau 1
+    const parrainagesN1 = await this.prisma.parrainage.findMany({
+      where: { parrainId: clientId },
       include: {
         filleul: {
           select: {
             id: true,
             prenom: true,
             nom: true,
+            codeParrain: true,
             statut: true,
+            telephone: true,
             dateActivation: true,
-            pointsFidelite: true,
-            niveauFidelite: true,
           },
         },
       },
     });
 
-    const tree: any = {
-      client,
-      niveau1: parrainagesNiveau1.map((p) => ({
-        parrainageId: p.id,
-        statut: p.statut,
-        recompenseType: p.recompenseType,
-        recompenseValeur: p.recompenseValeur,
-        dateCreation: p.dateCreation,
-        filleul: p.filleul,
-        niveau2: [],
-      })),
-    };
+    const filleulsFlat: any[] = [];
 
-    if (niveaux === 2) {
-      for (const n1 of tree.niveau1) {
-        const parrainagesNiveau2 = await this.prisma.parrainage.findMany({
-          where: { parrainId: n1.filleul.id, niveau: 2 },
+    // Construire les nœuds niveau 1 avec leurs filleuls niveau 2
+    const enfantsN1: any[] = [];
+    for (const p1 of parrainagesN1) {
+      const f1 = p1.filleul;
+      filleulsFlat.push({
+        id: f1.id,
+        prenom: f1.prenom,
+        nom: f1.nom,
+        telephone: f1.telephone ?? '',
+        niveau: 1,
+        statut: f1.statut,
+        dateActivation: f1.dateActivation?.toISOString() ?? null,
+        pointsGeneresPourParrain: Number(p1.recompenseValeur ?? 0),
+      });
+
+      let enfantsN2: any[] = [];
+      if (niveaux === 2) {
+        const parrainagesN2 = await this.prisma.parrainage.findMany({
+          where: { parrainId: f1.id },
           include: {
             filleul: {
               select: {
                 id: true,
                 prenom: true,
                 nom: true,
+                codeParrain: true,
                 statut: true,
+                telephone: true,
                 dateActivation: true,
               },
             },
           },
         });
-        n1.niveau2 = parrainagesNiveau2.map((p) => ({
-          parrainageId: p.id,
-          statut: p.statut,
-          recompenseType: p.recompenseType,
-          recompenseValeur: p.recompenseValeur,
-          dateCreation: p.dateCreation,
-          filleul: p.filleul,
-        }));
+        for (const p2 of parrainagesN2) {
+          const f2 = p2.filleul;
+          filleulsFlat.push({
+            id: f2.id,
+            prenom: f2.prenom,
+            nom: f2.nom,
+            telephone: f2.telephone ?? '',
+            niveau: 2,
+            statut: f2.statut,
+            dateActivation: f2.dateActivation?.toISOString() ?? null,
+            pointsGeneresPourParrain: Number(p2.recompenseValeur ?? 0),
+          });
+          enfantsN2.push({
+            clientId: f2.id,
+            prenom: f2.prenom,
+            nom: f2.nom,
+            codeParrain: f2.codeParrain ?? '',
+            statut: f2.statut,
+            niveau: 2,
+            filleuls: [],
+          });
+        }
       }
+
+      enfantsN1.push({
+        clientId: f1.id,
+        prenom: f1.prenom,
+        nom: f1.nom,
+        codeParrain: f1.codeParrain ?? '',
+        statut: f1.statut,
+        niveau: 1,
+        filleuls: enfantsN2,
+      });
     }
 
-    return tree;
+    // Récupérer la config récompense
+    const config = await this.prisma.regleParrainage.findFirst();
+    const typeRecompense = (config?.typeRecompense as string) ?? 'POINTS';
+
+    const nbFilleulsTotal = filleulsFlat.length;
+    const nbFilleulsActifs = filleulsFlat.filter((f) => f.statut === 'ACTIF').length;
+    const gainsTotaux = filleulsFlat.reduce((s, f) => s + (f.pointsGeneresPourParrain ?? 0), 0);
+
+    return {
+      arbre: {
+        clientId: client.id,
+        prenom: client.prenom,
+        nom: client.nom,
+        codeParrain: client.codeParrain ?? '',
+        statut: client.statut,
+        niveau: 0,
+        filleuls: enfantsN1,
+      },
+      stats: {
+        nbFilleulsTotal,
+        nbFilleulsActifs,
+        gainsTotaux,
+        typeRecompense,
+      },
+      parrainParent,
+      filleuls: filleulsFlat,
+    };
   }
 
   async getConfig() {

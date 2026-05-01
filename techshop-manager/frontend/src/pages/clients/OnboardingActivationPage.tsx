@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -42,10 +42,9 @@ interface ActivationResult {
   telephone: string;
 }
 
-const ETAPE_REQUIRED: Array<{ key: 'RECIT' | 'FORMATION' | 'FICHE'; label: string }> = [
-  { key: 'RECIT',     label: 'Récit de vente' },
-  { key: 'FORMATION', label: 'Formation' },
-  { key: 'FICHE',     label: 'Fiche client' },
+const ETAPE_REQUIRED: Array<{ key: 'RECIT' | 'FICHE'; label: string }> = [
+  { key: 'RECIT', label: 'Récit de vente' },
+  { key: 'FICHE', label: 'Fiche client' },
 ];
 
 const MODE_LABEL: Record<string, string> = {
@@ -217,6 +216,8 @@ export default function OnboardingActivationPage() {
   });
   const nextCode = client?.codeParrain ?? nextCodeData?.nextCode ?? null;
 
+  const handleSuccessNavigate = useCallback(() => navigate(`/clients/${id}`), [navigate, id]);
+
   const mutation = useMutation({
     mutationFn: () => api.post(`/clients/${id}/onboarding/activate`),
     onSuccess: (res) => {
@@ -272,16 +273,15 @@ export default function OnboardingActivationPage() {
         <SuccessScreen
           result={successResult}
           clientId={id!}
-          onNavigate={() => navigate(`/clients/${id}`)}
+          onNavigate={handleSuccessNavigate}
         />
       </div>
     );
   }
 
   // ── Calculs ──────────────────────────────────────────────────────
-  const recit     = client.onboardingEtapes.find(e => e.etape === 'RECIT');
-  const formation = client.onboardingEtapes.find(e => e.etape === 'FORMATION');
-  const fiche     = client.onboardingEtapes.find(e => e.etape === 'FICHE');
+  const recit = client.onboardingEtapes.find(e => e.etape === 'RECIT');
+  const fiche = client.onboardingEtapes.find(e => e.etape === 'FICHE');
 
   const stepsOk = ETAPE_REQUIRED.map(({ key, label }) => ({
     key, label,
@@ -293,9 +293,8 @@ export default function OnboardingActivationPage() {
   const totalPaye = (recit?.montant ?? 0) + (fiche?.montant ?? 0);
 
   const firstMissingRoute: Record<string, string> = {
-    RECIT:     '/clients/new/recit',
-    FORMATION: `/clients/${id}/formation`,
-    FICHE:     `/clients/${id}/fiche`,
+    RECIT: '/clients/new/recit',
+    FICHE: `/clients/${id}/fiche`,
   };
 
   return (
@@ -314,12 +313,12 @@ export default function OnboardingActivationPage() {
           </button>
           <div>
             <h1 className="text-[18px] font-extrabold text-primary leading-tight">Activation du compte</h1>
-            <p className="text-[12px] text-text-muted">Étape 4 sur 4 — Dernière étape</p>
+            <p className="text-[12px] text-text-muted">Étape 3 sur 3 — Dernière étape</p>
           </div>
         </div>
 
         {/* Stepper */}
-        <OnboardingStepper currentStep={4} clientId={id} />
+        <OnboardingStepper currentStep={3} clientId={id} />
 
         {/* Guard — étapes incomplètes */}
         {!allComplete && (

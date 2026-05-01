@@ -45,6 +45,39 @@ export class VentesController {
     });
   }
 
+  // ── Routes statiques AVANT :id ────────────────────────────────────────────
+
+  @Get('journal-retours')
+  @Roles(Role.GERANT)
+  getJournalRetours(
+    @Query('siteId') siteId?: string,
+    @Query('dateDebut') dateDebut?: string,
+    @Query('dateFin') dateFin?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.ventesService.getJournalRetours({
+      siteId,
+      dateDebut,
+      dateFin,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+    });
+  }
+
+  @Get('retours/:retourId/avoir')
+  getAvoir(@Param('retourId') retourId: string) {
+    return this.ventesService.getAvoir(retourId);
+  }
+
+  @Get('retours/:retourId/ecritures-ohada')
+  @Roles(Role.GERANT)
+  getEcrituresOhada(@Param('retourId') retourId: string) {
+    return this.ventesService.getEcrituresOhada(retourId);
+  }
+
+  // ── Routes avec :id ───────────────────────────────────────────────────────
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.ventesService.findOne(id);
