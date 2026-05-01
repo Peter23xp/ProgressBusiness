@@ -8,17 +8,12 @@ import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAuthStore } from '@/store/auth.store';
+import { useSites } from '@/hooks/useSites';
 import { stocksApi } from '@/lib/stocks.api';
 import { StockStatusBadge } from '@/components/stocks/StockStatusBadge';
 import { EditSeuilModal } from './ProduitStockPage';
 import { cn } from '@/lib/utils';
 import type { StockAlertItem } from '@/lib/stocks.api';
-
-const SITES = [
-  { id: 'goma', nom: 'Goma' },
-  { id: 'bukavu', nom: 'Bukavu' },
-  { id: 'kinshasa', nom: 'Kinshasa' },
-];
 
 export default function AlertesStockPage() {
   const navigate = useNavigate();
@@ -27,6 +22,7 @@ export default function AlertesStockPage() {
 
   const canAccess = hasRole('GERANT');
   const canSeeSites = hasRole('DIRECTEUR_REGIONAL');
+  const { sites } = useSites();
 
   const [siteFilter, setSiteFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALERTE' | 'RUPTURE' | ''>('');
@@ -138,7 +134,7 @@ export default function AlertesStockPage() {
               className={cn('text-sm pr-8', siteFilter && 'border-primary-accent bg-primary-light/20')}
             >
               <option value="">Tous les sites</option>
-              {SITES.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
+              {sites.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
             </select>
           </div>
         )}

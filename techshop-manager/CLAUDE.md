@@ -100,8 +100,9 @@ Voir `backend/.env.example` et `frontend/.env.example`.
 
 ## Credentials de démarrage (seed)
 
-- Téléphone : `+243900000001`
+- Téléphone : `+243902238740`
 - Mot de passe : `Admin@2025`
+- Nom : Peter AKILIMALI
 - Rôle : SUPER_ADMIN
 
 ## Dépendances clés

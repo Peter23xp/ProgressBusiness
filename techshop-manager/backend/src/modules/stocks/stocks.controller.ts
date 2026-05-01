@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Patch,
   Param,
   Body,
@@ -15,6 +16,8 @@ import {
   ReceptionTransfertDto,
   UpdateSeuilDto,
   InventaireDto,
+  CreateProduitDto,
+  CreateCategorieDto,
 } from './dto/stock.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -33,23 +36,51 @@ export class StocksController {
     @Query('siteId') siteId?: string,
     @Query('produitId') produitId?: string,
     @Query('categorie') categorie?: string,
+    @Query('search') search?: string,
+    @Query('statut') statut?: string,
     @Query('alerteOnly') alerteOnly?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
   ) {
     return this.stocksService.getInventaire({
       siteId,
       produitId,
       categorie,
+      search,
+      statut,
       alerteOnly: alerteOnly === 'true',
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 50,
+      sortBy,
+      sortOrder,
     });
   }
 
   @Get('produits/:id/stocks')
   getProduitStocks(@Param('id') produitId: string) {
     return this.stocksService.getProduitStocks(produitId);
+  }
+
+  @Get('stocks/:produitId/movements')
+  getMovements(
+    @Param('produitId') produitId: string,
+    @Query('type') type?: string,
+    @Query('siteId') siteId?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.stocksService.getMovements(produitId, {
+      type,
+      siteId,
+      dateFrom,
+      dateTo,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 10,
+    });
   }
 
   @Post('stocks/entree')
@@ -98,5 +129,46 @@ export class StocksController {
   @Roles(Role.GERANT)
   inventairePhysique(@Body() dto: InventaireDto, @CurrentUser() user: any) {
     return this.stocksService.inventairePhysique(dto, user.id);
+  }
+
+  // ── Produits ──────────────────────────────────────────────────────────────────
+
+  @Get('produits/search')
+  searchProduits(
+    @Query('q') q: string,
+    @Query('siteId') siteId: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.stocksService.searchProduits(q, siteId, limit ? parseInt(limit, 10) : 8);
+  }
+
+  @Get('produits/categories')
+  getCategories() {
+    return this.stocksService.getCategories().then((categories) => ({ categories }));
+  }
+
+  @Post('produits/categories')
+  @Roles(Role.GERANT)
+  addCategorie(@Body() dto: CreateCategorieDto) {
+    return this.stocksService.addCategorie(dto.nom);
+  }
+
+  @Delete('produits/categories/:nom')
+  @Roles(Role.GERANT)
+  deleteCategorie(@Param('nom') nom: string) {
+    return this.stocksService.deleteCategorie(nom);
+  }
+
+  @Get('produits/sku-preview')
+  @Roles(Role.GERANT)
+  skuPreview(@Query('categorie') categorie: string) {
+    if (!categorie) return { sku: '—' };
+    return this.stocksService.generateSkuPreview(categorie);
+  }
+
+  @Post('produits')
+  @Roles(Role.GERANT)
+  createProduit(@Body() dto: CreateProduitDto, @CurrentUser() user: any) {
+    return this.stocksService.createProduit(dto, user);
   }
 }

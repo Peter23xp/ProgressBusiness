@@ -6,17 +6,12 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/auth.store';
+import { useSites } from '@/hooks/useSites';
 import { stocksApi } from '@/lib/stocks.api';
 import { StockStatusBadge } from '@/components/stocks/StockStatusBadge';
 import { getStockStatut } from '@/lib/stocks.api';
 import { cn } from '@/lib/utils';
 import type { InventoryAdjustment, PhysicalInventoryProduct } from '@/lib/stocks.api';
-
-const SITES = [
-  { id: 'goma', nom: 'Goma' },
-  { id: 'bukavu', nom: 'Bukavu' },
-  { id: 'kinshasa', nom: 'Kinshasa' },
-];
 
 type FilterMode = 'all' | 'ecart' | 'noncompte' | 'ok';
 
@@ -26,6 +21,7 @@ export default function InventairePhysiquePage() {
   const qc = useQueryClient();
 
   const canAccess = hasRole('GERANT');
+  const { sites } = useSites();
   const defaultSiteId = user?.siteId ?? '';
 
   const [siteId, setSiteId] = useState(defaultSiteId);
@@ -168,7 +164,7 @@ export default function InventairePhysiquePage() {
 
   // Phase 2 : résultat
   if (result) {
-    const siteNom = SITES.find(s => s.id === siteId)?.nom ?? siteId;
+    const siteNom = sites.find(s => s.id === siteId)?.nom ?? siteId;
     return (
       <div className="space-y-5">
         <div className="flex items-center gap-3">
@@ -272,7 +268,7 @@ export default function InventairePhysiquePage() {
           <div className="form-group">
             <label className="form-label">Site</label>
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-slate-50">
-              <span className="text-[13px] font-medium">{SITES.find(s => s.id === siteId)?.nom ?? siteId}</span>
+              <span className="text-[13px] font-medium">{sites.find(s => s.id === siteId)?.nom ?? siteId}</span>
               <span className="ml-auto text-[11px] text-text-subtle">(votre site)</span>
             </div>
           </div>
@@ -426,7 +422,7 @@ export default function InventairePhysiquePage() {
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="font-bold text-[15px] text-primary mb-2">Valider l'inventaire physique ?</h3>
             <p className="text-[12px] text-danger font-semibold mb-4">
-              Cette action est IRRÉVERSIBLE. Les stocks du site {SITES.find(s => s.id === siteId)?.nom} seront ajustés selon les quantités comptées.
+              Cette action est IRRÉVERSIBLE. Les stocks du site {sites.find(s => s.id === siteId)?.nom} seront ajustés selon les quantités comptées.
             </p>
             <div className="space-y-1.5 text-[13px] bg-slate-50 rounded-xl p-4 mb-5">
               <div className="flex justify-between">

@@ -10,8 +10,60 @@ import {
   IsDateString,
   IsNotEmpty,
   IsNumber,
+  IsEnum,
+  IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+
+export class SeuilSiteDto {
+  @IsString()
+  @IsNotEmpty()
+  siteId: string;
+
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  seuilAlerte: number;
+}
+
+export class CreateProduitDto {
+  @IsString()
+  @IsNotEmpty()
+  nom: string;
+
+  @IsString()
+  @IsNotEmpty()
+  categorie: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  prixVente: number;
+
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  prixAchat: number;
+
+  @IsEnum(['CDF', 'USD'])
+  monnaie: 'CDF' | 'USD';
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => SeuilSiteDto)
+  seuilsParSite: SeuilSiteDto[];
+}
+
+export class CreateCategorieDto {
+  @IsString()
+  @IsNotEmpty()
+  nom: string;
+}
 
 export class EntreeStockDto {
   @IsString()

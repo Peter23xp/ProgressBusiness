@@ -259,4 +259,49 @@ export const stocksApi = {
 
   searchProducts: (q: string, siteId: string) =>
     api.get<{ produits: ProduitSearchResult[] }>('/produits/search', { params: { q, siteId, limit: 8 } }).then(r => r.data),
+
+  getCategories: () =>
+    api.get<{ categories: string[] }>('/produits/categories').then(r => r.data),
+
+  addCategorie: (nom: string) =>
+    api.post<{ categories: string[] }>('/produits/categories', { nom }).then(r => r.data),
+
+  deleteCategorie: (nom: string) =>
+    api.delete<{ categories: string[] }>(`/produits/categories/${encodeURIComponent(nom)}`).then(r => r.data),
+
+  skuPreview: (categorie: string) =>
+    api.get<{ sku: string }>('/produits/sku-preview', { params: { categorie } }).then(r => r.data),
+
+  createProduit: (body: CreateProduitDto) =>
+    api.post<CreateProduitResponse>('/produits', body).then(r => r.data),
 };
+
+// ── Create Produit types ──────────────────────────────────────────────────────
+
+export interface SeuilSiteInput {
+  siteId: string;
+  seuilAlerte: number;
+}
+
+export interface CreateProduitDto {
+  nom: string;
+  categorie: string;
+  description?: string;
+  prixVente: number;
+  prixAchat: number;
+  monnaie: 'CDF' | 'USD';
+  seuilsParSite: SeuilSiteInput[];
+}
+
+export interface CreateProduitResponse {
+  produit: {
+    id: string;
+    sku: string;
+    nom: string;
+    categorie: string;
+    prixVente: number;
+    prixAchat: number;
+    monnaie: 'CDF' | 'USD';
+    sitesEnregistres: number;
+  };
+}

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Search, Plus, ArrowRightLeft, RefreshCw,
-  Package, AlertCircle, ChevronDown, ChevronUp,
+  Package, AlertCircle, ChevronDown, ChevronUp, PackagePlus,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -12,7 +12,6 @@ import { StockStatusBadge } from '@/components/stocks/StockStatusBadge';
 import { cn, formatCDF } from '@/lib/utils';
 import type { StatutStock } from '@/types';
 
-const CATEGORIES = ['Smartphones', 'Accessoires', 'Audio', 'Informatique', 'Autre'];
 const LIMIT = 50;
 
 export default function InventairePage() {
@@ -34,6 +33,13 @@ export default function InventairePage() {
   const canWrite = hasRole('GERANT');
   const canSeeSites = hasRole('DIRECTEUR_REGIONAL');
   const siteId = canSeeSites ? undefined : (user?.siteId ?? undefined);
+
+  const { data: catData } = useQuery({
+    queryKey: ['produits', 'categories'],
+    queryFn: () => stocksApi.getCategories(),
+    staleTime: 5 * 60_000,
+  });
+  const categories = catData?.categories ?? [];
 
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['stocks', { siteId, search: debouncedSearch, categorie, statut, page, sortField, sortOrder }],
@@ -126,6 +132,14 @@ export default function InventairePage() {
             <>
               <button
                 type="button"
+                onClick={() => navigate('/stocks/new')}
+                className="btn-secondary"
+              >
+                <PackagePlus size={14} />
+                Nouveau produit
+              </button>
+              <button
+                type="button"
                 onClick={() => navigate('/stocks/entry')}
                 className="btn-secondary"
               >
@@ -197,7 +211,7 @@ export default function InventairePage() {
             className={cn('text-sm pr-8', categorie && 'border-primary-accent bg-primary-light/20')}
           >
             <option value="">Catégorie</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-subtle" />
         </div>

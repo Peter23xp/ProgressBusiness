@@ -33,6 +33,7 @@ import RetoursPage from '@/pages/ventes/RetoursPage';
 
 // Stocks
 import InventairePage from '@/pages/stocks/InventairePage';
+import NouveauProduitPage from '@/pages/stocks/NouveauProduitPage';
 import ProduitStockPage from '@/pages/stocks/ProduitStockPage';
 import EntreeStockPage from '@/pages/stocks/EntreeStockPage';
 import TransfertPage from '@/pages/stocks/TransfertPage';
@@ -125,6 +126,7 @@ export default function App() {
 
           {/* Stocks */}
           <Route path="stocks" element={<InventairePage />} />
+          <Route path="stocks/new" element={<RoleGuard minRole="GERANT"><NouveauProduitPage /></RoleGuard>} />
           <Route path="stocks/entry" element={<RoleGuard minRole="GERANT"><EntreeStockPage /></RoleGuard>} />
           <Route path="stocks/transfer" element={<RoleGuard minRole="GERANT"><TransfertPage /></RoleGuard>} />
           <Route path="stocks/alerts" element={<RoleGuard minRole="GERANT"><AlertesStockPage /></RoleGuard>} />

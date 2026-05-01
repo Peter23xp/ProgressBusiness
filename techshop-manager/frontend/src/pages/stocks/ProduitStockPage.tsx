@@ -180,7 +180,9 @@ export default function ProduitStockPage() {
     );
   }
 
-  const { produit, stocksBySite, totalStock } = product;
+  const produit = product.produit;
+  const stocksBySite = product.stocksBySite ?? (product as any).stocks ?? [];
+  const totalStock = product.totalStock ?? (product as any).totalQuantite ?? 0;
 
   return (
     <div className="space-y-5">

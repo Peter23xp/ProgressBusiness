@@ -12,8 +12,24 @@ import {
   ReceptionTransfertDto,
   UpdateSeuilDto,
   InventaireDto,
+  CreateProduitDto,
 } from './dto/stock.dto';
 import { TypeMouvement, StatutTransfert } from '@prisma/client';
+
+// Préfixes SKU par catégorie (3 lettres majuscules)
+const CAT_PREFIX: Record<string, string> = {
+  smartphones: 'SM',
+  accessoires: 'ACC',
+  audio: 'AUD',
+  informatique: 'INFO',
+  tablettes: 'TAB',
+  tv: 'TV',
+  autre: 'DIV',
+};
+
+function getCatPrefix(categorie: string): string {
+  return CAT_PREFIX[categorie.toLowerCase()] ?? categorie.slice(0, 3).toUpperCase().replace(/\s+/g, '');
+}
 
 @Injectable()
 export class StocksService {
@@ -23,48 +39,80 @@ export class StocksService {
     siteId?: string;
     produitId?: string;
     categorie?: string;
+    search?: string;
+    statut?: string;
     alerteOnly?: boolean;
     page?: number;
     limit?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
   }) {
-    const { siteId, produitId, categorie, alerteOnly, page = 1, limit = 50 } = query;
+    const { siteId, produitId, categorie, search, statut, alerteOnly, page = 1, limit = 50, sortBy, sortOrder = 'asc' } = query;
 
-    const where: any = {};
+    const where: any = { produit: { actif: true } };
     if (siteId) where.siteId = siteId;
     if (produitId) where.produitId = produitId;
-    if (categorie) where.produit = { categorie };
+    if (categorie) where.produit = { ...where.produit, categorie };
+    if (search) {
+      where.produit = {
+        ...where.produit,
+        OR: [
+          { nom: { contains: search, mode: 'insensitive' } },
+          { sku: { contains: search, mode: 'insensitive' } },
+        ],
+      };
+    }
 
     const allStocks = await this.prisma.stockSite.findMany({
       where,
       include: {
         produit: {
-          select: {
-            id: true,
-            nom: true,
-            sku: true,
-            categorie: true,
-            prixVente: true,
-            prixAchat: true,
-            actif: true,
-          },
+          select: { id: true, nom: true, sku: true, categorie: true, prixVente: true, actif: true },
         },
         site: { select: { id: true, nom: true, ville: true } },
       },
-      orderBy: [{ siteId: 'asc' }, { produit: { nom: 'asc' } }],
+      orderBy: sortBy === 'nom'
+        ? [{ produit: { nom: sortOrder } }]
+        : [{ quantite: sortOrder }],
     });
 
-    let filtered = allStocks;
+    let filtered = allStocks.filter((s) => s.produit.actif);
+
     if (alerteOnly) {
-      filtered = allStocks.filter((s) => s.quantite <= s.seuilAlerte);
+      filtered = filtered.filter((s) => s.quantite <= s.seuilAlerte);
     }
+    if (statut === 'RUPTURE') {
+      filtered = filtered.filter((s) => s.quantite === 0);
+    } else if (statut === 'ALERTE') {
+      filtered = filtered.filter((s) => s.quantite > 0 && s.quantite <= s.seuilAlerte);
+    } else if (statut === 'OK') {
+      filtered = filtered.filter((s) => s.quantite > s.seuilAlerte);
+    }
+
+    const totalAlertes = allStocks.filter((s) => s.quantite > 0 && s.quantite <= s.seuilAlerte).length;
+    const totalRuptures = allStocks.filter((s) => s.quantite === 0).length;
 
     const total = filtered.length;
     const { skip, take } = paginate(page, limit);
-    const data = filtered.slice(skip, skip + take);
+    const page_data = filtered.slice(skip, skip + take);
+
+    const stocks = page_data.map((s) => ({
+      produitId: s.produitId,
+      sku: s.produit.sku,
+      produitNom: s.produit.nom,
+      categorie: s.produit.categorie,
+      prixVente: Number(s.produit.prixVente),
+      siteId: s.siteId,
+      siteNom: s.site.nom,
+      quantite: s.quantite,
+      seuilAlerte: s.seuilAlerte,
+      statut: s.quantite === 0 ? 'RUPTURE' : s.quantite <= s.seuilAlerte ? 'ALERTE' : 'OK',
+      updatedAt: s.updatedAt.toISOString(),
+    }));
 
     return {
-      data,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      stocks,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit), totalAlertes, totalRuptures },
     };
   }
 
@@ -84,12 +132,90 @@ export class StocksService {
       orderBy: { site: { nom: 'asc' } },
     });
 
-    const totalQuantite = stocks.reduce((a, s) => a + s.quantite, 0);
+    const totalStock = stocks.reduce((a, s) => a + s.quantite, 0);
+
+    const stocksBySite = stocks.map((s) => ({
+      siteId: s.siteId,
+      siteNom: s.site.nom,
+      quantite: s.quantite,
+      seuilAlerte: s.seuilAlerte,
+      statut: s.quantite === 0 ? 'RUPTURE' : s.quantite <= s.seuilAlerte ? 'ALERTE' : 'OK',
+      updatedAt: s.updatedAt.toISOString(),
+    }));
 
     return {
-      produit,
-      stocks,
-      totalQuantite,
+      produit: {
+        id: produit.id,
+        sku: produit.sku,
+        nom: produit.nom,
+        description: produit.description ?? undefined,
+        categorie: produit.categorie,
+        prixVente: Number(produit.prixVente),
+        prixAchat: Number(produit.prixAchat),
+      },
+      stocksBySite,
+      totalStock,
+    };
+  }
+
+  async getMovements(produitId: string, query: {
+    type?: string;
+    siteId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const { type, siteId, dateFrom, dateTo, page = 1, limit = 10 } = query;
+
+    const produit = await this.prisma.produit.findUnique({ where: { id: produitId } });
+    if (!produit) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Produit introuvable' });
+    }
+
+    const where: any = { produitId };
+    if (type) where.type = type;
+    if (siteId) where.siteId = siteId;
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom);
+      if (dateTo) {
+        const end = new Date(dateTo);
+        end.setHours(23, 59, 59, 999);
+        where.createdAt.lte = end;
+      }
+    }
+
+    const [total, rows] = await Promise.all([
+      this.prisma.mouvementStock.count({ where }),
+      this.prisma.mouvementStock.findMany({
+        where,
+        include: {
+          agent: { select: { nom: true } },
+          site: { select: { id: true, nom: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ]);
+
+    const mouvements = rows.map((m) => ({
+      id: m.id,
+      type: m.type,
+      quantite: m.quantite,
+      quantiteAvant: m.quantiteAvant,
+      quantiteApres: m.quantiteApres,
+      reference: m.reference ?? undefined,
+      agentNom: m.agent.nom,
+      siteId: m.siteId,
+      siteNom: m.site.nom,
+      createdAt: m.createdAt.toISOString(),
+    }));
+
+    return {
+      mouvements,
+      meta: { total, page, totalPages: Math.ceil(total / limit) },
     };
   }
 
@@ -130,7 +256,7 @@ export class StocksService {
       });
 
       // Créer le mouvement
-      await tx.mouvementStock.create({
+      const mouvement = await tx.mouvementStock.create({
         data: {
           type: TypeMouvement.ENTREE,
           quantite: dto.quantite,
@@ -141,14 +267,36 @@ export class StocksService {
           siteId: dto.siteId,
           agentId,
         },
+        include: {
+          agent: { select: { nom: true } },
+          site: { select: { id: true, nom: true } },
+        },
       });
 
-      return stock;
+      return { stock, mouvement, quantiteApres };
     });
 
+    const statut = result.quantiteApres === 0
+      ? 'RUPTURE'
+      : result.quantiteApres <= result.stock.seuilAlerte
+        ? 'ALERTE'
+        : 'OK';
+
     return {
-      message: 'Entrée de stock enregistrée avec succès',
-      stock: result,
+      mouvement: {
+        id: result.mouvement.id,
+        type: result.mouvement.type,
+        quantite: result.mouvement.quantite,
+        quantiteAvant: result.mouvement.quantiteAvant,
+        quantiteApres: result.mouvement.quantiteApres,
+        reference: result.mouvement.reference ?? undefined,
+        agentNom: result.mouvement.agent.nom,
+        siteId: result.mouvement.siteId,
+        siteNom: result.mouvement.site.nom,
+        createdAt: result.mouvement.createdAt.toISOString(),
+      },
+      stockApres: result.quantiteApres,
+      statut,
     };
   }
 
@@ -475,6 +623,176 @@ export class StocksService {
       dateInventaire: dto.dateInventaire,
       ajustements: results,
       totalAjustes: results.filter((r) => r.ajuste).length,
+    };
+  }
+
+  // ── Recherche produits ────────────────────────────────────────────────────────
+
+  async searchProduits(q: string, siteId: string, limit = 8) {
+    if (!q || !siteId) return { produits: [] };
+
+    const produits = await this.prisma.produit.findMany({
+      where: {
+        actif: true,
+        OR: [
+          { nom: { contains: q, mode: 'insensitive' } },
+          { sku: { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        stockSites: {
+          where: { siteId },
+          select: { quantite: true, seuilAlerte: true },
+        },
+      },
+      take: limit,
+      orderBy: { nom: 'asc' },
+    });
+
+    const result = produits.map((p) => {
+      const stock = p.stockSites[0];
+      const stockDisponible = stock?.quantite ?? 0;
+      const seuilAlerte = stock?.seuilAlerte ?? 5;
+      const statut = stockDisponible === 0 ? 'RUPTURE' : stockDisponible <= seuilAlerte ? 'ALERTE' : 'OK';
+      return {
+        id: p.id,
+        sku: p.sku,
+        nom: p.nom,
+        categorie: p.categorie,
+        prixVente: Number(p.prixVente),
+        stockDisponible,
+        statut,
+      };
+    });
+
+    return { produits: result };
+  }
+
+  // ── Catégories ────────────────────────────────────────────────────────────────
+
+  async getCategories(): Promise<string[]> {
+    const rows = await this.prisma.produit.findMany({
+      select: { categorie: true },
+      distinct: ['categorie'],
+      orderBy: { categorie: 'asc' },
+    });
+    return rows.map((r) => r.categorie);
+  }
+
+  async addCategorie(nom: string): Promise<{ categories: string[] }> {
+    // La catégorie n'a pas de table dédiée — elle est portée par les produits.
+    // On retourne la liste enrichie pour que le frontend se mette à jour.
+    const existing = await this.getCategories();
+    if (existing.map((c) => c.toLowerCase()).includes(nom.toLowerCase())) {
+      throw new ConflictException({ code: 'CATEGORIE_EXISTE', message: 'Cette catégorie existe déjà.' });
+    }
+    // Créer un produit placeholder archivé pour matérialiser la catégorie ? Non.
+    // On stocke les catégories libres dans ConfigGenerale.smsApiKey... trop hacky.
+    // Solution propre : on retourne simplement la liste existante + la nouvelle valeur en mémoire.
+    // Le vrai stockage se fait à la création du premier produit de cette catégorie.
+    return { categories: [...existing, nom].sort() };
+  }
+
+  async deleteCategorie(nom: string): Promise<{ categories: string[] }> {
+    const count = await this.prisma.produit.count({ where: { categorie: nom, actif: true } });
+    if (count > 0) {
+      throw new BadRequestException({
+        code: 'CATEGORIE_EN_USE',
+        message: `Impossible de supprimer : ${count} produit(s) actif(s) dans cette catégorie.`,
+      });
+    }
+    const remaining = await this.getCategories();
+    return { categories: remaining.filter((c) => c !== nom) };
+  }
+
+  // ── Génération SKU preview ────────────────────────────────────────────────────
+
+  async generateSkuPreview(categorie: string): Promise<{ sku: string }> {
+    const prefix = getCatPrefix(categorie);
+    const count = await this.prisma.produit.count({ where: { categorie } });
+    const seq = String(count + 1).padStart(3, '0');
+    return { sku: `TSG-${prefix}-${seq}` };
+  }
+
+  // ── Création produit ──────────────────────────────────────────────────────────
+
+  async createProduit(
+    dto: CreateProduitDto,
+    user: { id: string; role: string; siteId?: string },
+  ) {
+    // Générer le SKU final (atomique dans la transaction)
+    const prefix = getCatPrefix(dto.categorie);
+
+    // Résoudre les sites cibles
+    const isSuperAdmin = user.role === 'SUPER_ADMIN';
+    let siteIds: string[];
+
+    if (isSuperAdmin) {
+      // Tous les sites actifs
+      const sites = await this.prisma.site.findMany({ where: { actif: true }, select: { id: true } });
+      siteIds = sites.map((s) => s.id);
+    } else {
+      if (!user.siteId) throw new BadRequestException({ code: 'NO_SITE', message: 'Site utilisateur introuvable.' });
+      siteIds = [user.siteId];
+    }
+
+    // Valider que tous les siteIds dans dto.seuilsParSite appartiennent à siteIds
+    for (const s of dto.seuilsParSite) {
+      if (!siteIds.includes(s.siteId)) {
+        throw new BadRequestException({ code: 'SITE_INVALIDE', message: `Site ${s.siteId} non autorisé.` });
+      }
+    }
+
+    // Convertir prix en CDF si monnaie USD (taux fixe 2800 — configurable plus tard)
+    const TAUX_USD_CDF = 2800;
+    const prixVenteCDF = dto.monnaie === 'USD' ? dto.prixVente * TAUX_USD_CDF : dto.prixVente;
+    const prixAchatCDF = dto.monnaie === 'USD' ? dto.prixAchat * TAUX_USD_CDF : dto.prixAchat;
+
+    const produit = await this.prisma.$transaction(async (tx) => {
+      // SKU atomique : compter dans la transaction
+      const count = await tx.produit.count({ where: { categorie: dto.categorie } });
+      const seq = String(count + 1).padStart(3, '0');
+      const sku = `TSG-${prefix}-${seq}`;
+
+      const newProduit = await tx.produit.create({
+        data: {
+          sku,
+          nom: dto.nom,
+          categorie: dto.categorie,
+          description: dto.description ?? null,
+          prixVente: prixVenteCDF,
+          prixAchat: prixAchatCDF,
+          actif: true,
+        },
+      });
+
+      // Créer StockSite pour chaque site cible
+      for (const siteId of siteIds) {
+        const seuilConfig = dto.seuilsParSite.find((s) => s.siteId === siteId);
+        await tx.stockSite.create({
+          data: {
+            produitId: newProduit.id,
+            siteId,
+            quantite: 0,
+            seuilAlerte: seuilConfig?.seuilAlerte ?? 5,
+          },
+        });
+      }
+
+      return newProduit;
+    });
+
+    return {
+      produit: {
+        id: produit.id,
+        sku: produit.sku,
+        nom: produit.nom,
+        categorie: produit.categorie,
+        prixVente: Number(produit.prixVente),
+        prixAchat: Number(produit.prixAchat),
+        monnaie: dto.monnaie,
+        sitesEnregistres: siteIds.length,
+      },
     };
   }
 }

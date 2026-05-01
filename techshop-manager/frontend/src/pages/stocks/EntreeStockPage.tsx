@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/auth.store';
+import { useSites } from '@/hooks/useSites';
 import { stocksApi, getStockStatut } from '@/lib/stocks.api';
 import { StockStatusBadge } from '@/components/stocks/StockStatusBadge';
 import { ProductSearchCombobox } from '@/components/stocks/ProductSearchCombobox';
@@ -14,12 +15,6 @@ import { cn, formatCDF } from '@/lib/utils';
 import type { ProduitSearchResult } from '@/lib/stocks.api';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const SITES = [
-  { id: 'goma', nom: 'Goma' },
-  { id: 'bukavu', nom: 'Bukavu' },
-  { id: 'kinshasa', nom: 'Kinshasa' },
-];
 
 const TVA_OPTIONS = [
   { value: 0, label: '0% — Exonéré' },
@@ -99,9 +94,11 @@ export default function EntreeStockPage() {
   const defaultSiteId = user?.siteId ?? '';
   const defaultSiteNom = user?.siteName ?? 'Mon site';
 
+  const { sites } = useSites();
+
   const [siteId, setSiteId] = useState(canChooseSite ? '' : defaultSiteId);
   const siteNom = canChooseSite
-    ? (SITES.find(s => s.id === siteId)?.nom ?? '')
+    ? (sites.find(s => s.id === siteId)?.nom ?? '')
     : defaultSiteNom;
 
   const [step, setStep] = useState<Step>(1);
@@ -305,7 +302,7 @@ export default function EntreeStockPage() {
                   className="text-sm"
                 >
                   <option value="">Sélectionner un site</option>
-                  {SITES.map(s => (
+                  {sites.map(s => (
                     <option key={s.id} value={s.id}>{s.nom}</option>
                   ))}
                 </select>

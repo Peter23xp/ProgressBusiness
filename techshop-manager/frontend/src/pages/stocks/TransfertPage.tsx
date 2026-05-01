@@ -4,17 +4,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRightLeft, AlertCircle, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/auth.store';
+import { useSites } from '@/hooks/useSites';
 import { stocksApi, getStockStatut } from '@/lib/stocks.api';
 import { StockStatusBadge } from '@/components/stocks/StockStatusBadge';
 import { ProductSearchCombobox } from '@/components/stocks/ProductSearchCombobox';
 import { cn } from '@/lib/utils';
 import type { ProduitSearchResult } from '@/lib/stocks.api';
-
-const SITES = [
-  { id: 'goma', nom: 'Goma' },
-  { id: 'bukavu', nom: 'Bukavu' },
-  { id: 'kinshasa', nom: 'Kinshasa' },
-];
 
 export default function TransfertPage() {
   const navigate = useNavigate();
@@ -23,6 +18,7 @@ export default function TransfertPage() {
 
   const canAccess = hasRole('GERANT');
   const canChooseSite = hasRole('DIRECTEUR_REGIONAL');
+  const { sites } = useSites();
 
   const defaultSiteId = user?.siteId ?? '';
   const [siteSourceId, setSiteSourceId] = useState(canChooseSite ? '' : defaultSiteId);
@@ -59,7 +55,7 @@ export default function TransfertPage() {
       motif: motif || undefined,
     }),
     onSuccess: () => {
-      toast.success(`Transfert initié. Une notification a été envoyée au Gérant de ${SITES.find(s => s.id === siteDestId)?.nom}.`);
+      toast.success(`Transfert initié. Une notification a été envoyée au Gérant de ${sites.find(s => s.id === siteDestId)?.nom}.`);
       qc.invalidateQueries({ queryKey: ['stocks'] });
       qc.invalidateQueries({ queryKey: ['stock-alerts'] });
       setConfirmOpen(false);
@@ -103,8 +99,8 @@ export default function TransfertPage() {
   const isAlertSource = qty > 0 && stockSourceApres >= 0 && stockSourceApres <= seuilSource && stockSourceActuel > seuilSource;
   const canSubmit = !!produitId && !!siteSourceId && !!siteDestId && !samesSite && qty > 0 && !isInsuffisant;
 
-  const sourceNom = SITES.find(s => s.id === siteSourceId)?.nom ?? siteSourceId;
-  const destNom = SITES.find(s => s.id === siteDestId)?.nom ?? siteDestId;
+  const sourceNom = sites.find(s => s.id === siteSourceId)?.nom ?? siteSourceId;
+  const destNom = sites.find(s => s.id === siteDestId)?.nom ?? siteDestId;
 
   return (
     <div className="max-w-xl mx-auto space-y-5">
@@ -136,7 +132,7 @@ export default function TransfertPage() {
                   className="text-sm"
                 >
                   <option value="">Sélectionner</option>
-                  {SITES.filter(s => s.id !== siteDestId).map(s => (
+                  {sites.filter(s => s.id !== siteDestId).map(s => (
                     <option key={s.id} value={s.id}>{s.nom}</option>
                   ))}
                 </select>
@@ -158,7 +154,7 @@ export default function TransfertPage() {
                 className={cn('text-sm', samesSite && 'border-danger')}
               >
                 <option value="">Sélectionner</option>
-                {SITES.filter(s => s.id !== siteSourceId).map(s => (
+                {sites.filter(s => s.id !== siteSourceId).map(s => (
                   <option key={s.id} value={s.id}>{s.nom}</option>
                 ))}
               </select>

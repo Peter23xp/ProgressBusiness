@@ -151,128 +151,15 @@ async function main() {
   }
 
   // ============================================
-  // 6. PRODUITS EXEMPLE + STOCK SUR GOMA
-  // ============================================
-  console.log('📦 Création des produits exemples...');
-
-  const produits = [
-    {
-      sku: 'TSG-SM-001',
-      nom: 'Samsung Galaxy A54',
-      description: 'Smartphone Samsung Galaxy A54 5G, 128GB, 6GB RAM',
-      categorie: 'Smartphones',
-      prixVente: 420000,
-      prixAchat: 320000,
-      stock: 15,
-      seuilAlerte: 3,
-    },
-    {
-      sku: 'TSG-SM-002',
-      nom: 'Tecno Spark 20',
-      description: 'Smartphone Tecno Spark 20, 128GB, 8GB RAM',
-      categorie: 'Smartphones',
-      prixVente: 210000,
-      prixAchat: 155000,
-      stock: 20,
-      seuilAlerte: 5,
-    },
-    {
-      sku: 'TSG-SM-003',
-      nom: 'iPhone 13',
-      description: 'Apple iPhone 13, 128GB, Minuit',
-      categorie: 'Smartphones',
-      prixVente: 950000,
-      prixAchat: 780000,
-      stock: 8,
-      seuilAlerte: 2,
-    },
-    {
-      sku: 'TSG-ACC-001',
-      nom: 'Chargeur Rapide 65W',
-      description: 'Chargeur rapide universel 65W USB-C',
-      categorie: 'Accessoires',
-      prixVente: 35000,
-      prixAchat: 18000,
-      stock: 50,
-      seuilAlerte: 10,
-    },
-    {
-      sku: 'TSG-ACC-002',
-      nom: 'Écouteurs Bluetooth TWS',
-      description: 'Écouteurs sans fil Bluetooth 5.0, autonomie 24h',
-      categorie: 'Accessoires',
-      prixVente: 55000,
-      prixAchat: 30000,
-      stock: 30,
-      seuilAlerte: 8,
-    },
-  ];
-
-  for (const p of produits) {
-    const produit = await prisma.produit.upsert({
-      where: { sku: p.sku },
-      update: {},
-      create: {
-        sku: p.sku,
-        nom: p.nom,
-        description: p.description,
-        categorie: p.categorie,
-        prixVente: p.prixVente,
-        prixAchat: p.prixAchat,
-        actif: true,
-      },
-    });
-
-    // Créer/mettre à jour le stock sur Goma
-    await prisma.stockSite.upsert({
-      where: {
-        produitId_siteId: {
-          produitId: produit.id,
-          siteId: siteGoma.id,
-        },
-      },
-      update: {},
-      create: {
-        produitId: produit.id,
-        siteId: siteGoma.id,
-        quantite: p.stock,
-        seuilAlerte: p.seuilAlerte,
-      },
-    });
-
-    // Créer aussi un stock vide pour Bukavu et Kinshasa
-    for (const site of [siteBukavu, siteKinshasa]) {
-      await prisma.stockSite.upsert({
-        where: {
-          produitId_siteId: {
-            produitId: produit.id,
-            siteId: site.id,
-          },
-        },
-        update: {},
-        create: {
-          produitId: produit.id,
-          siteId: site.id,
-          quantite: 0,
-          seuilAlerte: p.seuilAlerte,
-        },
-      });
-    }
-
-    console.log(`  ✓ Produit: ${produit.nom} (SKU: ${produit.sku}) - Stock Goma: ${p.stock}`);
-  }
-
-  // ============================================
   // RÉSUMÉ
   // ============================================
   console.log('\n✅ Seed terminé avec succès!');
   console.log('\n📊 Résumé:');
   console.log(`  - 3 sites créés: Goma, Bukavu, Kinshasa`);
-  console.log(`  - 1 Super Admin: +243900000001 / Admin@2025`);
+  console.log(`  - 1 Super Admin: ${superAdmin.telephone}`);
   console.log(`  - Config fidélité: Bronze, Argent, Or, Platine`);
   console.log(`  - Règle parrainage par défaut (POINTS, 500 pts/filleul)`);
   console.log(`  - Config générale par défaut`);
-  console.log(`  - 5 produits avec stocks sur Goma`);
 }
 
 main()

@@ -18,7 +18,14 @@
       "Bash(IMPECCABLE_CONTEXT_DIR=\"D:/PETER/Progress app/techshop-manager\" node *)",
       "Bash(npm run *)",
       "Bash(curl -s http://localhost:5173)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(npx ts-node -e ' *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('TOKEN:', d.get\\('accessToken',''\\)[:50]\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('stocks count:', len\\(d.get\\('data', d.get\\('stocks',[]\\)\\)\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d, indent=2\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('Keys:', list\\(d.keys\\(\\)\\)\\); print\\('Meta:', d.get\\('meta',{}\\)\\); rows=d.get\\('data', d.get\\('stocks',[]\\)\\); print\\('Rows count:', len\\(rows\\)\\); print\\('First row keys:', list\\(rows[0].keys\\(\\)\\) if rows else 'empty'\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); rows=d.get\\('data',[]\\); print\\(json.dumps\\(rows[0], indent=2, default=str\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('Keys:', list\\(d.keys\\(\\)\\)\\); print\\('Meta:', d.get\\('meta',{}\\)\\); stocks=d.get\\('stocks',[]\\); print\\('Count:', len\\(stocks\\)\\); print\\('First:', json.dumps\\(stocks[0], indent=2, default=str\\) if stocks else 'empty'\\)\")"
     ]
   }
 }

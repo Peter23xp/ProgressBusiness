@@ -177,6 +177,7 @@ export class ClientsService {
     montantRecit: number;
     modePaiement: ModePaiement;
     numeroRecu?: string;
+    agentId: string;
   }) {
     // Vérifier doublon téléphone
     const existingPhone = await this.prisma.client.findUnique({
