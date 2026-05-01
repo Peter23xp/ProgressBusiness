@@ -105,11 +105,13 @@ export class StocksController {
   @Get('stocks/alertes')
   getAlertes(
     @Query('siteId') siteId?: string,
+    @Query('type') type?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return this.stocksService.getAlertes({
       siteId,
+      type,
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 50,
     });
@@ -135,11 +137,18 @@ export class StocksController {
 
   @Get('produits/search')
   searchProduits(
-    @Query('q') q: string,
-    @Query('siteId') siteId: string,
+    @Query('q') q?: string,
+    @Query('siteId') siteId?: string,
+    @Query('categorie') categorie?: string,
+    @Query('stockOnly') stockOnly?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.stocksService.searchProduits(q, siteId, limit ? parseInt(limit, 10) : 8);
+    return this.stocksService.searchProduits(
+      q,
+      siteId ?? '',
+      limit ? parseInt(limit, 10) : 50,
+      stockOnly === 'true',
+    );
   }
 
   @Get('produits/categories')

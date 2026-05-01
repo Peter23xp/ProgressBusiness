@@ -157,6 +157,8 @@ export default function EntreeStockPage() {
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['stocks'] });
       qc.invalidateQueries({ queryKey: ['stock-alerts'] });
+      qc.invalidateQueries({ queryKey: ['stock-product'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
       setSuccessData({
         produitNom: selectedProduit!.nom,
         sku: selectedProduit!.sku,

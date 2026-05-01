@@ -51,6 +51,15 @@ export class ClientsController {
     );
   }
 
+  @Get('search')
+  @Roles(Role.AGENT)
+  search(
+    @Query('q') q?: string,
+    @Query('statut') statut?: string,
+  ) {
+    return this.clientsService.search(q ?? '', statut);
+  }
+
   @Get('check-phone/:phone')
   checkPhone(@Param('phone') phone: string) {
     return this.clientsService.checkPhone(phone);

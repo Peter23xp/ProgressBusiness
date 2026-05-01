@@ -24,6 +24,12 @@ export class LigneVenteDto {
   @IsPositive()
   @Type(() => Number)
   quantite: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  prixUnitaire?: number;
 }
 
 export class CreateVenteDto {

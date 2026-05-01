@@ -132,10 +132,10 @@ export default function ExportPage() {
 
           <button
             type="submit"
-            disabled={mutation.isLoading || (job?.statut === 'EN_COURS')}
+            disabled={mutation.isPending || (job?.statut === 'EN_COURS')}
             className="btn-primary w-full py-3 font-semibold flex items-center justify-center gap-2"
           >
-            {mutation.isLoading ? (
+            {mutation.isPending ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : <Download size={18} />}
             Générer le rapport

@@ -12,14 +12,9 @@ import { useAuthStore } from '@/store/auth.store';
 import { parrainageApi } from '@/lib/parrainage.api';
 import { formatCDF, formatDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { useSites } from '@/hooks/useSites';
 import type { ParrainageFilters, TopParrain, ParrainageItem } from '@/lib/parrainage.api';
 import type { StatutParrainage } from '@/types';
-
-const SITES = [
-  { id: 'goma', nom: 'Goma' },
-  { id: 'bukavu', nom: 'Bukavu' },
-  { id: 'kinshasa', nom: 'Kinshasa' },
-];
 
 const PERIODS = [
   { value: 'today', label: "Aujourd'hui" },
@@ -59,6 +54,7 @@ export default function ParrainageGlobalPage() {
   const navigate = useNavigate();
   const { user, hasRole } = useAuthStore();
   const canSeeSites = hasRole('DIRECTEUR_REGIONAL');
+  const { sites } = useSites();
 
   const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'all'>('month');
   const [siteId, setSiteId] = useState('');
@@ -126,7 +122,7 @@ export default function ParrainageGlobalPage() {
               className="text-sm"
             >
               <option value="">Tous les sites</option>
-              {SITES.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
+              {sites.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
             </select>
           )}
           <div className="period-toggle">

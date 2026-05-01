@@ -93,7 +93,7 @@ export default function OnboardingRecitPage() {
 
   const mutation = useMutation({
     mutationFn: (data: FormValues) =>
-      api.post<{ id: string }>('/clients/onboarding/recit', {
+      api.post<{ client: { id: string }; etapeId: string }>('/clients/onboarding/recit', {
         ...data,
         email: data.email || undefined,
         codeParrain: data.codeParrain || undefined,
@@ -102,7 +102,7 @@ export default function OnboardingRecitPage() {
       }),
     onSuccess: (res) => {
       toast.success('Client créé avec succès ! Passage à la formation...');
-      setTimeout(() => navigate(`/clients/${res.data.id}/formation`), 1000);
+      setTimeout(() => navigate(`/clients/${res.data.client.id}/formation`), 1000);
     },
     onError: (error: any) => {
       const code = error?.response?.data?.code;

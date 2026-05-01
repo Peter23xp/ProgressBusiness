@@ -41,6 +41,16 @@ export class ParrainageController {
     return this.parrainageService.findAll({ siteId, statut, page, limit });
   }
 
+  @Get('top')
+  @Roles(Role.AGENT)
+  getTop(
+    @Query('siteId') siteId?: string,
+    @Query('period') period?: string,
+    @Query('limit', new DefaultValuePipe(5), ParseIntPipe) limit?: number,
+  ) {
+    return this.parrainageService.getTop({ siteId, period, limit });
+  }
+
   @Get('tree/:clientId')
   @Roles(Role.AGENT)
   getTree(

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { paginate } from '../../common/dto/pagination.dto';
 import { ConfigFideliteDto } from './dto/fidelite.dto';
@@ -58,11 +58,22 @@ export class FideliteService {
       };
     });
 
+    const repartitionNiveaux = Object.entries(niveauxStats).map(([niveau, data]) => ({
+      niveau: niveau as NiveauFidelite,
+      count: data.count,
+      pct: totalClients > 0 ? Math.round((data.count / totalClients) * 100) : 0,
+    }));
+
     return {
-      totalClientsActifs: totalClients,
-      parNiveau: niveauxStats,
-      pointsDistribues: pointsDistribues._sum.delta ?? 0,
-      nombreMouvements: mouvementsRecents,
+      stats: {
+        clientsActifsTotal: totalClients,
+        clientsActifsDelta: 0,
+        pointsDistribues: pointsDistribues._sum.delta ?? 0,
+        pointsDistribuesDelta: 0,
+        remisesAccordees: 0,
+        remisesAccordeesDelta: 0,
+        repartitionNiveaux,
+      },
     };
   }
 
@@ -87,7 +98,193 @@ export class FideliteService {
       },
     });
 
-    return clients;
+    return {
+      clients: clients.map((c, idx) => ({
+        rang: idx + 1,
+        client: {
+          id: c.id,
+          nom: c.nom,
+          prenom: c.prenom,
+          telephone: c.telephone,
+          niveauFidelite: c.niveauFidelite,
+        },
+        pointsActuels: c.pointsFidelite,
+        pointsGagnesCettePeriode: 0,
+        nbAchats: c._count.ventes,
+        montantTotalAchats: 0,
+      })),
+    };
+  }
+
+  async getRecentMouvements(siteId?: string, limit = 8) {
+    const where: any = {};
+    if (siteId) where.client = { siteInscriptionId: siteId };
+
+    const data = await this.prisma.mouvementPoints.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: {
+        client: { select: { id: true, prenom: true, nom: true } },
+      },
+    });
+
+    return {
+      mouvements: data.map((m) => ({
+        id: m.id,
+        clientId: m.clientId,
+        clientNom: m.client.nom,
+        clientPrenom: m.client.prenom,
+        type: m.type,
+        description: m.description ?? '',
+        deltaPoints: m.delta,
+        soldeBefore: m.soldeApres - m.delta,
+        soldeAfter: m.soldeApres,
+        createdAt: m.createdAt,
+        siteId: siteId ?? '',
+        venteId: m.venteId ?? undefined,
+      })),
+    };
+  }
+
+  async getClientData(clientId: string) {
+    const client = await this.prisma.client.findUnique({
+      where: { id: clientId },
+      select: {
+        id: true,
+        prenom: true,
+        nom: true,
+        telephone: true,
+        niveauFidelite: true,
+        pointsFidelite: true,
+        pointsCumules: true,
+        siteInscription: { select: { id: true, nom: true } },
+      },
+    });
+
+    if (!client) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Client introuvable' });
+    }
+
+    const remiseMap: Record<NiveauFidelite, number> = {
+      BRONZE: 0,
+      ARGENT: 3,
+      OR: 5,
+      PLATINE: 8,
+    };
+
+    const totalGagne = await this.prisma.mouvementPoints.aggregate({
+      where: { clientId, delta: { gt: 0 } },
+      _sum: { delta: true },
+    });
+    const totalDeduit = await this.prisma.mouvementPoints.aggregate({
+      where: { clientId, delta: { lt: 0 } },
+      _sum: { delta: true },
+    });
+
+    return {
+      client: {
+        id: client.id,
+        nom: client.nom,
+        prenom: client.prenom,
+        telephone: client.telephone,
+        siteNom: client.siteInscription?.nom ?? '',
+        niveauFidelite: client.niveauFidelite,
+        pointsFidelite: client.pointsFidelite,
+        remisePct: remiseMap[client.niveauFidelite] ?? 0,
+        totalPointsGagnes: totalGagne._sum.delta ?? 0,
+        totalPointsDeduits: Math.abs(totalDeduit._sum.delta ?? 0),
+      },
+    };
+  }
+
+  async getClientMouvements(
+    clientId: string,
+    query: { type?: string; page?: number; limit?: number; sortOrder?: 'asc' | 'desc' },
+  ) {
+    const { type, page = 1, limit = 50, sortOrder = 'desc' } = query;
+
+    const where: any = { clientId };
+    if (type) where.type = type;
+
+    const [data, total] = await Promise.all([
+      this.prisma.mouvementPoints.findMany({
+        where,
+        ...paginate(page, limit),
+        orderBy: { createdAt: sortOrder },
+        include: { client: { select: { id: true, prenom: true, nom: true } } },
+      }),
+      this.prisma.mouvementPoints.count({ where }),
+    ]);
+
+    const gained = await this.prisma.mouvementPoints.aggregate({
+      where: { clientId, delta: { gt: 0 } },
+      _sum: { delta: true },
+    });
+    const deducted = await this.prisma.mouvementPoints.aggregate({
+      where: { clientId, delta: { lt: 0 } },
+      _sum: { delta: true },
+    });
+
+    return {
+      mouvements: data.map((m) => ({
+        id: m.id,
+        clientId: m.clientId,
+        clientNom: m.client.nom,
+        clientPrenom: m.client.prenom,
+        type: m.type,
+        description: m.description ?? '',
+        deltaPoints: m.delta,
+        soldeBefore: m.soldeApres - m.delta,
+        soldeAfter: m.soldeApres,
+        createdAt: m.createdAt,
+        siteId: '',
+        venteId: m.venteId ?? undefined,
+      })),
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      summary: {
+        totalGagne: gained._sum.delta ?? 0,
+        totalDeduit: Math.abs(deducted._sum.delta ?? 0),
+      },
+    };
+  }
+
+  async getConfig() {
+    const config = await this.prisma.configFidelite.findFirst({
+      include: { niveaux: true },
+    });
+
+    if (!config) {
+      return {
+        config: {
+          id: 'default',
+          ratioPtsCDF: 1000,
+          niveaux: [],
+          dureeValiditeMois: 0,
+          periodeInactiviteMois: 12,
+          cumulRemises: false,
+          updatedAt: new Date(),
+        },
+        history: [],
+      };
+    }
+
+    return {
+      config: {
+        id: config.id,
+        ratioPtsCDF: config.ratioPtsCDF,
+        niveaux: config.niveaux,
+        dureeValiditeMois: config.dureeValiditeMois,
+        periodeInactiviteMois: 12,
+        cumulRemises: config.cumulRemises,
+        updatedAt: config.updatedAt,
+      },
+      history: [],
+    };
+  }
+
+  async getConfigHistory() {
+    return { history: [] };
   }
 
   async getClientHistory(

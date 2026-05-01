@@ -162,8 +162,39 @@ export class ClientsService {
 
     return {
       exists: !!client,
+      clientId: client?.id ?? undefined,
       client: client ?? null,
     };
+  }
+
+  async search(q: string, statut?: string) {
+    const where: any = {};
+    if (statut) where.statut = statut;
+    if (q) {
+      where.OR = [
+        { prenom: { contains: q, mode: 'insensitive' } },
+        { nom: { contains: q, mode: 'insensitive' } },
+        { telephone: { contains: q } },
+        { codeParrain: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    const clients = await this.prisma.client.findMany({
+      where,
+      take: 20,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        prenom: true,
+        nom: true,
+        telephone: true,
+        codeParrain: true,
+        statut: true,
+        niveauFidelite: true,
+      },
+    });
+
+    return { clients };
   }
 
   async onboardingRecit(dto: {
@@ -231,7 +262,7 @@ export class ClientsService {
     }
 
     // Créer le client et l'étape RECIT dans une transaction
-    const client = await this.prisma.$transaction(async (tx) => {
+    const { newClient, etape } = await this.prisma.$transaction(async (tx) => {
       const newClient = await tx.client.create({
         data: {
           prenom: dto.prenom,
@@ -246,7 +277,7 @@ export class ClientsService {
         },
       });
 
-      await tx.onboardingEtape.create({
+      const etape = await tx.onboardingEtape.create({
         data: {
           etape: EtapeOnboarding.RECIT,
           statut: StatutEtape.COMPLETE,
@@ -260,10 +291,11 @@ export class ClientsService {
         },
       });
 
-      return newClient;
+      return { newClient, etape };
     });
 
-    return this.findOne(client.id);
+    const client = await this.findOne(newClient.id);
+    return { client, etapeId: etape.id };
   }
 
   async onboardingFormation(
@@ -577,7 +609,17 @@ export class ClientsService {
       rows.push({ ligne: i + 1, nom, telephone, matricule, statut: 'OK' });
     }
 
-    return { rows };
+    const ok = rows.filter((r) => r.statut === 'OK').length;
+    const doublons = rows.filter((r) => r.statut === 'DOUBLON').length;
+    const erreurs = rows.filter((r) => r.statut === 'ERREUR').length;
+
+    return {
+      total: rows.length,
+      ok,
+      doublons,
+      erreurs,
+      lignes: rows,
+    };
   }
 
   async importExecute(file: Express.Multer.File) {

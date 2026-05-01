@@ -121,7 +121,7 @@ export default function RapportStocksPage() {
                     <td className="px-4 py-3 text-center font-black text-gray-900">{p.stockTotal}</td>
                     <td className="px-4 py-3 text-right font-semibold text-green-700">{formatCDF(p.valeurTotale)}</td>
                     <td className="px-4 py-3">
-                      <span className={`badge text-xs ${statutStockColor(p.statut)}`}>{p.statut}</span>
+                      <span className={`badge text-xs ${statutStockColor(p.statut as any)}`}>{p.statut}</span>
                     </td>
                   </tr>
                 ))}

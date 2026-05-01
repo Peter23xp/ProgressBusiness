@@ -5,13 +5,8 @@ import { Star, TrendingUp, Users, RefreshCw, Settings, ArrowUpRight, ArrowDownRi
 import { useAuthStore } from '@/store/auth.store';
 import { fideliteApi, NIVEAU_COLORS, NIVEAU_LABELS, type FideliteFilters } from '@/lib/fidelite.api';
 import { formatCDF, formatDate, cn } from '@/lib/utils';
+import { useSites } from '@/hooks/useSites';
 import type { NiveauFidelite } from '@/types';
-
-const SITES = [
-  { id: 'goma', nom: 'Goma' },
-  { id: 'bukavu', nom: 'Bukavu' },
-  { id: 'kinshasa', nom: 'Kinshasa' },
-];
 
 const PERIODS = [
   { value: 'today', label: "Auj." },
@@ -63,6 +58,7 @@ export default function FideliteProgrammePage() {
   const navigate = useNavigate();
   const { user, hasRole } = useAuthStore();
   const canSeeSites = hasRole('DIRECTEUR_REGIONAL');
+  const { sites } = useSites();
 
   const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'all'>('month');
   const [siteId, setSiteId] = useState('');
@@ -106,7 +102,7 @@ export default function FideliteProgrammePage() {
           {canSeeSites && (
             <select value={siteId} onChange={e => setSiteId(e.target.value)} className="text-sm">
               <option value="">Tous les sites</option>
-              {SITES.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
+              {sites.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
             </select>
           )}
           <div className="period-toggle">

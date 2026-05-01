@@ -204,7 +204,19 @@ export class VentesService {
       return newVente;
     });
 
-    return vente;
+    return {
+      vente: {
+        id: vente.id,
+        numeroVente: vente.numeroVente,
+        montantBrut: Number(vente.montantBrut),
+        remiseFidelite: Number(vente.remiseFidelite),
+        montantNet: Number(vente.montantNet),
+        montantRecu: vente.montantRecu ? Number(vente.montantRecu) : null,
+        monnaieRendue: vente.monnaieRendue ? Number(vente.monnaieRendue) : null,
+        pointsAttribues: vente.pointsAttribues,
+        createdAt: vente.createdAt,
+      },
+    };
   }
 
   private async generateNumeroVente(siteId: string): Promise<string> {
@@ -270,7 +282,7 @@ export class VentesService {
       if (dateFin) where.createdAt.lte = new Date(dateFin);
     }
 
-    const [data, total] = await Promise.all([
+    const [data, total, kpisAgg] = await Promise.all([
       this.prisma.vente.findMany({
         where,
         ...paginate(page, limit),
@@ -287,11 +299,32 @@ export class VentesService {
         },
       }),
       this.prisma.vente.count({ where }),
+      this.prisma.vente.aggregate({
+        where,
+        _sum: { montantNet: true },
+        _count: { id: true },
+      }),
     ]);
 
+    const totalCA = Number(kpisAgg._sum.montantNet ?? 0);
+    const nbVentes = kpisAgg._count.id;
+    const panierMoyen = nbVentes > 0 ? totalCA / nbVentes : 0;
+
+    const ventes = data.map((v) => ({
+      id: v.id,
+      numeroVente: v.numeroVente,
+      createdAt: v.createdAt,
+      agent: v.agent,
+      client: v.client,
+      montantNet: Number(v.montantNet),
+      modePaiement: v.modePaiement,
+      statut: v.statut,
+    }));
+
     return {
-      data,
+      ventes,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      kpis: { totalCA, nbVentes, panierMoyen },
     };
   }
 

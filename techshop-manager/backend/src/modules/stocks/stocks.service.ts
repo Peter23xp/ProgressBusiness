@@ -482,34 +482,49 @@ export class StocksService {
     return updated;
   }
 
-  async getAlertes(query: { siteId?: string; page?: number; limit?: number }) {
-    const { siteId, page = 1, limit = 50 } = query;
+  async getAlertes(query: { siteId?: string; type?: string; page?: number; limit?: number }) {
+    const { siteId, type, page = 1, limit = 50 } = query;
 
     const stocks = await this.prisma.stockSite.findMany({
-      where: siteId ? { siteId } : {},
+      where: {
+        ...(siteId ? { siteId } : {}),
+        produit: { actif: true },
+      },
       include: {
-        produit: {
-          select: { id: true, nom: true, sku: true, categorie: true, actif: true },
-        },
+        produit: { select: { id: true, nom: true, sku: true, categorie: true, actif: true } },
         site: { select: { id: true, nom: true, ville: true } },
       },
     });
 
-    const alertes = stocks
+    const allAlertes = stocks
       .filter((s) => s.quantite <= s.seuilAlerte)
       .map((s) => ({
-        ...s,
-        statut: s.quantite <= 0 ? 'RUPTURE' : 'ALERTE',
+        produitId: s.produitId,
+        produitNom: s.produit.nom,
+        sku: s.produit.sku,
+        siteId: s.siteId,
+        siteNom: s.site.nom,
+        stockActuel: s.quantite,
+        seuilAlerte: s.seuilAlerte,
+        type: s.quantite === 0 ? 'RUPTURE' : 'ALERTE',
+        depuis: s.updatedAt.toISOString(),
+        isOrdering: false,
       }))
-      .sort((a, b) => a.quantite - b.quantite);
+      .sort((a, b) => a.stockActuel - b.stockActuel);
 
-    const total = alertes.length;
+    const totalRuptures = allAlertes.filter((a) => a.type === 'RUPTURE').length;
+    const totalAlertes = allAlertes.filter((a) => a.type === 'ALERTE').length;
+
+    let filtered = allAlertes;
+    if (type === 'RUPTURE') filtered = allAlertes.filter((a) => a.type === 'RUPTURE');
+    else if (type === 'ALERTE') filtered = allAlertes.filter((a) => a.type === 'ALERTE');
+
     const { skip, take } = paginate(page, limit);
-    const data = alertes.slice(skip, skip + take);
+    const alertes = filtered.slice(skip, skip + take);
 
     return {
-      data,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      alertes,
+      summary: { totalRuptures, totalAlertes },
     };
   }
 
@@ -628,17 +643,19 @@ export class StocksService {
 
   // ── Recherche produits ────────────────────────────────────────────────────────
 
-  async searchProduits(q: string, siteId: string, limit = 8) {
-    if (!q || !siteId) return { produits: [] };
+  async searchProduits(q: string | undefined, siteId: string, limit = 50, stockOnly = false) {
+    if (!siteId) return { produits: [] };
+
+    const where: any = { actif: true };
+    if (q && q.trim()) {
+      where.OR = [
+        { nom: { contains: q.trim(), mode: 'insensitive' } },
+        { sku: { contains: q.trim(), mode: 'insensitive' } },
+      ];
+    }
 
     const produits = await this.prisma.produit.findMany({
-      where: {
-        actif: true,
-        OR: [
-          { nom: { contains: q, mode: 'insensitive' } },
-          { sku: { contains: q, mode: 'insensitive' } },
-        ],
-      },
+      where,
       include: {
         stockSites: {
           where: { siteId },
@@ -649,7 +666,7 @@ export class StocksService {
       orderBy: { nom: 'asc' },
     });
 
-    const result = produits.map((p) => {
+    let result = produits.map((p) => {
       const stock = p.stockSites[0];
       const stockDisponible = stock?.quantite ?? 0;
       const seuilAlerte = stock?.seuilAlerte ?? 5;
@@ -661,9 +678,12 @@ export class StocksService {
         categorie: p.categorie,
         prixVente: Number(p.prixVente),
         stockDisponible,
+        seuilAlerte,
         statut,
       };
     });
+
+    if (stockOnly) result = result.filter((p) => p.stockDisponible > 0);
 
     return { produits: result };
   }

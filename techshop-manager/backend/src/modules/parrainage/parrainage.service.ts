@@ -60,13 +60,22 @@ export class ParrainageService {
       }),
     );
 
+    const meilleurParrain = topParrainsWithDetails[0] ?? null;
+
     return {
-      total,
-      valides,
-      recompensesVersees,
-      enAttente,
-      montantTotalRecompenses: totalRecompenses._sum.recompenseValeur ?? 0,
-      topParrains: topParrainsWithDetails,
+      kpis: {
+        totalActifs: valides + recompensesVersees,
+        totalActifsDelta: 0,
+        recompensesVersees,
+        meilleurParrain: meilleurParrain
+          ? {
+              id: meilleurParrain.id,
+              nom: meilleurParrain.nom,
+              prenom: meilleurParrain.prenom,
+              nbFilleuls: meilleurParrain.filleulsCount,
+            }
+          : null,
+      },
     };
   }
 
@@ -113,8 +122,33 @@ export class ParrainageService {
       this.prisma.parrainage.count({ where }),
     ]);
 
+    const parrainages = data.map((p) => ({
+      id: p.id,
+      parrain: {
+        id: p.parrain.id,
+        nom: p.parrain.nom,
+        prenom: p.parrain.prenom,
+        telephone: '',
+        codeParrain: p.parrain.codeParrain ?? '',
+      },
+      filleul: {
+        id: p.filleul.id,
+        nom: p.filleul.nom,
+        prenom: p.filleul.prenom,
+        telephone: '',
+        statut: p.filleul.statut,
+        dateActivation: p.filleul.dateActivation?.toISOString() ?? null,
+      },
+      niveau: (p as any).niveau ?? 1,
+      statut: p.statut,
+      recompenseType: (p as any).recompenseType ?? null,
+      recompenseValeur: (p as any).recompenseValeur ?? null,
+      dateCreation: p.dateCreation,
+      siteId: p.parrain.siteInscription?.id ?? '',
+    }));
+
     return {
-      data,
+      parrainages,
       meta: {
         total,
         page,
@@ -122,6 +156,45 @@ export class ParrainageService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  async getTop(query: { siteId?: string; period?: string; limit?: number }) {
+    const { siteId, period, limit = 5 } = query;
+    const dateDebut = this.getPeriodStart(period);
+
+    const whereParrainage: any = {};
+    if (dateDebut) whereParrainage.dateCreation = { gte: dateDebut };
+    if (siteId) whereParrainage.parrain = { siteInscriptionId: siteId };
+
+    const grouped = await this.prisma.parrainage.groupBy({
+      by: ['parrainId'],
+      where: whereParrainage,
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: limit,
+    });
+
+    const topParrains = await Promise.all(
+      grouped.map(async (g, idx) => {
+        const client = await this.prisma.client.findUnique({
+          where: { id: g.parrainId },
+          select: { id: true, prenom: true, nom: true, telephone: true },
+        });
+        const actifs = await this.prisma.parrainage.count({
+          where: { parrainId: g.parrainId, statut: StatutParrainage.VALIDE },
+        });
+        return {
+          rang: idx + 1,
+          client: client ?? { id: g.parrainId, prenom: '', nom: '', telephone: '' },
+          nbFilleulsActifs: actifs,
+          nbFilleulsTotal: g._count.id,
+          recompensesTotales: 0,
+          caGenere: 0,
+        };
+      }),
+    );
+
+    return { topParrains };
   }
 
   async getTree(clientId: string, niveaux: 1 | 2) {

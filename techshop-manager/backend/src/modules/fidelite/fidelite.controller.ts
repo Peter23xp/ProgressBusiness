@@ -39,15 +39,43 @@ export class FideliteController {
     return this.fideliteService.getTopClients(siteId, limit);
   }
 
+  @Get('mouvements')
+  @Roles(Role.AGENT)
+  getRecentMouvements(
+    @Query('siteId') siteId?: string,
+    @Query('limit', new DefaultValuePipe(8), ParseIntPipe) limit?: number,
+  ) {
+    return this.fideliteService.getRecentMouvements(siteId, limit);
+  }
+
+  @Get('config')
+  @Roles(Role.AGENT)
+  getConfig() {
+    return this.fideliteService.getConfig();
+  }
+
+  @Get('config/history')
+  @Roles(Role.AGENT)
+  getConfigHistory() {
+    return this.fideliteService.getConfigHistory();
+  }
+
   @Get('client/:clientId')
   @Roles(Role.AGENT)
-  getClientHistory(
+  getClientData(@Param('clientId') clientId: string) {
+    return this.fideliteService.getClientData(clientId);
+  }
+
+  @Get('client/:clientId/mouvements')
+  @Roles(Role.AGENT)
+  getClientMouvements(
     @Param('clientId') clientId: string,
     @Query('type') type?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
   ) {
-    return this.fideliteService.getClientHistory(clientId, { type, page, limit });
+    return this.fideliteService.getClientMouvements(clientId, { type, page, limit, sortOrder });
   }
 
   @Put('config')
