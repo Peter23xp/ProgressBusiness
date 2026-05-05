@@ -8,6 +8,7 @@ import {
   Save, Eye, EyeOff, Phone, Mail, Clock, Shield,
   Building2, Calendar, Activity, ChevronRight,
 } from 'lucide-react';
+import { useTutorialContext } from '@/components/tutorial/TutorialProvider';
 import { usersApi } from '@/lib/settings.api';
 import { useAuthStore } from '@/store/auth.store';
 import { UserRoleBadge } from '@/components/settings/UserRoleBadge';
@@ -396,6 +397,7 @@ function ChangePasswordForm() {
 export default function ProfilPage() {
   const { user: authUser } = useAuthStore();
   const [activeTab, setActiveTab] = useState<Tab>('info');
+  const tutorial = useTutorialContext();
 
   const { data: me, isLoading } = useQuery({
     queryKey: ['users', 'me'],
@@ -545,6 +547,27 @@ export default function ProfilPage() {
               </>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Aide et tutoriel */}
+      <div className="rounded-2xl border border-border bg-white p-6 shadow-sm mt-6">
+        <h3 className="text-sm font-semibold text-text mb-1">Aide et tutoriel</h3>
+        <div className="h-px bg-border mb-4" />
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-text-muted">
+              Revoyez les fonctionnalités de votre espace de travail à votre rythme.
+            </p>
+            <p className="text-xs text-text-muted mt-1">Durée : ~ 8 minutes</p>
+          </div>
+          <button
+            data-tutorial="profile-btn-restart-tutorial"
+            onClick={() => tutorial.restart()}
+            className="flex items-center gap-2 rounded-lg border border-primary-accent px-4 py-2 text-sm font-medium text-primary-accent hover:bg-primary-light transition-colors flex-shrink-0"
+          >
+            ▶ Relancer le tutoriel guidé
+          </button>
         </div>
       </div>
     </div>
