@@ -12,13 +12,22 @@ function setState(patch: Partial<ReturnType<typeof useTutorialStore.getState>>) 
   useTutorialStore.setState(patch);
 }
 
+// jsdom does not implement ResizeObserver — provide a no-op global
+const resizeObserverStub = vi.fn(function ResizeObserver(this: ResizeObserver, _cb: ResizeObserverCallback) {
+  this.observe = vi.fn();
+  this.disconnect = vi.fn();
+  this.unobserve = vi.fn();
+});
+
 beforeEach(() => {
+  vi.stubGlobal('ResizeObserver', resizeObserverStub);
   useTutorialStore.setState({ isActive: false, highlightedElementId: null });
 });
 
 afterEach(() => {
   vi.clearAllTimers();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe('TutorialOverlay', () => {
@@ -79,10 +88,11 @@ describe('TutorialOverlay', () => {
 
   test('6 — ResizeObserver set up on target element', () => {
     const observeSpy = vi.fn();
-    vi.stubGlobal('ResizeObserver', vi.fn(() => ({
-      observe: observeSpy,
-      disconnect: vi.fn(),
-    })));
+    vi.stubGlobal('ResizeObserver', vi.fn(function ResizeObserver(this: ResizeObserver) {
+      this.observe = observeSpy;
+      this.disconnect = vi.fn();
+      this.unobserve = vi.fn();
+    }));
 
     const el = document.createElement('div');
     el.setAttribute('data-tutorial', 'resize-test');
@@ -93,7 +103,6 @@ describe('TutorialOverlay', () => {
 
     expect(observeSpy).toHaveBeenCalledWith(el);
     document.body.removeChild(el);
-    vi.unstubAllGlobals();
   });
 
   test('7 — SVG is rendered when isActive=true', () => {

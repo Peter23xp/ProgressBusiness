@@ -40,7 +40,27 @@ function wrapper({ children }: { children: React.ReactNode }) {
   return React.createElement(MemoryRouter, null, children);
 }
 
+// jsdom does not implement ResizeObserver or window.matchMedia
+function setupGlobals() {
+  vi.stubGlobal('ResizeObserver', vi.fn(function ResizeObserver(this: ResizeObserver) {
+    this.observe = vi.fn();
+    this.disconnect = vi.fn();
+    this.unobserve = vi.fn();
+  }));
+  vi.stubGlobal('matchMedia', vi.fn((_query: string) => ({
+    matches: false,
+    media: _query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })));
+}
+
 beforeEach(() => {
+  setupGlobals();
   vi.clearAllMocks();
   vi.mocked(offline.getCachedData).mockResolvedValue(null);
   useTutorialStore.setState({

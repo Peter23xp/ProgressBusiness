@@ -42,16 +42,45 @@ const MOCK_STEPS: TutorialStep[] = [
   { id: 'step-2', sectionId: 's2', sectionLabel: 'Section 2', type: 'tooltip', title: 'Dernière', description: 'Desc 2', nextLabel: 'Terminer ✓' },
 ];
 
+// Capture original action references before any test can overwrite them
+const originalNext = useTutorialStore.getState().next;
+const originalPrevious = useTutorialStore.getState().previous;
+const originalSetShowQuitDialog = useTutorialStore.getState().setShowQuitDialog;
+
 function Wrapper({ children }: { children: React.ReactNode }) {
   return <MemoryRouter><TutorialProvider>{children}</TutorialProvider></MemoryRouter>;
 }
 
+// jsdom does not implement ResizeObserver, window.matchMedia, or scrollIntoView properly
 beforeEach(() => {
+  vi.stubGlobal('ResizeObserver', vi.fn(function ResizeObserver(this: ResizeObserver) {
+    this.observe = vi.fn();
+    this.disconnect = vi.fn();
+    this.unobserve = vi.fn();
+  }));
+  vi.stubGlobal('matchMedia', vi.fn((_query: string) => ({
+    matches: false,
+    media: _query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })));
+  // jsdom's scrollIntoView doesn't handle option objects — provide no-op stub
+  window.HTMLElement.prototype.scrollIntoView = vi.fn();
+
+  // Full reset including restoring original action functions
+  // (tests 13/14 replace next/previous with spies via setState — restore them here)
   useTutorialStore.setState({
     isActive: false, isCompleted: false, currentStepIndex: 0,
     steps: [], highlightedElementId: null,
     showWelcomeModal: false, showCompletionModal: false,
     showResumeDialog: false, showQuitDialog: false, savedStepIndex: 0,
+    next: originalNext,
+    previous: originalPrevious,
+    setShowQuitDialog: originalSetShowQuitDialog,
   });
 });
 
