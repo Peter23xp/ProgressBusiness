@@ -202,19 +202,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
           </>
         )}
 
-        {/* Support */}
-        <div className="px-2 space-y-0.5">
-          <NavLink
-            to="/support"
-            onClick={onClose}
-            className={({ isActive }) => cn('sidebar-link', isActive && 'active')}
-          >
-            <span className="sidebar-icon"><HelpCircle size={16} /></span>
-            <span>Support</span>
-          </NavLink>
-        </div>
-
-        {/* Settings group */}
+        {/* Settings group + Support */}
         {showSettings && (
           <>
             <NavSection label="Système" />
@@ -257,6 +245,15 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
                 </div>
               )}
             </div>
+
+            <NavLink
+              to="/support"
+              onClick={onClose}
+              className={({ isActive }) => cn('sidebar-link', isActive && 'active')}
+            >
+              <span className="sidebar-icon"><HelpCircle size={16} /></span>
+              <span>Support</span>
+            </NavLink>
           </>
         )}
       </nav>
@@ -324,6 +321,18 @@ function Header({ onMenuClick }: { onMenuClick: () => void }) {
             {initials}
           </div>
         )}
+
+        <NavLink
+          to="/support"
+          className={({ isActive }) => cn(
+            'flex h-8 w-8 items-center justify-center rounded-lg border border-border text-text-muted transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent',
+            isActive ? 'border-primary-accent text-primary-accent bg-primary-light/30' : 'hover:border-primary-accent hover:text-primary-accent hover:bg-primary-light/20',
+          )}
+          title="Support technique"
+          aria-label="Support technique"
+        >
+          <HelpCircle size={15} aria-hidden />
+        </NavLink>
 
         <button
           type="button"
