@@ -107,6 +107,7 @@ export class UsersService {
         siteId: true,
         site: { select: { id: true, nom: true } },
         derniereConnexion: true,
+        tutorialCompleted: true,
       },
     });
     if (!user) {
@@ -218,6 +219,21 @@ export class UsersService {
         langue: true,
         siteId: true,
         site: { select: { id: true, nom: true } },
+      },
+    });
+  }
+
+  async updateTutorial(userId: string, tutorialCompleted: boolean) {
+    return this.prisma.utilisateur.update({
+      where: { id: userId },
+      data: {
+        tutorialCompleted,
+        tutorialCompletedAt: tutorialCompleted ? new Date() : null,
+      },
+      select: {
+        id: true,
+        tutorialCompleted: true,
+        tutorialCompletedAt: true,
       },
     });
   }

@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto, UpdateProfileDto, ChangePasswordDto } from './dto/user.dto';
+import { CreateUserDto, UpdateProfileDto, ChangePasswordDto, UpdateTutorialDto } from './dto/user.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -59,6 +59,15 @@ export class UsersController {
     @Body() dto: ChangePasswordDto,
   ) {
     return this.usersService.changePassword(user.id, dto);
+  }
+
+  @Patch('me/tutorial')
+  @Roles(Role.AGENT)
+  updateTutorial(
+    @CurrentUser() user: any,
+    @Body() dto: UpdateTutorialDto,
+  ) {
+    return this.usersService.updateTutorial(user.id, dto.tutorialCompleted);
   }
 
   @Patch(':id/desactiver')
