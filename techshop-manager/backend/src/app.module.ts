@@ -15,6 +15,7 @@ import { PortalModule } from './modules/portal/portal.module';
 import { UsersModule } from './modules/users/users.module';
 import { SitesModule } from './modules/sites/sites.module';
 import { ConfigAppModule } from './modules/config-app/config-app.module';
+import { SupportModule } from './modules/support/support.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ConfigAppModule } from './modules/config-app/config-app.module';
     UsersModule,
     SitesModule,
     ConfigAppModule,
+    SupportModule,
   ],
 })
 export class AppModule {}

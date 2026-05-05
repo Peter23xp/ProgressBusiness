@@ -22,6 +22,7 @@ import {
   Clock,
   CreditCard,
   RotateCcw,
+  HelpCircle,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { useUIStore } from '@/store/ui.store';
@@ -200,6 +201,18 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
             </div>
           </>
         )}
+
+        {/* Support */}
+        <div className="px-2 space-y-0.5">
+          <NavLink
+            to="/support"
+            onClick={onClose}
+            className={({ isActive }) => cn('sidebar-link', isActive && 'active')}
+          >
+            <span className="sidebar-icon"><HelpCircle size={16} /></span>
+            <span>Support</span>
+          </NavLink>
+        </div>
 
         {/* Settings group */}
         {showSettings && (

@@ -71,6 +71,9 @@ const PortalAchatsPage  = lazy(() => import('@/pages/portal/PortalAchatsPage'));
 const PortalPointsPage  = lazy(() => import('@/pages/portal/PortalPointsPage'));
 const PortalFilleulsPage = lazy(() => import('@/pages/portal/PortalFilleulsPage'));
 
+// Support
+const SupportPage       = lazy(() => import('@/pages/support/SupportPage'));
+
 // Parametres
 const UsersPage         = lazy(() => import('@/pages/parametres/UsersPage'));
 const SitesPage         = lazy(() => import('@/pages/parametres/SitesPage'));
@@ -171,6 +174,9 @@ export default function App() {
             <Route path="reports/stocks" element={<RoleGuard minRole="DIRECTEUR_REGIONAL"><RapportStocksPage /></RoleGuard>} />
             <Route path="reports/parrainage" element={<RoleGuard minRole="GERANT"><RapportParrainagePage /></RoleGuard>} />
             <Route path="reports/export" element={<RoleGuard minRole="GERANT"><ExportPage /></RoleGuard>} />
+
+            {/* Support */}
+            <Route path="support" element={<SupportPage />} />
 
             {/* Parametres */}
             <Route path="settings/users" element={<RoleGuard minRole="SUPER_ADMIN"><UsersPage /></RoleGuard>} />

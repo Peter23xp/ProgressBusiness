@@ -570,3 +570,32 @@ model PortailToken {
 
   @@map("portail_tokens")
 }
+
+// ============================================
+// SUPPORT
+// ============================================
+
+enum TicketType {
+  BUG
+  SUGGESTION
+  QUESTION
+  CONFIG
+  URGENCE
+}
+
+model SupportTicket {
+  id            String     @id @default(uuid())
+  ticketRef     String     @unique
+  nom           String
+  email         String
+  siteNom       String
+  role          String
+  type          TicketType
+  sujet         String
+  description   String     @db.Text
+  systemInfo    String?    @db.Text
+  hasScreenshot Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+
+  @@map("support_tickets")
+}
