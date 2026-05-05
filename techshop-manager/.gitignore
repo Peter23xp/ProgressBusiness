@@ -35,3 +35,7 @@ Thumbs.db
 
 # Exports temp
 /tmp/progress-business-exports/
+
+# Git worktrees
+.worktrees/
+.superpowers/
