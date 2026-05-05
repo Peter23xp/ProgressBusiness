@@ -86,20 +86,22 @@ export function EditClientModal({
   const apiError = extractApiError(error);
 
   return (
-    <>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-modal-title"
+    >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Panel */}
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="edit-modal-title"
-        className="fixed inset-x-4 top-1/2 z-50 max-w-lg mx-auto -translate-y-1/2 rounded-2xl bg-white shadow-2xl border border-border animate-fade-up"
+        className="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-border animate-fade-up flex flex-col max-h-[90vh]"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
@@ -118,7 +120,7 @@ export function EditClientModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
-          <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
+          <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
 
             {/* Erreur API globale */}
             {apiError && (
@@ -276,6 +278,6 @@ export function EditClientModal({
           </div>
         </form>
       </div>
-    </>
+    </div>
   );
 }

@@ -138,9 +138,10 @@ function CreateUserDialog({ open, onClose, onCreated }: {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-up"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-up"
       role="dialog" aria-modal="true" aria-label="Créer un utilisateur">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
+      <div className="relative z-10 bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-2">
@@ -154,7 +155,7 @@ function CreateUserDialog({ open, onClose, onCreated }: {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit((d) => mutation.mutate(d as CreateUserPayload))} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit((d) => mutation.mutate(d as CreateUserPayload))} className="p-6 space-y-4 overflow-y-auto flex-1">
           <div className="grid grid-cols-1 gap-4">
             <div className="form-group">
               <label className="form-label" htmlFor="cu-nom">Nom complet</label>
