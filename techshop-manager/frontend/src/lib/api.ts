@@ -85,7 +85,11 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         useAuthStore.getState().logout();
-        window.location.href = '/login';
+        const errCode = (refreshError as { response?: { data?: { error?: { code?: string } } } })
+          ?.response?.data?.error?.code;
+        window.location.href = errCode === 'ACCOUNT_DEACTIVATED'
+          ? '/login?reason=deactivated'
+          : '/login';
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

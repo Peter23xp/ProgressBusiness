@@ -508,7 +508,7 @@ export default function UsersPage() {
                         >
                           <RotateCcw size={11} /> MDP
                         </button>
-                        {user.actif ? (
+                        {user.actif && user.role !== 'SUPER_ADMIN' ? (
                           <button
                             type="button"
                             onClick={() => setConfirm({ user, action: 'desactiver' })}
@@ -517,7 +517,7 @@ export default function UsersPage() {
                           >
                             <Lock size={11} /> Désactiver
                           </button>
-                        ) : (
+                        ) : !user.actif ? (
                           <button
                             type="button"
                             onClick={() => setConfirm({ user, action: 'reactiver' })}
@@ -526,7 +526,7 @@ export default function UsersPage() {
                           >
                             <Unlock size={11} /> Réactiver
                           </button>
-                        )}
+                        ) : null}
                       </div>
                     </td>
                   </tr>

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
@@ -139,6 +140,13 @@ export class UsersService {
     const user = await this.prisma.utilisateur.findUnique({ where: { id } });
     if (!user) {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Utilisateur introuvable' });
+    }
+
+    if (user.role === Role.SUPER_ADMIN) {
+      throw new ForbiddenException({
+        code: 'CANNOT_DEACTIVATE_SUPER_ADMIN',
+        message: 'Impossible de désactiver un Super Administrateur.',
+      });
     }
 
     return this.prisma.utilisateur.update({

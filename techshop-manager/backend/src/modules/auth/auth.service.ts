@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -35,6 +36,15 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException({
         error: { code: 'INVALID_CREDENTIALS', message: 'Téléphone ou mot de passe incorrect' },
+      });
+    }
+
+    if (!user.actif) {
+      throw new ForbiddenException({
+        error: {
+          code: 'ACCOUNT_DEACTIVATED',
+          message: 'Votre compte a été désactivé. Contactez votre administrateur.',
+        },
       });
     }
 
@@ -105,12 +115,27 @@ export class AuthService {
         secret: this.config.get('JWT_REFRESH_SECRET'),
       }) as { sub: string; role: string; siteId?: string };
 
+      const user = await this.prisma.utilisateur.findUnique({
+        where: { id: payload.sub },
+        select: { actif: true },
+      });
+
+      if (!user || !user.actif) {
+        throw new ForbiddenException({
+          error: {
+            code: 'ACCOUNT_DEACTIVATED',
+            message: 'Votre compte a été désactivé. Contactez votre administrateur.',
+          },
+        });
+      }
+
       const accessToken = this.jwt.sign(
         { sub: payload.sub, role: payload.role, siteId: payload.siteId },
         { expiresIn: this.config.get('JWT_EXPIRES_IN', '8h') },
       );
       return { accessToken, newRefreshToken: null };
-    } catch {
+    } catch (err) {
+      if (err instanceof ForbiddenException) throw err;
       throw new UnauthorizedException({
         error: { code: 'REFRESH_TOKEN_INVALID', message: 'Refresh token invalide ou expiré' },
       });

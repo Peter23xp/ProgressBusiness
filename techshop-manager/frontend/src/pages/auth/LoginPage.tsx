@@ -43,7 +43,11 @@ export default function LoginPage() {
   const [rememberMe,    setRememberMe]     = useState(false);
   const [showPassword,  setShowPassword]  = useState(false);
   const [isLoading,     setIsLoading]     = useState(false);
-  const [errorMsg,      setErrorMsg]      = useState('');
+  const [errorMsg,      setErrorMsg]      = useState(
+    searchParams.get('reason') === 'deactivated'
+      ? 'Votre compte a été désactivé. Contactez votre administrateur.'
+      : '',
+  );
   const [lockCountdown, setLockCountdown] = useState('');
 
   const identifierRef  = useRef<HTMLInputElement>(null);
@@ -88,9 +92,12 @@ export default function LoginPage() {
       const redirect = searchParams.get('redirect');
       navigate(redirect ?? getRoleRedirect(user.role), { replace: true });
     } catch (error: unknown) {
-      const axErr = error as { response?: { status?: number; data?: { error?: { attemptsLeft?: number; unlocksAt?: string } } } };
+      const axErr = error as { response?: { status?: number; data?: { error?: { code?: string; attemptsLeft?: number; unlocksAt?: string } } } };
       const status = axErr?.response?.status;
-      if (status === 401) {
+      const code = axErr?.response?.data?.error?.code;
+      if (status === 403 && code === 'ACCOUNT_DEACTIVATED') {
+        setErrorMsg('Votre compte a été désactivé. Contactez votre administrateur.');
+      } else if (status === 401) {
         incrementAttempts(); setPassword('');
         setTimeout(() => identifierRef.current?.focus(), 50);
         const attemptsLeft = axErr.response?.data?.error?.attemptsLeft;
