@@ -1,5 +1,4 @@
-// frontend/src/components/tutorial/TutorialOverlay.tsx
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { useTutorialStore } from '@/store/tutorial.store';
 
@@ -12,16 +11,15 @@ interface SpotlightRect {
 
 const PADDING = 6;
 const BORDER_RADIUS = 8;
-const RETRY_DELAY = 500;
-const MAX_RETRIES = 5;
 
 export function TutorialOverlay() {
   const { isActive, highlightedElementId } = useTutorialStore();
   const [rect, setRect] = useState<SpotlightRect | null>(null);
   const [visible, setVisible] = useState(false);
-  const retryCountRef = useRef(0);
   const observerRef = useRef<ResizeObserver | null>(null);
   const mutationObserverRef = useRef<MutationObserver | null>(null);
+  const uid = useId();
+  const maskId = `tutorial-spotlight-mask-${uid}`;
 
   function calculateRect(el: Element): SpotlightRect {
     const r = el.getBoundingClientRect();
@@ -33,29 +31,6 @@ export function TutorialOverlay() {
     };
   }
 
-  function findAndSetElement(targetId: string, attempt = 0) {
-    const el = document.querySelector(`[data-tutorial="${targetId}"]`);
-    if (el) {
-      retryCountRef.current = 0;
-      setRect(calculateRect(el));
-      setVisible(true);
-
-      if (observerRef.current) observerRef.current.disconnect();
-      observerRef.current = new ResizeObserver(() => setRect(calculateRect(el)));
-      observerRef.current.observe(el);
-      observerRef.current.observe(document.body);
-      return;
-    }
-
-    if (attempt < MAX_RETRIES) {
-      setTimeout(() => findAndSetElement(targetId, attempt + 1), RETRY_DELAY);
-    } else {
-      console.warn(`[Tutorial] Element not found: data-tutorial="${targetId}" after ${MAX_RETRIES} retries`);
-      setRect(null);
-      setVisible(true);
-    }
-  }
-
   useEffect(() => {
     if (!isActive || !highlightedElementId) {
       setVisible(false);
@@ -64,42 +39,68 @@ export function TutorialOverlay() {
     }
 
     setVisible(false);
-    retryCountRef.current = 0;
 
-    if (mutationObserverRef.current) mutationObserverRef.current.disconnect();
+    observerRef.current?.disconnect();
+    mutationObserverRef.current?.disconnect();
+
+    const cancelled = { current: false };
+
+    function attachElement(el: Element) {
+      if (cancelled.current) return;
+      setRect(calculateRect(el));
+      setVisible(true);
+      observerRef.current = new ResizeObserver(() => {
+        if (!cancelled.current) setRect(calculateRect(el));
+      });
+      observerRef.current.observe(el);
+    }
 
     const el = document.querySelector(`[data-tutorial="${highlightedElementId}"]`);
     if (el) {
-      setRect(calculateRect(el));
-      setVisible(true);
-      if (observerRef.current) observerRef.current.disconnect();
-      observerRef.current = new ResizeObserver(() => setRect(calculateRect(el)));
-      observerRef.current.observe(el);
-      observerRef.current.observe(document.body);
+      attachElement(el);
     } else {
       mutationObserverRef.current = new MutationObserver(() => {
+        if (cancelled.current) return;
         const found = document.querySelector(`[data-tutorial="${highlightedElementId}"]`);
         if (found) {
           mutationObserverRef.current?.disconnect();
-          findAndSetElement(highlightedElementId);
+          attachElement(found);
         }
       });
       mutationObserverRef.current.observe(document.body, { childList: true, subtree: true });
-      findAndSetElement(highlightedElementId);
+
+      // Retry x5 every 500ms as fallback (MutationObserver may miss some cases)
+      let attempt = 0;
+      const MAX_RETRIES = 5;
+      const RETRY_DELAY = 500;
+      function retry() {
+        if (cancelled.current) return;
+        attempt++;
+        const found = document.querySelector(`[data-tutorial="${highlightedElementId}"]`);
+        if (found) {
+          mutationObserverRef.current?.disconnect();
+          attachElement(found);
+          return;
+        }
+        if (attempt < MAX_RETRIES) {
+          setTimeout(retry, RETRY_DELAY);
+        } else {
+          if (!cancelled.current) {
+            console.warn(`[Tutorial] Element not found: data-tutorial="${highlightedElementId}" after ${MAX_RETRIES} retries`);
+            setRect(null);
+            setVisible(true);
+          }
+        }
+      }
+      setTimeout(retry, RETRY_DELAY);
     }
 
     return () => {
+      cancelled.current = true;
       observerRef.current?.disconnect();
       mutationObserverRef.current?.disconnect();
     };
   }, [isActive, highlightedElementId]);
-
-  useEffect(() => {
-    return () => {
-      observerRef.current?.disconnect();
-      mutationObserverRef.current?.disconnect();
-    };
-  }, []);
 
   if (!isActive) return null;
 
@@ -112,15 +113,14 @@ export function TutorialOverlay() {
         zIndex: 9998,
         opacity: visible ? 1 : 0,
         transition: 'opacity 200ms ease',
-        pointerEvents: rect ? 'auto' : 'none',
+        pointerEvents: 'none',
       }}
-      onClick={(e) => e.stopPropagation()}
     >
       <svg
         style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
       >
         <defs>
-          <mask id="tutorial-spotlight-mask">
+          <mask id={maskId}>
             <rect width="100%" height="100%" fill="white" />
             {rect && (
               <rect
@@ -139,7 +139,7 @@ export function TutorialOverlay() {
           width="100%"
           height="100%"
           fill="rgba(0,0,0,0.65)"
-          mask="url(#tutorial-spotlight-mask)"
+          mask={`url(#${maskId})`}
         />
         {rect && (
           <rect
