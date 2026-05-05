@@ -1,5 +1,5 @@
-﻿import { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+﻿import { useState, useEffect } from 'react';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -83,7 +83,14 @@ function NavSection({ label }: { label: string }) {
 // ── Sidebar ───────────────────────────────────────────────────────
 function Sidebar({ onClose }: { onClose?: () => void }) {
   const { hasRole } = useAuthStore();
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const location = useLocation();
+  const onSettingsPage = location.pathname.startsWith('/settings');
+  const [settingsOpen, setSettingsOpen] = useState(onSettingsPage);
+
+  // Ouvre/ferme auto selon la route active
+  useEffect(() => {
+    if (onSettingsPage) setSettingsOpen(true);
+  }, [onSettingsPage]);
 
   const visibleItems = NAV_ITEMS.filter((item) => hasRole(item.minRole));
   const visibleSettingsChildren = SETTINGS_GROUP.children.filter((c) => hasRole(c.minRole));
