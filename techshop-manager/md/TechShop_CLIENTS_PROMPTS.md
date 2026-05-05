@@ -1,4 +1,4 @@
-# 🛒 TECHSHOP MANAGER — PROMPTS DE DÉVELOPPEMENT
+﻿# 🛒 PROGRESS BUSINESS — PROMPTS DE DÉVELOPPEMENT
 ## Module CLIENTS | Écrans SCR-005 · SCR-006 · SCR-007 · SCR-008 · SCR-009 · SCR-010 · SCR-011
 
 > **MODE D'EMPLOI :**
@@ -14,7 +14,7 @@
 ## CONTEXTE GLOBAL (rappel rapide pour chaque prompt)
 
 ```
-Projet      : TechShop Manager — Système de Gestion Commercial Multi-Sites
+Projet      : Progress Business — Système de Gestion Commercial Multi-Sites
 Stack       : React 18 + TypeScript + Vite + TailwindCSS + shadcn/ui
 State       : Zustand (auth + UI) + TanStack Query v5 (serveur)
 Offline     : Dexie.js (IndexedDB) + Service Worker (Workbox)
@@ -88,7 +88,7 @@ Prompt 7 (SCR-011 — Import CSV)
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/clients/ClientsListPage.tsx
 Route       : /clients
 Accès       : Protégé — rôle minimum : AGENT
@@ -522,7 +522,7 @@ DÉFINITION DE "TERMINÉ"
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/clients/ClientDetailPage.tsx
 Route       : /clients/:id
 Accès       : Protégé — rôle minimum : AGENT
@@ -937,7 +937,7 @@ DÉFINITION DE "TERMINÉ"
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/clients/onboarding/OnboardingRecitPage.tsx
 Route       : /clients/new/recit
 Accès       : Protégé — rôle minimum : AGENT
@@ -1248,7 +1248,7 @@ DÉFINITION DE "TERMINÉ"
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/clients/onboarding/OnboardingFormationPage.tsx
 Route       : /clients/:id/formation
 Accès       : Protégé — rôle minimum : FORMATEUR
@@ -1408,7 +1408,7 @@ DÉFINITION DE "TERMINÉ"
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/clients/onboarding/OnboardingFichePage.tsx
 Route       : /clients/:id/fiche
 Accès       : Protégé — rôle minimum : AGENT
@@ -1529,7 +1529,7 @@ DÉFINITION DE "TERMINÉ"
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/clients/onboarding/OnboardingActivationPage.tsx
 Route       : /clients/:id/activate
 Accès       : Protégé — rôle minimum : AGENT
@@ -1736,7 +1736,7 @@ DÉFINITION DE "TERMINÉ"
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/clients/ClientImportPage.tsx
 Route       : /clients/import
 Accès       : Protégé — rôle minimum : GERANT
@@ -1842,7 +1842,7 @@ Bouton "Télécharger le modèle CSV" → génère et télécharge :
   NK-GOM-001-0002,+243991234567
 
 Implémentation : window.URL.createObjectURL(new Blob([csvContent], { type: 'text/csv' }))
-Nom du fichier : "modele_import_techshop.csv"
+Nom du fichier : "modele_import_progress_business.csv"
 
 
 TABLEAU DE PRÉVISUALISATION
@@ -2047,4 +2047,4 @@ DÉFINITION DE "TERMINÉ"
 
 ---
 
-*TechShop Manager — Prompts Développement Module Clients SCR-005 à SCR-011 — Goma, RDC — v1.0 — 2025*
+*Progress Business — Prompts Développement Module Clients SCR-005 à SCR-011 — Goma, RDC — v1.0 — 2025*

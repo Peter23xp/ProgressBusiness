@@ -115,6 +115,7 @@
   /* ── Sidebar ─────────────────────────────────────────────────── */
   .sidebar {
     width: 240px;
+    height: 100%;
     background-color: #0A1628;
     @apply text-white flex flex-col flex-shrink-0;
   }

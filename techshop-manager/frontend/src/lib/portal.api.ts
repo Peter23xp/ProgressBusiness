@@ -1,0 +1,155 @@
+import { api } from '@/lib/api';
+import type { NiveauFidelite, TypeRecompense } from '@/types';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface NiveauConfig {
+  id: string;
+  nom: string;
+  seuilPts: number;
+  remisePct: number;
+  couleur?: string;
+}
+
+export interface PortalHomeData {
+  client: {
+    id: string;
+    prenom: string;
+    nom: string;
+    telephone: string;
+    niveauFidelite: NiveauFidelite;
+    pointsFidelite: number;
+    pointsCumules: number;
+    remisePct: number;
+    codeParrain?: string;
+    statut: string;
+  };
+  prochainNiveau: {
+    nom: string;
+    seuilPts: number;
+    pointsManquants: number;
+  } | null;
+  niveauxConfig: NiveauConfig[];
+  nbFilleulsActifs: number;
+  nbFilleulsTotal: number;
+  dernierAchats: DernierAchat[];
+}
+
+export interface DernierAchat {
+  id: string;
+  date: string;
+  produitPrincipal: string;
+  montantTotal: number;
+  nbArticles: number;
+}
+
+export interface PortalPurchase {
+  id: string;
+  date: string;
+  siteNom: string;
+  produitPrincipal: string;
+  nbArticles: number;
+  montantTotal: number;
+  remiseAppliquee: number;
+  pointsAttribues: number;
+  modePaiement: string;
+}
+
+export interface PortalPurchasesResponse {
+  achats: PortalPurchase[];
+  stats: {
+    totalDepense: number;
+    nbAchats: number;
+    totalPointsGagnes: number;
+  };
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export interface PortalPurchaseDetail {
+  vente: {
+    id: string;
+    numeroVente?: string;
+    date: string;
+    siteNom: string;
+    modePaiement: string;
+    lignes: Array<{
+      nom: string;
+      quantite: number;
+      prixUnitaire: number;
+      sousTotal: number;
+    }>;
+    montantBrut: number;
+    remiseFidelite: number;
+    montantNet: number;
+    pointsAttribues: number;
+    soldePointsApres?: number;
+  };
+}
+
+export interface PortalMouvement {
+  id: string;
+  type: string;
+  delta: number;
+  soldeApres: number;
+  description?: string;
+  createdAt: string;
+}
+
+export interface PortalMovementsResponse {
+  mouvements: PortalMouvement[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export interface PortalFilleul {
+  id: string;
+  prenom: string;
+  nom: string;
+  statut: 'ACTIF' | 'EN_COURS' | 'SUSPENDU';
+  dateInscription: string;
+  recompenseGeneree: number;
+  etapeEnCours?: string;
+}
+
+export interface PortalReferralsResponse {
+  codeParrain: string;
+  stats: {
+    nbFilleulsActifs: number;
+    nbFilleulsTotal: number;
+    gainsTotaux: number;
+    typeRecompense: TypeRecompense;
+    recompenseValeur: number;
+  };
+  filleuls: PortalFilleul[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+// ── API calls ─────────────────────────────────────────────────────────────────
+
+export const portalApi = {
+  getHomeData: (): Promise<PortalHomeData> =>
+    api.get('/portal/me').then((r) => r.data),
+
+  getPurchases: (params: {
+    period: 'month' | '3months' | 'all';
+    page: number;
+    limit?: number;
+  }): Promise<PortalPurchasesResponse> =>
+    api.get('/portal/purchases', { params: { ...params, limit: params.limit ?? 20 } }).then((r) => r.data),
+
+  getPurchaseDetail: (venteId: string): Promise<PortalPurchaseDetail> =>
+    api.get(`/portal/purchases/${venteId}`).then((r) => r.data),
+
+  getPointsMouvements: (params: {
+    typeFilter: 'all' | 'gains' | 'deductions';
+    page: number;
+    limit?: number;
+  }): Promise<PortalMovementsResponse> =>
+    api.get('/portal/points', { params: { ...params, limit: params.limit ?? 20 } }).then((r) => r.data),
+
+  getReferrals: (params: {
+    filter: 'actifs' | 'en_attente' | 'tous';
+    page: number;
+    limit?: number;
+  }): Promise<PortalReferralsResponse> =>
+    api.get('/portal/referrals', { params: { ...params, limit: params.limit ?? 20 } }).then((r) => r.data),
+};

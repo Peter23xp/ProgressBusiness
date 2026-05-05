@@ -1,10 +1,6 @@
 import {
-  Controller,
-  Get,
-  Query,
-  UseGuards,
-  ParseIntPipe,
-  DefaultValuePipe,
+  Controller, Get, Param, Query, UseGuards,
+  ParseIntPipe, DefaultValuePipe,
 } from '@nestjs/common';
 import { PortalService } from './portal.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -17,28 +13,49 @@ export class PortalController {
 
   @Get('me')
   getPortalData(@CurrentUser() user: any) {
-    return this.portalService.getPortalData(user.sub);
+    return this.portalService.getPortalData(user.id);
   }
 
   @Get('purchases')
   getPurchases(
     @CurrentUser() user: any,
     @Query('period') period?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
   ) {
-    return this.portalService.getPurchases(user.sub, { period });
+    return this.portalService.getPurchases(user.id, { period, page, limit });
+  }
+
+  @Get('purchases/:venteId')
+  getPurchaseDetail(
+    @CurrentUser() user: any,
+    @Param('venteId') venteId: string,
+  ) {
+    return this.portalService.getPurchaseDetail(user.id, venteId);
   }
 
   @Get('points')
   getPoints(
     @CurrentUser() user: any,
+    @Query('typeFilter') typeFilter?: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
-    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
   ) {
-    return this.portalService.getPoints(user.sub, { page, limit });
+    return this.portalService.getPoints(user.id, { page, limit, typeFilter });
+  }
+
+  @Get('referrals')
+  getReferrals(
+    @CurrentUser() user: any,
+    @Query('filter') filter?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
+  ) {
+    return this.portalService.getReferrals(user.id, { filter, page, limit });
   }
 
   @Get('filleuls')
   getFilleuls(@CurrentUser() user: any) {
-    return this.portalService.getFilleuls(user.sub);
+    return this.portalService.getReferrals(user.id, {});
   }
 }

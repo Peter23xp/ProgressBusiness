@@ -1,10 +1,156 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { StatutExport, StatutParrainage } from '@prisma/client';
+import { StatutExport } from '@prisma/client';
+import { format, startOfWeek, startOfMonth } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 @Injectable()
 export class RapportsService {
   constructor(private prisma: PrismaService) {}
+
+  // ─── SCR-030 : Dashboard Rapports ─────────────────────────────────────────
+
+  async getVentesDashboard(query: {
+    siteId?: string;
+    dateDebut: string;
+    dateFin: string;
+    granularite?: 'day' | 'week' | 'month';
+    userSiteId?: string; // force scope for GERANT
+  }) {
+    const {
+      dateDebut,
+      dateFin,
+      granularite = 'day',
+      userSiteId,
+    } = query;
+
+    // GERANT → force to their own site
+    const effectiveSiteId = userSiteId ?? query.siteId;
+
+    const dateFrom = new Date(dateDebut);
+    const dateTo   = new Date(dateFin);
+
+    const whereBase: any = {
+      createdAt: { gte: dateFrom, lte: dateTo },
+      statut: { not: 'ANNULEE' },
+    };
+    if (effectiveSiteId) whereBase.siteId = effectiveSiteId;
+
+    // 1. Fetch all relevant ventes with siteId
+    const ventes = await this.prisma.vente.findMany({
+      where: whereBase,
+      select: {
+        id: true,
+        createdAt: true,
+        montantNet: true,
+        siteId: true,
+        site: { select: { id: true, nom: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // 2. Fetch sites for context (to determine total CA %)
+    const sites = effectiveSiteId
+      ? await this.prisma.site.findMany({ where: { id: effectiveSiteId } })
+      : await this.prisma.site.findMany({ where: { actif: true } });
+
+    const siteMap: Record<string, string> = {};
+    sites.forEach((s) => (siteMap[s.id] = s.nom));
+
+    // 3. Build time-series labels + per-site values
+    const allLabels = this.buildLabels(dateFrom, dateTo, granularite);
+    // { label → { siteNom → ca } }
+    const seriesMap: Record<string, Record<string, number>> = {};
+    allLabels.forEach((l) => { seriesMap[l] = {}; });
+
+    const siteCATotal: Record<string, number> = {};
+    const siteVentesCount: Record<string, number> = {};
+
+    for (const v of ventes) {
+      const label = this.getLabelForDate(new Date(v.createdAt), granularite);
+      const siteNom = v.site?.nom ?? 'Inconnu';
+      const ca = Number(v.montantNet);
+      if (seriesMap[label] !== undefined) {
+        seriesMap[label][siteNom] = (seriesMap[label][siteNom] ?? 0) + ca;
+      }
+      siteCATotal[siteNom] = (siteCATotal[siteNom] ?? 0) + ca;
+      siteVentesCount[siteNom] = (siteVentesCount[siteNom] ?? 0) + 1;
+    }
+
+    const seriesCA = allLabels.map((label) => ({
+      label,
+      values: seriesMap[label] ?? {},
+    }));
+
+    const totalCA = Object.values(siteCATotal).reduce((s, v) => s + v, 0);
+
+    // 4. Per-site stats (nouveaux clients + alertes stock)
+    const parSite = await Promise.all(
+      sites.map(async (site) => {
+        const ca = siteCATotal[site.nom] ?? 0;
+        const nbVentes = siteVentesCount[site.nom] ?? 0;
+
+        const [nbNouveauxClients, alertesStockRows] = await Promise.all([
+          this.prisma.client.count({
+            where: {
+              siteInscriptionId: site.id,
+              createdAt: { gte: dateFrom, lte: dateTo },
+            },
+          }),
+          // Cross-column comparison (quantite <= seuilAlerte) requires raw SQL
+          this.prisma.$queryRaw<[{ count: bigint }]>`
+            SELECT COUNT(*)::int as count
+            FROM stock_sites
+            WHERE "siteId" = ${site.id}
+              AND quantite <= "seuilAlerte"
+          `,
+        ]);
+
+        return {
+          siteId: site.id,
+          siteNom: site.nom,
+          ca,
+          nbVentes,
+          nbNouveauxClients,
+          alertesStock: Number(alertesStockRows[0]?.count ?? 0),
+          pourcentageCA: totalCA > 0 ? Math.round((ca / totalCA) * 1000) / 10 : 0,
+        };
+      }),
+    );
+
+    // 5. Top 5 produits
+    const ligneAgg = await this.prisma.ligneVente.groupBy({
+      by: ['produitId'],
+      where: {
+        vente: {
+          createdAt: { gte: dateFrom, lte: dateTo },
+          statut: { not: 'ANNULEE' },
+          ...(effectiveSiteId ? { siteId: effectiveSiteId } : {}),
+        },
+      },
+      _sum: { quantite: true, sousTotal: true },
+      orderBy: { _sum: { quantite: 'desc' } },
+      take: 5,
+    });
+
+    const produitIds = ligneAgg.map((l) => l.produitId);
+    const produits = await this.prisma.produit.findMany({
+      where: { id: { in: produitIds } },
+      select: { id: true, nom: true, sku: true },
+    });
+    const produitMap = Object.fromEntries(produits.map((p) => [p.id, p]));
+
+    const topProduits = ligneAgg.map((l) => ({
+      nom: produitMap[l.produitId]?.nom ?? l.produitId,
+      sku: produitMap[l.produitId]?.sku ?? '',
+      quantite: l._sum.quantite ?? 0,
+      ca: Number(l._sum.sousTotal ?? 0),
+    }));
+
+    return { seriesCA, totalCA, nbVentes: ventes.length, topProduits, parSite };
+  }
+
+  // ─── Existing getVentes ────────────────────────────────────────────────────
 
   async getVentes(query: {
     siteId?: string;
@@ -72,22 +218,30 @@ export class RapportsService {
     siteId?: string;
     dateDebut?: string;
     dateFin?: string;
+    agentId?: string;
+    modePaiement?: string;
+    categorie?: string;
     page?: number;
     limit?: number;
   }) {
-    const { siteId, dateDebut, dateFin, page = 1, limit = 50 } = query;
+    const { siteId, dateDebut, dateFin, agentId, modePaiement, categorie, page = 1, limit = 50 } = query;
 
     const where: any = { statut: { not: 'ANNULEE' } };
     if (siteId) where.siteId = siteId;
+    if (agentId) where.agentId = agentId;
+    if (modePaiement) where.modePaiement = modePaiement;
     if (dateDebut || dateFin) {
       where.createdAt = {};
       if (dateDebut) where.createdAt.gte = new Date(dateDebut);
       if (dateFin) where.createdAt.lte = new Date(dateFin);
     }
+    if (categorie) {
+      where.lignes = { some: { produit: { categorie } } };
+    }
 
     const skip = (page - 1) * limit;
 
-    const [data, total] = await Promise.all([
+    const [ventes, total] = await Promise.all([
       this.prisma.vente.findMany({
         where,
         skip,
@@ -99,7 +253,7 @@ export class RapportsService {
           client: { select: { id: true, prenom: true, nom: true } },
           lignes: {
             include: {
-              produit: { select: { id: true, sku: true, nom: true } },
+              produit: { select: { id: true, sku: true, nom: true, categorie: true } },
             },
           },
         },
@@ -107,9 +261,71 @@ export class RapportsService {
       this.prisma.vente.count({ where }),
     ]);
 
+    // Résumé agrégé sur tous les résultats (sans pagination)
+    const totaux = await this.prisma.vente.aggregate({
+      where,
+      _sum: { montantNet: true, remiseFidelite: true, remiseParrainage: true },
+      _count: { id: true },
+    });
+    const totalCA = Number(totaux._sum.montantNet ?? 0);
+    const nbVentes = totaux._count.id;
+    const remises = Number(totaux._sum.remiseFidelite ?? 0) + Number(totaux._sum.remiseParrainage ?? 0);
+
+    // Calcul trends (période précédente de même durée)
+    let trendCA = 0;
+    let trendVentes = 0;
+    if (dateDebut && dateFin) {
+      const from = new Date(dateDebut);
+      const to = new Date(dateFin);
+      const diff = to.getTime() - from.getTime();
+      const prevFrom = new Date(from.getTime() - diff);
+      const prevTo = new Date(from.getTime());
+      const prevWhere: any = { ...where, createdAt: { gte: prevFrom, lte: prevTo } };
+      const prevTotaux = await this.prisma.vente.aggregate({
+        where: prevWhere,
+        _sum: { montantNet: true },
+        _count: { id: true },
+      });
+      const prevCA = Number(prevTotaux._sum.montantNet ?? 0);
+      const prevNb = prevTotaux._count.id;
+      trendCA = prevCA > 0 ? Math.round(((totalCA - prevCA) / prevCA) * 100) : 0;
+      trendVentes = prevNb > 0 ? Math.round(((nbVentes - prevNb) / prevNb) * 100) : 0;
+    }
+
+    // Totaux par agent
+    const agentAgg = await this.prisma.vente.groupBy({
+      by: ['agentId'],
+      where,
+      _count: { id: true },
+      _sum: { montantNet: true, remiseFidelite: true, remiseParrainage: true },
+    });
+    const agentIds = agentAgg.map((a) => a.agentId);
+    const agents = await this.prisma.utilisateur.findMany({
+      where: { id: { in: agentIds } },
+      select: { id: true, nom: true, site: { select: { nom: true } } },
+    });
+    const agentMap = Object.fromEntries(agents.map((a) => [a.id, a]));
+    const totauxParAgent = agentAgg.map((a) => ({
+      agentId: a.agentId,
+      agentNom: agentMap[a.agentId]?.nom ?? a.agentId,
+      siteNom: agentMap[a.agentId]?.site?.nom ?? '',
+      nbVentes: a._count.id,
+      caTotal: Number(a._sum.montantNet ?? 0),
+      caMoyen: a._count.id > 0 ? Math.round(Number(a._sum.montantNet ?? 0) / a._count.id) : 0,
+      remisesAccordees: Number(a._sum.remiseFidelite ?? 0) + Number(a._sum.remiseParrainage ?? 0),
+    })).sort((a, b) => b.caTotal - a.caTotal);
+
     return {
-      data,
+      ventes,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      resume: {
+        totalCA,
+        nbVentes,
+        remisesAccordees: remises,
+        ticketMoyen: nbVentes > 0 ? Math.round(totalCA / nbVentes) : 0,
+        trends: { ca: trendCA, ventes: trendVentes },
+      },
+      totauxParAgent,
     };
   }
 
@@ -223,10 +439,158 @@ export class RapportsService {
     };
   }
 
+  // ── SCR-033 : Rapport Parrainage enrichi ──────────────────────────────────
+
+  async getParrainageReport(query: {
+    siteId?: string;
+    dateDebut?: string;
+    dateFin?: string;
+  }) {
+    const { siteId, dateDebut, dateFin } = query;
+
+    const dateFrom = dateDebut ? new Date(dateDebut) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const dateTo   = dateFin   ? new Date(dateFin)   : new Date();
+
+    const siteFilter: any = siteId ? { siteInscriptionId: siteId } : {};
+    const siteFilterParrainage: any = siteId ? { parrain: { siteInscriptionId: siteId } } : {};
+
+    // 1. Funnel onboarding
+    const etapes: Array<'RECIT' | 'FORMATION' | 'FICHE' | 'ACTIVATION'> = ['RECIT', 'FORMATION', 'FICHE', 'ACTIVATION'];
+    const funnelCounts = await Promise.all(
+      etapes.map((etape) =>
+        this.prisma.onboardingEtape.count({
+          where: {
+            etape,
+            statut: 'COMPLETE',
+            completeeAt: { gte: dateFrom, lte: dateTo },
+            ...(siteId ? { siteId } : {}),
+          },
+        }),
+      ),
+    );
+    const [recits, formations, fiches, activations] = funnelCounts;
+    const funnel = {
+      recits,
+      formations,
+      fiches,
+      activations,
+      tauxConversion: recits > 0 ? Math.round((activations / recits) * 100) : 0,
+    };
+
+    // 2. Top 10 parrains
+    const parrainageRows = await this.prisma.parrainage.findMany({
+      where: {
+        ...siteFilterParrainage,
+        statut: { in: ['VALIDE', 'RECOMPENSE_VERSEE'] },
+        dateCreation: { gte: dateFrom, lte: dateTo },
+      },
+      include: {
+        parrain: { select: { id: true, nom: true, prenom: true, siteInscription: { select: { nom: true } } } },
+      },
+    });
+
+    // Group by parrain
+    const parrainMap: Record<string, any> = {};
+    for (const p of parrainageRows) {
+      const pid = p.parrainId;
+      if (!parrainMap[pid]) {
+        parrainMap[pid] = {
+          clientId: pid,
+          nom: p.parrain?.nom ?? '',
+          prenom: p.parrain?.prenom ?? '',
+          siteNom: p.parrain?.siteInscription?.nom ?? '',
+          nbFilleulsActives: 0,
+          caGenereParFilleuls: 0,
+          recompenseDue: 0,
+          recompenseType: p.recompenseType ?? 'POINTS',
+          statutRecompense: p.statut,
+        };
+      }
+      parrainMap[pid].nbFilleulsActives++;
+      parrainMap[pid].recompenseDue += Number(p.recompenseValeur ?? 0);
+    }
+
+    const topParrains = Object.values(parrainMap)
+      .sort((a, b) => b.nbFilleulsActives - a.nbFilleulsActives)
+      .slice(0, 10)
+      .map((p, i) => ({ ...p, rang: i + 1 }));
+
+    // 3. Récompenses dues (statut VALIDE)
+    const recompensesDues = await this.prisma.parrainage.findMany({
+      where: {
+        statut: 'VALIDE',
+        ...(siteId ? { parrain: { siteInscriptionId: siteId } } : {}),
+      },
+      include: {
+        parrain: { select: { id: true, nom: true, prenom: true } },
+        filleul: { select: { id: true, nom: true, prenom: true } },
+      },
+      orderBy: { dateCreation: 'asc' },
+    });
+
+    // 4. Summary
+    const [parrainagesActifs, filleulsActives, nbRecompensesDues] = await Promise.all([
+      this.prisma.parrainage.count({ where: { ...siteFilterParrainage, statut: { not: 'EN_ATTENTE' } } }),
+      this.prisma.parrainage.count({
+        where: { ...siteFilterParrainage, statut: { in: ['VALIDE', 'RECOMPENSE_VERSEE'] }, dateCreation: { gte: dateFrom, lte: dateTo } },
+      }),
+      this.prisma.parrainage.count({ where: { statut: 'VALIDE', ...(siteId ? { parrain: { siteInscriptionId: siteId } } : {}) } }),
+    ]);
+
+    return {
+      summary: { parrainagesActifs, filleulsActives, recompensesDues: nbRecompensesDues, caGenereParFilleuls: 0 },
+      funnel,
+      topParrains,
+      recompensesDues: recompensesDues.map((r) => ({
+        id: r.id,
+        parrainId: r.parrainId,
+        parrainNom: `${r.parrain?.prenom ?? ''} ${r.parrain?.nom ?? ''}`.trim(),
+        filleulId: r.filleulId,
+        filleulNom: `${r.filleul?.prenom ?? ''} ${r.filleul?.nom ?? ''}`.trim(),
+        dateActivation: r.dateCreation,
+        recompenseType: r.recompenseType ?? 'POINTS',
+        recompenseValeur: Number(r.recompenseValeur ?? 0),
+        statutRecompense: r.statut,
+        createdAt: r.dateCreation,
+      })),
+    };
+  }
+
+  // ── SCR-034 : Estimation export ────────────────────────────────────────────
+
+  async getExportEstimate(query: { type: string; dateDebut?: string; dateFin?: string; siteId?: string }) {
+    const { type, dateDebut, dateFin, siteId } = query;
+    const where: any = {};
+    if (dateDebut) where.createdAt = { ...(where.createdAt ?? {}), gte: new Date(dateDebut) };
+    if (dateFin)   where.createdAt = { ...(where.createdAt ?? {}), lte: new Date(dateFin) };
+    if (siteId) where.siteId = siteId;
+
+    let estimatedRows = 0;
+    switch (type) {
+      case 'VENTES':
+      case 'VENTES_DETAIL':
+        estimatedRows = await this.prisma.vente.count({ where });
+        break;
+      case 'STOCKS':
+        estimatedRows = await this.prisma.stockSite.count({ where: siteId ? { siteId } : undefined });
+        break;
+      case 'PARRAINAGE':
+        estimatedRows = await this.prisma.parrainage.count({ where: siteId ? { parrain: { siteInscriptionId: siteId } } : {} });
+        break;
+      case 'CLIENTS':
+        estimatedRows = await this.prisma.client.count({ where: siteId ? { siteInscriptionId: siteId } : {} });
+        break;
+      default:
+        estimatedRows = 100;
+    }
+    return { estimatedRows };
+  }
+
   async createExport(body: {
     type: string;
     format: string;
     filtres?: Record<string, any>;
+    userId?: string;
   }) {
     const job = await this.prisma.exportJob.create({
       data: {
@@ -237,16 +601,12 @@ export class RapportsService {
       },
     });
 
-    // Simuler le traitement asynchrone
+    // Traitement asynchrone non-bloquant
     this.processExportJob(job.id).catch((err) => {
       console.error(`Export job ${job.id} failed:`, err);
     });
 
-    return {
-      jobId: job.id,
-      statut: job.statut,
-      message: 'Export en cours de génération',
-    };
+    return { jobId: job.id, statut: job.statut };
   }
 
   async getExportStatus(jobId: string) {
@@ -332,5 +692,64 @@ export class RapportsService {
     }
 
     return Object.values(grouped).sort((a, b) => a.periode.localeCompare(b.periode));
+  }
+
+  // ─── Time-series helpers for getVentesDashboard ───────────────────────────
+
+  /**
+   * Returns the display label for a given date at a given granularity.
+   * day   → "Lun 20 jan"
+   * week  → "S3 jan"
+   * month → "Jan 2025"
+   */
+  private getLabelForDate(date: Date, granularite: 'day' | 'week' | 'month'): string {
+    switch (granularite) {
+      case 'day':
+        return format(date, 'EEE d MMM', { locale: fr });
+      case 'week': {
+        const ws = startOfWeek(date, { weekStartsOn: 1 });
+        const weekNum = Math.ceil((ws.getDate() + new Date(ws.getFullYear(), ws.getMonth(), 1).getDay()) / 7);
+        return `S${weekNum} ${format(ws, 'MMM', { locale: fr })}`;
+      }
+      case 'month':
+        return format(startOfMonth(date), 'MMM yyyy', { locale: fr });
+      default:
+        return date.toISOString().slice(0, 10);
+    }
+  }
+
+  /**
+   * Generates an exhaustive ordered list of labels covering [from, to]
+   * for the given granularity. Used to ensure zero-gaps in the series.
+   */
+  private buildLabels(
+    from: Date,
+    to: Date,
+    granularite: 'day' | 'week' | 'month',
+  ): string[] {
+    const labels: string[] = [];
+    const seen = new Set<string>();
+    const cursor = new Date(from);
+
+    while (cursor <= to) {
+      const label = this.getLabelForDate(cursor, granularite);
+      if (!seen.has(label)) {
+        seen.add(label);
+        labels.push(label);
+      }
+      // Advance cursor
+      switch (granularite) {
+        case 'day':
+          cursor.setDate(cursor.getDate() + 1);
+          break;
+        case 'week':
+          cursor.setDate(cursor.getDate() + 7);
+          break;
+        case 'month':
+          cursor.setMonth(cursor.getMonth() + 1);
+          break;
+      }
+    }
+    return labels;
   }
 }

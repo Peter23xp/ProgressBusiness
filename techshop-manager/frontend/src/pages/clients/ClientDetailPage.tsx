@@ -12,7 +12,6 @@ import { ClientStatusBadge } from '@/components/clients/ClientStatusBadge';
 import { ClientLevelBadge } from '@/components/clients/ClientLevelBadge';
 import { EditClientModal } from '@/components/clients/EditClientModal';
 import { ClientInfoTab } from '@/components/clients/tabs/ClientInfoTab';
-import { ClientOnboardingTab } from '@/components/clients/tabs/ClientOnboardingTab';
 import { ClientParrainageTab } from '@/components/clients/tabs/ClientParrainageTab';
 import { ClientAchatsTab } from '@/components/clients/tabs/ClientAchatsTab';
 import { ClientPointsTab } from '@/components/clients/tabs/ClientPointsTab';
@@ -21,13 +20,12 @@ import { useState } from 'react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = 'infos' | 'onboarding' | 'parrainage' | 'achats' | 'points';
+type Tab = 'infos' | 'parrainage' | 'achats' | 'points';
 
-const VALID_TABS: Tab[] = ['infos', 'onboarding', 'parrainage', 'achats', 'points'];
+const VALID_TABS: Tab[] = ['infos', 'parrainage', 'achats', 'points'];
 
 const TABS: { key: Tab; label: string; Icon: LucideIcon }[] = [
   { key: 'infos',      label: 'Informations', Icon: CreditCard  },
-  { key: 'onboarding', label: 'Onboarding',   Icon: Calendar    },
   { key: 'parrainage', label: 'Parrainage',   Icon: Users       },
   { key: 'achats',     label: 'Achats',       Icon: ShoppingBag },
   { key: 'points',     label: 'Points',       Icon: Star        },
@@ -317,7 +315,6 @@ export default function ClientDetailPage() {
             aria-labelledby={`tab-${activeTab}`}
           >
             {activeTab === 'infos'      && <ClientInfoTab      client={client} />}
-            {activeTab === 'onboarding' && <ClientOnboardingTab client={client} />}
             {activeTab === 'parrainage' && <ClientParrainageTab client={client} />}
             {activeTab === 'achats'     && <ClientAchatsTab     client={client} />}
             {activeTab === 'points'     && <ClientPointsTab     client={client} />}

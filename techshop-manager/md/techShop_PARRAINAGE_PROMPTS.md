@@ -1,4 +1,4 @@
-# 🤝 TECHSHOP MANAGER — PROMPTS DE DÉVELOPPEMENT
+﻿# 🤝 PROGRESS BUSINESS — PROMPTS DE DÉVELOPPEMENT
 ## Module PARRAINAGE | Écrans SCR-024 à SCR-026 | 3 écrans
 
 > **MODE D'EMPLOI :**
@@ -13,7 +13,7 @@
 ## CONTEXTE GLOBAL (rappel rapide pour chaque prompt)
 
 ```
-Projet      : TechShop Manager — Système de Gestion Commercial Multi-Sites
+Projet      : Progress Business — Système de Gestion Commercial Multi-Sites
 Stack       : React 18 + TypeScript + Vite + TailwindCSS + shadcn/ui
 State       : Zustand (auth + UI) + TanStack Query v5 (serveur)
 Offline     : Dexie.js (IndexedDB) + Service Worker (Workbox)
@@ -35,7 +35,7 @@ Sites       : Goma (siège), Bukavu, Kinshasa
 ```
 CONTEXTE
 --------
-Projet       : TechShop Manager
+Projet       : Progress Business
 Fichier cible: apps/client/src/pages/parrainage/ParrainagePage.tsx
 Route        : /parrainage
 Accès        : Authentifié — rôle GERANT minimum
@@ -512,7 +512,7 @@ DÉFINITION DE "TERMINÉ" — CHECKLIST SCR-024
 ```
 CONTEXTE
 --------
-Projet       : TechShop Manager
+Projet       : Progress Business
 Fichier cible: apps/client/src/pages/parrainage/ParrainageTreePage.tsx
 Route        : /parrainage/tree/:clientId
 Accès        : Authentifié — rôle AGENT minimum
@@ -877,7 +877,7 @@ DÉFINITION DE "TERMINÉ" — CHECKLIST SCR-025
 ```
 CONTEXTE
 --------
-Projet       : TechShop Manager
+Projet       : Progress Business
 Fichier cible: apps/client/src/pages/parrainage/ParrainageConfigPage.tsx
 Route        : /parrainage/config
 Accès        : Authentifié — rôle SUPER_ADMIN uniquement
@@ -1353,7 +1353,7 @@ Prompt 3 (SCR-026 Configuration)
 ```
 1. SVG PERFORMANCE (SCR-025) :
    → Ne pas utiliser de lib externe (D3, React Flow) pour l'arbre SVG.
-   → L'arbre TechShop est simple (max 2 niveaux, max ~50 nœuds).
+   → L'arbre Progress Business est simple (max 2 niveaux, max ~50 nœuds).
    → Une implémentation SVG pure (< 200 lignes) est suffisante et plus performante.
    → Si les tests de performance montrent des problèmes → passer à React.memo sur
      ParrainageTreeNode.
@@ -1383,4 +1383,4 @@ Prompt 3 (SCR-026 Configuration)
 
 ---
 
-*TechShop Manager — Prompts Développement Module Parrainage SCR-024 à SCR-026 — Goma, RDC — v1.0 — 2025*
+*Progress Business — Prompts Développement Module Parrainage SCR-024 à SCR-026 — Goma, RDC — v1.0 — 2025*

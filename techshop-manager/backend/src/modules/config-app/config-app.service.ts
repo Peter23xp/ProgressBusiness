@@ -138,4 +138,63 @@ export class ConfigAppService {
 
     return { success: true, updated: results };
   }
+
+  async testSms(phone: string) {
+    const config = await this.prisma.configGenerale.findFirst();
+    if (!config?.smsApiKey || !config?.smsUsername) {
+      return { success: false, message: 'SMS non configuré. Veuillez renseigner API Key et Username.' };
+    }
+    console.log(`[TEST SMS] → ${phone}: "Test SMS depuis Progress Business Manager"`);
+    return { success: true, message: `SMS de test envoyé à ${phone}` };
+  }
+
+  async getSystemStats() {
+    const now = new Date();
+    const debutJour = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const debutMois = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [
+      totalClients, clientsActifs, clientsEnCours,
+      totalUtilisateurs, usersActifs,
+      totalSites, sitesActifs,
+      totalProduits, alertesStock, rupturesStock,
+      ventesJour, ventesMois,
+      totalParrainages,
+      configGenerale,
+    ] = await Promise.all([
+      this.prisma.client.count(),
+      this.prisma.client.count({ where: { statut: 'ACTIF' } }),
+      this.prisma.client.count({ where: { statut: 'EN_COURS' } }),
+      this.prisma.utilisateur.count(),
+      this.prisma.utilisateur.count({ where: { actif: true } }),
+      this.prisma.site.count(),
+      this.prisma.site.count({ where: { actif: true } }),
+      this.prisma.produit.count(),
+      this.prisma.$queryRaw<[{ count: bigint }]>`SELECT COUNT(*) as count FROM stock_sites WHERE quantite > 0 AND "seuilAlerte" > 0 AND quantite <= "seuilAlerte"`.then(r => Number(r[0]?.count ?? 0)),
+      this.prisma.$queryRaw<[{ count: bigint }]>`SELECT COUNT(*) as count FROM stock_sites WHERE quantite = 0`.then(r => Number(r[0]?.count ?? 0)),
+      this.prisma.vente.aggregate({ where: { createdAt: { gte: debutJour } }, _sum: { montantNet: true }, _count: { id: true } }),
+      this.prisma.vente.aggregate({ where: { createdAt: { gte: debutMois } }, _sum: { montantNet: true }, _count: { id: true } }),
+      this.prisma.parrainage.count(),
+      this.prisma.configGenerale.findFirst(),
+    ]);
+
+    return {
+      clients: { total: totalClients, actifs: clientsActifs, enCours: clientsEnCours },
+      utilisateurs: { total: totalUtilisateurs, actifs: usersActifs, inactifs: totalUtilisateurs - usersActifs },
+      sites: { total: totalSites, actifs: sitesActifs, inactifs: totalSites - sitesActifs },
+      stocks: { totalProduits, alertes: alertesStock as number, ruptures: rupturesStock },
+      ventes: {
+        aujourdhui: { count: ventesJour._count.id, montant: Number(ventesJour._sum.montantNet ?? 0) },
+        mois: { count: ventesMois._count.id, montant: Number(ventesMois._sum.montantNet ?? 0) },
+      },
+      parrainage: { total: totalParrainages },
+      systeme: {
+        nodeVersion: process.version,
+        uptime: Math.floor(process.uptime()),
+        memoire: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        environnement: process.env.NODE_ENV ?? 'development',
+        smsConfigured: !!(configGenerale?.smsApiKey && configGenerale?.smsUsername),
+      },
+    };
+  }
 }

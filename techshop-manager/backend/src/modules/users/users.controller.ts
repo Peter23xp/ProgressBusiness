@@ -37,16 +37,10 @@ export class UsersController {
     return this.usersService.createUser(dto);
   }
 
-  @Patch(':id/desactiver')
-  @Roles(Role.SUPER_ADMIN)
-  desactiverUser(@Param('id') id: string) {
-    return this.usersService.desactiverUser(id);
-  }
-
-  @Patch(':id/reset-password')
-  @Roles(Role.SUPER_ADMIN)
-  resetPassword(@Param('id') id: string) {
-    return this.usersService.resetPassword(id);
+  @Get('me')
+  @Roles(Role.AGENT)
+  getMe(@CurrentUser() user: any) {
+    return this.usersService.findById(user.id);
   }
 
   @Patch('me')
@@ -55,7 +49,7 @@ export class UsersController {
     @CurrentUser() user: any,
     @Body() dto: UpdateProfileDto,
   ) {
-    return this.usersService.updateProfile(user.sub, dto);
+    return this.usersService.updateProfile(user.id, dto);
   }
 
   @Patch('me/password')
@@ -64,6 +58,24 @@ export class UsersController {
     @CurrentUser() user: any,
     @Body() dto: ChangePasswordDto,
   ) {
-    return this.usersService.changePassword(user.sub, dto);
+    return this.usersService.changePassword(user.id, dto);
+  }
+
+  @Patch(':id/desactiver')
+  @Roles(Role.SUPER_ADMIN)
+  desactiverUser(@Param('id') id: string) {
+    return this.usersService.desactiverUser(id);
+  }
+
+  @Patch(':id/reactiver')
+  @Roles(Role.SUPER_ADMIN)
+  reactiverUser(@Param('id') id: string) {
+    return this.usersService.reactiverUser(id);
+  }
+
+  @Patch(':id/reset-password')
+  @Roles(Role.SUPER_ADMIN)
+  resetPassword(@Param('id') id: string) {
+    return this.usersService.resetPassword(id);
   }
 }

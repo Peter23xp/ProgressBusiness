@@ -1,4 +1,4 @@
-# 🛒 TECHSHOP MANAGER — PROMPTS DE DÉVELOPPEMENT
+﻿# 🛒 PROGRESS BUSINESS — PROMPTS DE DÉVELOPPEMENT
 ## Module STOCKS | Écrans SCR-017 · SCR-018 · SCR-019 · SCR-020 · SCR-021 · SCR-022 · SCR-023
 
 > **MODE D'EMPLOI :**
@@ -14,7 +14,7 @@
 ## CONTEXTE GLOBAL (rappel rapide pour chaque prompt)
 
 ```
-Projet      : TechShop Manager — Système de Gestion Commercial Multi-Sites
+Projet      : Progress Business — Système de Gestion Commercial Multi-Sites
 Stack       : React 18 + TypeScript + Vite + TailwindCSS + shadcn/ui
 State       : Zustand (auth + UI) + TanStack Query v5 (serveur)
 Offline     : Dexie.js (IndexedDB) + Service Worker (Workbox)
@@ -94,7 +94,7 @@ Prompt 7 (SCR-023 — Inventaire physique)
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/stocks/StocksInventoryPage.tsx
 Route       : /stocks
 Accès       : Protégé — rôle minimum : AGENT (lecture seule) | GERANT (actions)
@@ -504,7 +504,7 @@ DÉFINITION DE "TERMINÉ"
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/stocks/StockProductDetailPage.tsx
 Route       : /stocks/:produitId
 Accès       : Protégé — rôle minimum : GERANT (lecture + édition seuil)
@@ -768,7 +768,7 @@ DÉFINITION DE "TERMINÉ"
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/stocks/StockEntryPage.tsx
 Route       : /stocks/entry
 Accès       : Protégé — rôle minimum : GERANT
@@ -951,7 +951,7 @@ DÉFINITION DE "TERMINÉ"
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/stocks/StockTransferPage.tsx
 Route       : /stocks/transfer
 Accès       : Protégé — rôle minimum : GERANT
@@ -1177,7 +1177,7 @@ DÉFINITION DE "TERMINÉ"
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/stocks/StockTransferReceivePage.tsx
 Route       : /stocks/transfer/:id/receive
 Accès       : Protégé — rôle minimum : GERANT (du site destinataire uniquement)
@@ -1384,7 +1384,7 @@ DÉFINITION DE "TERMINÉ"
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/stocks/StockAlertsPage.tsx
 Route       : /stocks/alerts
 Accès       : Protégé — rôle minimum : GERANT
@@ -1585,7 +1585,7 @@ DÉFINITION DE "TERMINÉ"
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/stocks/StockPhysicalInventoryPage.tsx
 Route       : /stocks/inventory
 Accès       : Protégé — rôle minimum : GERANT
@@ -1932,4 +1932,4 @@ DÉFINITION DE "TERMINÉ"
 
 ---
 
-*TechShop Manager — Prompts Développement Module Stocks SCR-017 à SCR-023 — Goma, RDC — v1.0 — 2025*
+*Progress Business — Prompts Développement Module Stocks SCR-017 à SCR-023 — Goma, RDC — v1.0 — 2025*

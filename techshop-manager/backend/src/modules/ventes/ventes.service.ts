@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   NotFoundException,
   ConflictException,
@@ -416,7 +416,7 @@ export class VentesService {
 
     // Simulation d'envoi SMS (intégration réelle selon provider)
     const message =
-      `TechShop: Reçu vente ${vente.numeroVente}. ` +
+      `Progress Business: Reçu vente ${vente.numeroVente}. ` +
       `Montant: ${Number(vente.montantNet).toLocaleString('fr-FR')} CDF. ` +
       `Points: +${vente.pointsAttribues}. Merci!`;
 

@@ -93,6 +93,47 @@ export class UsersService {
     return user;
   }
 
+  async findById(id: string) {
+    const user = await this.prisma.utilisateur.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        nom: true,
+        telephone: true,
+        email: true,
+        role: true,
+        actif: true,
+        langue: true,
+        siteId: true,
+        site: { select: { id: true, nom: true } },
+        derniereConnexion: true,
+      },
+    });
+    if (!user) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Utilisateur introuvable' });
+    }
+    return user;
+  }
+
+  async reactiverUser(id: string) {
+    const user = await this.prisma.utilisateur.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Utilisateur introuvable' });
+    }
+
+    return this.prisma.utilisateur.update({
+      where: { id },
+      data: { actif: true },
+      select: {
+        id: true,
+        nom: true,
+        telephone: true,
+        role: true,
+        actif: true,
+      },
+    });
+  }
+
   async desactiverUser(id: string) {
     const user = await this.prisma.utilisateur.findUnique({ where: { id } });
     if (!user) {
@@ -131,14 +172,14 @@ export class UsersService {
       },
     });
 
-    // En production, envoyer par SMS. Ici on retourne pour le dev.
-    console.log(`[RESET PASSWORD] User ${user.telephone}: ${tempPassword}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[RESET PASSWORD] User ${user.telephone}: ${tempPassword}`);
+    }
 
     return {
       success: true,
       message: 'Mot de passe temporaire généré et envoyé par SMS',
-      // En dev uniquement:
-      tempPassword,
+      ...(process.env.NODE_ENV !== 'production' && { tempPassword }),
     };
   }
 

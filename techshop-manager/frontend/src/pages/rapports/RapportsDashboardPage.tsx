@@ -1,180 +1,359 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { BarChart2, TrendingUp } from 'lucide-react';
-import { api } from '@/lib/api';
+import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  BarChart2, AlertCircle, RefreshCw, Building2,
+  TrendingUp, ShoppingCart, Users, ExternalLink,
+} from 'lucide-react';
+import {
+  Chart as ChartJS, CategoryScale, LinearScale, PointElement,
+  LineElement, Filler, Tooltip, Legend,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
 import { formatCDF } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  type PeriodPreset,
+  type DateRange,
+  getDateRangeFromPreset,
+} from '@/lib/dateRange.utils';
+import { useReportsDashboard } from '@/hooks/useReportsDashboard';
+import { PeriodSelector } from '@/components/reports/PeriodSelector';
+import { DateRangePicker } from '@/components/reports/DateRangePicker';
+import { DoughnutSiteChart } from '@/components/reports/DoughnutSiteChart';
+import { SitesSummaryTable } from '@/components/reports/SitesSummaryTable';
+import { TopProductsBarChart } from '@/components/reports/TopProductsBarChart';
 
-interface RapportVentes {
-  totalCA: number;
-  totalVentes: number;
-  caParPeriode: Array<{ date: string; montant: number }>;
-  caParSite: Array<{ siteNom: string; montant: number; couleur: string }>;
-  topProduits: Array<{ nom: string; quantite: number; ca: number }>;
-  resumeSites: Array<{ siteId: string; siteNom: string; ca: number; ventes: number; clients: number }>;
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
+
+// ── Brand colours per site ────────────────────────────────────────────────────
+const SITE_COLORS: Record<string, string> = {
+  Goma: '#2E86C1',
+  Bukavu: '#1A6B3A',
+  Kinshasa: '#E65100',
+};
+const FALLBACK_COLORS = ['#2E86C1', '#1A6B3A', '#E65100', '#4A148C', '#B71C1C'];
+
+// ── Stat card ─────────────────────────────────────────────────────────────────
+function StatCard({
+  icon, label, value, isLoading, color = '#2E86C1',
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  isLoading: boolean;
+  color?: string;
+}) {
+  return (
+    <div className="stat-card">
+      <div className="flex items-center gap-3">
+        <div
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+          style={{ background: color + '18' }}
+        >
+          <span style={{ color }}>{icon}</span>
+        </div>
+        <div className="min-w-0">
+          {isLoading ? (
+            <>
+              <div className="skeleton h-6 w-32 rounded mb-1" />
+              <div className="skeleton h-3 w-20 rounded" />
+            </>
+          ) : (
+            <>
+              <p className="text-xl font-bold text-primary leading-tight">{value}</p>
+              <p className="text-xs text-text-muted">{label}</p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
-type Periode = 'week' | 'month' | 'quarter' | 'year';
+// ── CA Line chart ─────────────────────────────────────────────────────────────
+function CALineChart({
+  seriesCA, isLoading,
+}: {
+  seriesCA: Array<{ label: string; values: Record<string, number> }>;
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div
+        data-testid="ca-chart-skeleton"
+        className="skeleton rounded-xl"
+        style={{ height: 280 }}
+      />
+    );
+  }
 
-const COULEURS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+  if (!seriesCA || seriesCA.length === 0) {
+    return (
+      <div
+        data-testid="ca-chart-empty"
+        className="flex items-center justify-center rounded-xl border border-border bg-bg-card"
+        style={{ height: 280 }}
+      >
+        <div className="text-center text-text-muted">
+          <TrendingUp size={32} className="mx-auto mb-2 opacity-30" />
+          <p className="text-sm">Aucune vente sur la période</p>
+        </div>
+      </div>
+    );
+  }
 
-export default function RapportsDashboardPage() {
-  const [periode, setPeriode] = useState<Periode>('month');
+  // Build datasets — one per site (keys inside seriesCA[0].values)
+  const siteNames = seriesCA.length > 0 ? Object.keys(seriesCA[0].values) : [];
+  const labels = seriesCA.map((p) => p.label);
 
-  const { data, isLoading } = useQuery<RapportVentes>({
-    queryKey: ['rapports-ventes', periode],
-    queryFn: () => api.get(`/rapports/ventes?periode=${periode}`).then(r => r.data),
+  const datasets = siteNames.map((site, i) => {
+    const color = SITE_COLORS[site] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length];
+    return {
+      label: site,
+      data: seriesCA.map((p) => p.values[site] ?? 0),
+      borderColor: color,
+      backgroundColor: color + '18',
+      fill: true,
+      tension: 0.4,
+      pointRadius: labels.length <= 14 ? 4 : 2,
+      pointHoverRadius: 6,
+      borderWidth: 2,
+    };
   });
 
-  const maxCA = data ? Math.max(...(data.caParPeriode || []).map(d => d.montant), 1) : 1;
-  const maxProduit = data ? Math.max(...(data.topProduits || []).map(p => p.ca), 1) : 1;
-  const totalSites = data?.caParSite?.reduce((s, x) => s + x.montant, 0) || 1;
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: { font: { size: 12 }, usePointStyle: true, pointStyleWidth: 10 },
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx: import('chart.js').TooltipItem<'line'>) => {
+            const value = typeof ctx.raw === 'number' ? ctx.raw : 0;
+            return ` ${ctx.dataset.label} : ${formatCDF(value)}`;
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { font: { size: 11 }, maxRotation: 45 },
+      },
+      y: {
+        grid: { color: '#f0f4f8' },
+        ticks: {
+          font: { size: 11 },
+          callback: (v: number | string) => {
+            const n = Number(v);
+            if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + ' M';
+            if (n >= 1_000) return (n / 1_000).toFixed(0) + ' k';
+            return String(n);
+          },
+        },
+      },
+    },
+  };
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
+    <div style={{ height: 280 }}>
+      <Line data={{ labels, datasets }} options={options} />
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function RapportsDashboardPage() {
+  const { user, hasRole } = useAuth();
+  const navigate = useNavigate();
+
+  const isGerant          = hasRole('GERANT') && !hasRole('DIRECTEUR_REGIONAL');
+  const isRegionalOrAbove = hasRole('DIRECTEUR_REGIONAL');
+
+  // ── Period state ──────────────────────────────────────────────────────────
+  const [preset, setPreset] = useState<PeriodPreset>('this_month');
+  const [dateRange, setDateRange] = useState<DateRange>(getDateRangeFromPreset('this_month'));
+
+  const handlePresetChange = (p: PeriodPreset, range: DateRange) => {
+    setPreset(p);
+    if (p !== 'custom') setDateRange(range);
+  };
+
+  const handleRangeChange = (range: DateRange) => {
+    setDateRange(range);
+    setPreset('custom');
+  };
+
+  // ── Query ─────────────────────────────────────────────────────────────────
+  const { data, isLoading, isFetching, error, refetch } = useReportsDashboard({
+    siteId: isGerant ? (user?.siteId ?? undefined) : undefined,
+    dateRange,
+  });
+
+  // ── Derived doughnut data ─────────────────────────────────────────────────
+  const doughnutData = useMemo(
+    () => (data?.parSite ?? []).map((s) => ({
+      siteNom: s.siteNom,
+      ca: s.ca,
+      pourcentage: s.pourcentageCA,
+    })),
+    [data],
+  );
+
+  // ── Error state ───────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center gap-4 min-h-[60vh]">
+        <AlertCircle size={40} className="text-danger" />
+        <p className="text-base font-semibold text-primary">
+          Impossible de charger les données du rapport.
+        </p>
+        <p className="text-sm text-text-muted">
+          {error instanceof Error ? error.message : 'Une erreur réseau est survenue.'}
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="btn-primary flex items-center gap-2"
+        >
+          <RefreshCw size={14} />
+          Réessayer
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+
+      {/* ── Header ── */}
+      <div className="page-header">
         <div className="flex items-center gap-3">
-          <BarChart2 size={26} className="text-blue-600" />
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #1E3A5F 0%, #2E86C1 100%)' }}
+          >
+            <BarChart2 size={20} className="text-white" />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Rapports — Vue d'ensemble</h1>
-            <p className="text-sm text-gray-500">Analyse des ventes et performances</p>
+            <h1 className="text-page-title text-primary">Rapports</h1>
+            <p className="text-xs text-text-muted">
+              Vue d'ensemble des performances commerciales
+              {isFetching && !isLoading && (
+                <span className="ml-2 inline-flex items-center gap-1 text-primary-accent">
+                  <RefreshCw size={10} className="animate-spin" />
+                  Actualisation…
+                </span>
+              )}
+            </p>
           </div>
         </div>
-        <div className="flex gap-2 bg-gray-100 rounded-lg p-1">
-          {(['week', 'month', 'quarter', 'year'] as Periode[]).map(p => (
-            <button key={p} onClick={() => setPeriode(p)}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition ${periode === p ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}>
-              {p === 'week' ? 'Semaine' : p === 'month' ? 'Mois' : p === 'quarter' ? 'Trimestre' : 'Année'}
+
+        {/* Controls */}
+        <div className="flex flex-wrap items-center gap-2">
+          <PeriodSelector
+            value={preset}
+            onChange={handlePresetChange}
+          />
+
+          {preset === 'custom' && (
+            <DateRangePicker
+              value={dateRange}
+              onChange={handleRangeChange}
+              maxDate={new Date()}
+            />
+          )}
+
+          {/* Regional view link */}
+          {isRegionalOrAbove && (
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard/regional')}
+              className="btn-secondary !min-h-0 h-9 text-xs flex items-center gap-1.5"
+              aria-label="Vue régionale"
+            >
+              <Building2 size={13} />
+              Vue régionale
+              <ExternalLink size={11} />
             </button>
-          ))}
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="stat-card">
-          <div className="flex items-center gap-4">
-            <div className="bg-blue-100 p-3 rounded-xl"><TrendingUp size={22} className="text-blue-600" /></div>
-            <div>
-              {isLoading ? <div className="skeleton h-8 w-32 rounded" /> : (
-                <>
-                  <p className="text-2xl font-bold text-gray-900">{formatCDF(data?.totalCA || 0)}</p>
-                  <p className="text-sm text-gray-500">Chiffre d'affaires total</p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-4">
-            <div className="bg-green-100 p-3 rounded-xl"><BarChart2 size={22} className="text-green-600" /></div>
-            <div>
-              {isLoading ? <div className="skeleton h-8 w-24 rounded" /> : (
-                <>
-                  <p className="text-2xl font-bold text-gray-900">{data?.totalVentes || 0}</p>
-                  <p className="text-sm text-gray-500">Ventes totales</p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+      {/* ── KPI stat cards ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatCard
+          icon={<TrendingUp size={20} />}
+          label="Chiffre d'affaires total"
+          value={(() => {
+            const n = data?.totalCA ?? 0;
+            if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + ' M CDF';
+            if (n >= 1_000) return Math.round(n / 1_000) + ' k CDF';
+            return formatCDF(n);
+          })()}
+          isLoading={isLoading}
+          color="#2E86C1"
+        />
+        <StatCard
+          icon={<ShoppingCart size={20} />}
+          label="Ventes validées"
+          value={String(data?.nbVentes ?? 0)}
+          isLoading={isLoading}
+          color="#1A6B3A"
+        />
+        <StatCard
+          icon={<Users size={20} />}
+          label="Nouveaux clients"
+          value={String((data?.parSite ?? []).reduce((s, r) => s + r.nbNouveauxClients, 0))}
+          isLoading={isLoading}
+          color="#E65100"
+        />
       </div>
 
+      {/* ── CA Evolution Line Chart ── */}
       <div className="card">
-        <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><TrendingUp size={18} className="text-blue-500" />Évolution du CA</h2>
-        {isLoading ? (
-          <div className="flex items-end gap-2 h-40">{[...Array(7)].map((_, i) => <div key={i} className="skeleton flex-1 rounded-t h-20" />)}</div>
-        ) : (
-          <div className="flex items-end gap-2 h-48">
-            {(data?.caParPeriode || []).map((d, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                <div className="w-full bg-blue-500 hover:bg-blue-600 rounded-t-md cursor-default transition-colors"
-                  style={{ height: `${(d.montant / maxCA) * 160}px`, minHeight: '4px' }} title={formatCDF(d.montant)} />
-                <span className="text-xs text-gray-500 mt-1 text-center truncate w-full">{d.date}</span>
-              </div>
-            ))}
-            {(!data?.caParPeriode || data.caParPeriode.length === 0) && (
-              <div className="w-full text-center text-gray-400 py-10">Aucune donnée</div>
-            )}
-          </div>
-        )}
+        <h2 className="text-sm font-bold text-primary mb-4">
+          Évolution du CA — par site
+        </h2>
+        <CALineChart
+          seriesCA={data?.seriesCA ?? []}
+          isLoading={isLoading}
+        />
       </div>
 
+      {/* ── Doughnut + Summary Table ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="card">
-          <h2 className="font-semibold text-gray-800 mb-4">Répartition CA par site</h2>
-          {isLoading ? (
-            <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="skeleton h-10 rounded" />)}</div>
-          ) : (
-            <div className="space-y-3">
-              {(data?.caParSite || []).map((s, i) => (
-                <div key={s.siteNom}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium text-gray-700">{s.siteNom}</span>
-                    <span className="text-gray-500">{formatCDF(s.montant)} ({Math.round((s.montant / totalSites) * 100)}%)</span>
-                  </div>
-                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${(s.montant / totalSites) * 100}%`, backgroundColor: COULEURS[i % COULEURS.length] }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="card">
-          <h2 className="font-semibold text-gray-800 mb-4">Top 5 produits</h2>
-          {isLoading ? (
-            <div className="space-y-3">{[...Array(5)].map((_, i) => <div key={i} className="skeleton h-10 rounded" />)}</div>
-          ) : (
-            <div className="space-y-3">
-              {(data?.topProduits || []).map((p, i) => (
-                <div key={p.nom} className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">{i + 1}</span>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-gray-700">{p.nom}</span>
-                      <span className="text-xs text-gray-500">{p.quantite} vdus</span>
-                    </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${(p.ca / maxProduit) * 100}%`, backgroundColor: COULEURS[i % COULEURS.length] }} />
-                    </div>
-                  </div>
-                  <span className="text-xs font-semibold text-gray-700 w-24 text-right">{formatCDF(p.ca)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="card">
-        <h2 className="font-semibold text-gray-800 mb-4">Résumé par site</h2>
-        {isLoading ? (
-          <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="skeleton h-12 rounded" />)}</div>
-        ) : (
-          <div className="table-container">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-500 border-b text-xs uppercase">
-                  <th className="pb-3 font-semibold">Site</th>
-                  <th className="pb-3 font-semibold">CA</th>
-                  <th className="pb-3 font-semibold">Ventes</th>
-                  <th className="pb-3 font-semibold">Clients actifs</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {(data?.resumeSites || []).map(s => (
-                  <tr key={s.siteId} className="hover:bg-gray-50">
-                    <td className="py-3 font-semibold text-gray-800">{s.siteNom}</td>
-                    <td className="py-3 font-bold text-green-700">{formatCDF(s.ca)}</td>
-                    <td className="py-3 text-gray-700">{s.ventes}</td>
-                    <td className="py-3 text-gray-700">{s.clients}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {/* Doughnut — hidden for GERANT (single site, no comparison) */}
+        {!isGerant && (
+          <DoughnutSiteChart
+            data={doughnutData}
+            totalCA={data?.totalCA ?? 0}
+            isLoading={isLoading}
+          />
         )}
+
+        <div className={isGerant ? 'lg:col-span-2' : ''}>
+          <div className="card h-full flex flex-col gap-4">
+            <h2 className="text-sm font-bold text-primary">Résumé par site</h2>
+            <SitesSummaryTable
+              data={data?.parSite ?? []}
+              isLoading={isLoading}
+              hideTotalRow={isGerant}
+            />
+          </div>
+        </div>
       </div>
+
+      {/* ── Top 5 Products ── */}
+      <TopProductsBarChart
+        data={data?.topProduits ?? []}
+        isLoading={isLoading}
+      />
+
     </div>
   );
 }

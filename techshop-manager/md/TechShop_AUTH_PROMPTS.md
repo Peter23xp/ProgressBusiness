@@ -1,4 +1,4 @@
-# 🛒 TECHSHOP MANAGER — PROMPTS DE DÉVELOPPEMENT
+﻿# 🛒 PROGRESS BUSINESS — PROMPTS DE DÉVELOPPEMENT
 ## Module AUTH | Écrans SCR-001 & SCR-002
 
 > **MODE D'EMPLOI :**
@@ -13,7 +13,7 @@
 ## CONTEXTE GLOBAL (rappel rapide pour chaque prompt)
 
 ```
-Projet      : TechShop Manager — Système de Gestion Commercial Multi-Sites
+Projet      : Progress Business — Système de Gestion Commercial Multi-Sites
 Stack       : React 18 + TypeScript + Vite + TailwindCSS + shadcn/ui
 State       : Zustand (auth + UI) + TanStack Query v5 (serveur)
 Offline     : Dexie.js (IndexedDB) + Service Worker (Workbox)
@@ -35,7 +35,7 @@ Sites       : Goma (siège), Bukavu, Kinshasa
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/auth/LoginPage.tsx
 Route       : /login
 Accès       : Public — redirige vers le dashboard si déjà authentifié
@@ -83,7 +83,7 @@ Elle affiche une carte (Card shadcn) centrale avec ombre douce.
 
   ┌──────────────────────────────────────────────────────────┐
   │                                                          │
-  │           [ LOGO TECHSHOP MANAGER — SVG ]                │
+  │           [ LOGO PROGRESS BUSINESS — SVG ]                │
   │      Système de Gestion Commercial — Goma, RDC           │
   │                                                          │
   │  ┌────────────────────────────────────────────────────┐  │
@@ -99,11 +99,11 @@ Elle affiche une carte (Card shadcn) centrale avec ombre douce.
   │  └────────────────────────────────────────────────────┘  │
   │                                                          │
   │  Hors-ligne ?  [ Continuer sans connexion ]              │
-  │  ● En ligne / ● Hors-ligne   |  v1.0 — TechShop © 2025  │
+  │  ● En ligne / ● Hors-ligne   |  v1.0 — Progress Business © 2025  │
   └──────────────────────────────────────────────────────────┘
 
 Dimensions de la carte : max-w-md (28rem), padding p-8.
-Le logo est un SVG inline avec le texte "TechShop Manager" en couleur #1E3A5F.
+Le logo est un SVG inline avec le texte "Progress Business" en couleur #1E3A5F.
 Sous le logo : sous-titre en text-sm text-muted-foreground.
 
 
@@ -174,7 +174,7 @@ Le champ accepte DEUX formats — détection automatique en temps réel :
 
   Format 2 — Email standard :
     Regex : /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    Exemples valides : agent@techshop.cd | admin@goma.com
+    Exemples valides : agent@progress_business.cd | admin@goma.com
     → Envoyer { email: "..." } dans le corps de la requête
 
   Affichage visuel sous le champ :
@@ -328,12 +328,12 @@ Créer le schéma Dexie initial avec les tables nécessaires au module Auth :
     status: 'PENDING' | 'SYNCING' | 'ERROR';
   }
 
-  class TechShopDB extends Dexie {
+  class ProgressBusinessDB extends Dexie {
     authSession!: EntityTable<AuthSession, 'id'>;
     offlineQueue!: EntityTable<OfflineQueue, 'id'>;
 
     constructor() {
-      super('techshop_db');
+      super('progress_business_db');
       this.version(1).stores({
         authSession: 'id, userId, expiresAt',
         offlineQueue: '++id, status, createdAt',
@@ -341,7 +341,7 @@ Créer le schéma Dexie initial avec les tables nécessaires au module Auth :
     }
   }
 
-  export const db = new TechShopDB();
+  export const db = new ProgressBusinessDB();
 
 Règles Dexie :
   - Ne sauvegarder en Dexie QUE les données non-sensibles (pas de token)
@@ -570,14 +570,14 @@ VARIABLES D'ENVIRONNEMENT REQUISES
 ------------------------------------
 Créer ou vérifier apps/client/.env.example :
   VITE_API_URL=http://localhost:3000
-  VITE_APP_NAME=TechShop Manager
+  VITE_APP_NAME=Progress Business
   VITE_APP_VERSION=1.0.0
   VITE_OFFLINE_TOKEN_VALIDITY_HOURS=8
   VITE_MAX_LOGIN_ATTEMPTS=5
   VITE_LOCKOUT_DURATION_MINUTES=15
 
 Créer ou vérifier apps/server/.env.example :
-  DATABASE_URL=postgresql://user:password@localhost:5432/techshop
+  DATABASE_URL=postgresql://user:password@localhost:5432/progress_business
   REDIS_URL=redis://localhost:6379
   JWT_SECRET=<openssl rand -hex 64>
   JWT_REFRESH_SECRET=<openssl rand -hex 64>
@@ -597,7 +597,7 @@ Avant de passer au Prompt 2, vérifier TOUS ces points :
 
 INTERFACE
 [ ] La page s'affiche correctement à 375px (mobile) ET 1280px (desktop)
-[ ] Le logo TechShop Manager est visible en haut de la carte
+[ ] Le logo Progress Business est visible en haut de la carte
 [ ] Le badge "En ligne / Hors-ligne" reflète navigator.onLine en temps réel
 [ ] La détection du format téléphone/email fonctionne avec feedback visuel
 [ ] L'œil de visibilité du mot de passe fonctionne correctement
@@ -646,7 +646,7 @@ TESTS
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/auth/ResetPasswordPage.tsx
 Route       : /reset-password
 Accès       : Public — redirige vers /dashboard si déjà authentifié
@@ -772,7 +772,7 @@ COMPOSANT OtpInput — OtpInput.tsx
 Créer un composant de saisie OTP réutilisable :
 
   interface OtpInputProps {
-    length: number;          // 6 pour TechShop
+    length: number;          // 6 pour Progress Business
     value: string;
     onChange: (value: string) => void;
     onComplete?: (value: string) => void;  // appelé quand les 6 chiffres sont saisis
@@ -985,7 +985,7 @@ apps/server/src/modules/sms/sms.service.ts :
       // 3. Stocker en Redis : SET "otp:{phone}" hashedOtp EX 600 (10 min)
       // 4. Stocker le compteur de tentatives : SET "otp_attempts:{phone}" 0 EX 600
       // 5. Envoyer le SMS via Africa's Talking :
-      //    Message : "Votre code TechShop : XXXXXX\nValable 10 minutes.\nNe partagez pas ce code."
+      //    Message : "Votre code Progress Business : XXXXXX\nValable 10 minutes.\nNe partagez pas ce code."
       // 6. Retourner { otp (pour les logs dev uniquement), expiresAt }
     }
 
@@ -1190,9 +1190,9 @@ Prompt 2 (SCR-002 Reset Password)
    → Variables requises dans apps/server/.env :
        AT_API_KEY=<votre_clé>
        AT_USERNAME=<votre_username>
-       SMS_SENDER_ID=TechShopMgr
+       SMS_SENDER_ID=ProgressBiz
 ```
 
 ---
 
-*TechShop Manager — Prompts Développement Auth SCR-001 & SCR-002 — Goma, RDC — v1.0 — 2025*
+*Progress Business — Prompts Développement Auth SCR-001 & SCR-002 — Goma, RDC — v1.0 — 2025*

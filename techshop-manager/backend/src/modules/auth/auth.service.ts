@@ -132,8 +132,9 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + 10 * 60000);
     this.otpStore.set(dto.phone, { otpHash, expiresAt, attempts: 0 });
 
-    // Log OTP in dev; replace with Africa's Talking SMS in production
-    console.log(`[DEV SMS OTP] ${dto.phone}: ${otp}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[DEV SMS OTP] ${dto.phone}: ${otp}`);
+    }
 
     const maskedPhone =
       dto.phone.slice(0, 7) + ' *** ' + dto.phone.slice(-4);

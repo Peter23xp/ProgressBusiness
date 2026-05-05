@@ -1,173 +1,455 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Download, Filter } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { api, getErrorMessage } from '@/lib/api';
-import { formatCDF, formatDate } from '@/lib/utils';
+import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, TrendingUp, TrendingDown, ShoppingCart, Percent, Receipt, Download, AlertCircle, RefreshCw, ChevronUp, ChevronDown } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useSalesDetailReport } from '@/hooks/useSalesDetailReport';
+import { PeriodSelector } from '@/components/reports/PeriodSelector';
+import { DateRangePicker } from '@/components/reports/DateRangePicker';
+import { getDateRangeFromPreset, type PeriodPreset, type DateRange, toISODate } from '@/lib/dateRange.utils';
+import { formatCDF, formatDateTime, cn } from '@/lib/utils';
+import { Pagination } from '@/components/ui/Pagination';
+import type { VentesDetailParams, AgentPerformance } from '@/lib/reports.api';
 
-interface VenteDetail {
-  id: string;
-  numero: string;
-  date: string;
-  clientNom: string;
-  agentNom: string;
-  siteNom: string;
-  produits: string;
-  montantTotal: number;
+// ── Types locaux ──────────────────────────────────────────────────────────────
+
+interface SalesFilters {
+  preset: PeriodPreset;
+  dateRange: DateRange;
+  siteId: string;
+  agentId: string;
   modePaiement: string;
-  statut: string;
 }
 
-interface TotauxAgent {
-  agentNom: string;
-  totalVentes: number;
-  totalCA: number;
+const DEFAULT_FILTERS: SalesFilters = {
+  preset: 'this_month',
+  dateRange: getDateRangeFromPreset('this_month'),
+  siteId: '',
+  agentId: '',
+  modePaiement: '',
+};
+
+// ── Stat card avec trend ──────────────────────────────────────────────────────
+
+function StatCard({
+  label, value, trend, icon, isLoading,
+}: {
+  label: string;
+  value: string;
+  trend?: number;
+  icon: React.ReactNode;
+  isLoading: boolean;
+}) {
+  return (
+    <div className="stat-card">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          {isLoading ? (
+            <>
+              <div className="skeleton h-6 w-28 rounded mb-1" />
+              <div className="skeleton h-3 w-20 rounded" />
+            </>
+          ) : (
+            <>
+              <p className="text-lg font-bold text-primary leading-tight">{value}</p>
+              <p className="text-xs text-text-muted mt-0.5">{label}</p>
+            </>
+          )}
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/8 text-primary">
+            {icon}
+          </div>
+          {trend !== undefined && !isLoading && trend !== 0 && (
+            <span className={cn('flex items-center gap-0.5 text-xs font-semibold', trend > 0 ? 'text-success' : 'text-danger')}>
+              {trend > 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+              {Math.abs(trend)}%
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
-interface RapportVentesDetail {
-  ventes: VenteDetail[];
-  total: number;
-  totalCA: number;
-  totauxParAgent: TotauxAgent[];
+// ── Filtres ───────────────────────────────────────────────────────────────────
+
+function FiltersPanel({
+  draft, setDraft, onApply, onReset,
+}: {
+  draft: SalesFilters;
+  setDraft: (f: SalesFilters) => void;
+  onApply: () => void;
+  onReset: () => void;
+}) {
+  const activeCount = [draft.siteId, draft.agentId, draft.modePaiement].filter(Boolean).length
+    + (draft.preset !== 'this_month' ? 1 : 0);
+
+  return (
+    <div className="card space-y-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <PeriodSelector
+          value={draft.preset}
+          onChange={(p, r) => setDraft({ ...draft, preset: p, dateRange: r })}
+        />
+        {draft.preset === 'custom' && (
+          <DateRangePicker
+            value={draft.dateRange}
+            onChange={(r) => setDraft({ ...draft, dateRange: r, preset: 'custom' })}
+            maxDate={new Date()}
+          />
+        )}
+        <select
+          value={draft.siteId}
+          onChange={(e) => setDraft({ ...draft, siteId: e.target.value })}
+          className="h-9 rounded-lg border border-border bg-white px-3 text-sm"
+          aria-label="Filtrer par site"
+        >
+          <option value="">Tous les sites</option>
+          <option value="goma">Goma</option>
+          <option value="bukavu">Bukavu</option>
+          <option value="kinshasa">Kinshasa</option>
+        </select>
+        <select
+          value={draft.modePaiement}
+          onChange={(e) => setDraft({ ...draft, modePaiement: e.target.value })}
+          className="h-9 rounded-lg border border-border bg-white px-3 text-sm"
+          aria-label="Mode de paiement"
+        >
+          <option value="">Tous paiements</option>
+          <option value="CASH">Cash</option>
+          <option value="MPESA">M-Pesa</option>
+          <option value="AIRTEL_MONEY">Airtel Money</option>
+          <option value="VIREMENT">Virement</option>
+        </select>
+      </div>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={onApply} className="btn-primary !min-h-0 h-8 text-xs px-4">
+          Appliquer {activeCount > 0 && <span className="ml-1 rounded-full bg-white/20 px-1.5">{activeCount}</span>}
+        </button>
+        <button type="button" onClick={onReset} className="btn-secondary !min-h-0 h-8 text-xs px-3">
+          Réinitialiser
+        </button>
+      </div>
+    </div>
+  );
 }
 
-export default function RapportVentesPage() {
-  const [dateDebut, setDateDebut] = useState('');
-  const [dateFin, setDateFin] = useState('');
-  const [sites, setSites] = useState<string[]>([]);
-  const [agents, setAgents] = useState<string[]>([]);
-  const [modesPaiement, setModesPaiement] = useState<string[]>([]);
+// ── Tableau ventes ────────────────────────────────────────────────────────────
 
-  const { data, isLoading } = useQuery<RapportVentesDetail>({
-    queryKey: ['rapport-ventes-detail', { dateDebut, dateFin, sites, agents, modesPaiement }],
-    queryFn: () => api.get('/rapports/ventes/detail', {
-      params: { dateDebut, dateFin, sites: sites.join(','), agents: agents.join(','), modesPaiement: modesPaiement.join(',') }
-    }).then(r => r.data),
-  });
+function SalesDetailTable({
+  ventes, meta, onPageChange, isLoading, isFetching,
+}: {
+  ventes: any[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+  onPageChange: (p: number) => void;
+  isLoading: boolean;
+  isFetching: boolean;
+}) {
+  const navigate = useNavigate();
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
 
-  const toggleMultiSelect = (val: string, current: string[], setter: (v: string[]) => void) => {
-    if (current.includes(val)) setter(current.filter(v => v !== val));
-    else setter([...current, val]);
-  };
+  if (isLoading) {
+    return (
+      <div className="card p-0 overflow-hidden">
+        <div className="p-4 border-b">
+          <div className="skeleton h-5 w-40 rounded" />
+        </div>
+        <div className="divide-y">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="px-4 py-3 space-y-2">
+              <div className="skeleton h-4 w-full rounded" />
+              <div className="skeleton h-3 w-3/4 rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-  const handleExport = async () => {
-    try {
-      const res = await api.get('/rapports/ventes/detail/export', {
-        params: { dateDebut, dateFin, sites: sites.join(','), agents: agents.join(',') },
-        responseType: 'blob',
-      });
-      const url = window.URL.createObjectURL(res.data);
-      const a = document.createElement('a'); a.href = url; a.download = `rapport-ventes-${Date.now()}.csv`; a.click();
-      window.URL.revokeObjectURL(url);
-      toast.success('Rapport exporté.');
-    } catch (error) { toast.error(getErrorMessage(error) || 'Erreur d\'export.'); }
+  const STATUT_STYLE: Record<string, string> = {
+    VALIDE: 'badge-success',
+    RETOURNEE: 'bg-red-100 text-red-700 border border-red-200 text-xs font-semibold px-2 py-0.5 rounded-full',
+    RETOURNEE_PARTIELLE: 'badge-warning',
+    ANNULEE: 'bg-gray-100 text-gray-500 border border-gray-200 text-xs font-semibold px-2 py-0.5 rounded-full',
   };
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Rapport des ventes détaillé</h1>
-          <p className="text-sm text-gray-500">{data?.total ?? '...'} ventes · {formatCDF(data?.totalCA || 0)}</p>
-        </div>
-        <button onClick={handleExport} className="btn-secondary flex items-center gap-2"><Download size={16} /> Exporter CSV</button>
+    <div className="card p-0 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b">
+        <h2 className="text-sm font-bold text-primary">
+          Détail des ventes
+          {isFetching && <span className="ml-2 inline-flex items-center gap-1 text-xs text-primary-accent"><RefreshCw size={10} className="animate-spin" />Chargement…</span>}
+        </h2>
+        <span className="text-xs text-text-muted">{meta.total} résultat{meta.total !== 1 ? 's' : ''}</span>
       </div>
-
-      <div className="card">
-        <div className="flex items-center gap-2 mb-4 text-gray-700 font-semibold"><Filter size={16} /> Filtres avancés</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="form-group">
-            <label className="form-label">Date début</label>
-            <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Date fin</label>
-            <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Sites</label>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {['GOMA_CENTRE', 'GOMA_NORD', 'GISENYI'].map(s => (
-                <button key={s} type="button" onClick={() => toggleMultiSelect(s, sites, setSites)}
-                  className={`px-2 py-1 rounded-lg text-xs font-medium border transition-all ${sites.includes(s) ? 'bg-blue-100 border-blue-400 text-blue-700' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
-                  {s}
-                </button>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ background: '#1E3A5F' }}>
+              {['N° Vente', 'Date', 'Client', 'Produit(s)', 'Agent', 'Site', 'Montant', 'Paiement', 'Remise', 'Points', 'Statut'].map((h) => (
+                <th
+                  key={h}
+                  className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-white whitespace-nowrap"
+                  onClick={h === 'Date' ? () => setSortDir((d) => d === 'desc' ? 'asc' : 'desc') : undefined}
+                  style={h === 'Date' ? { cursor: 'pointer' } : undefined}
+                >
+                  <span className="flex items-center gap-1">
+                    {h}
+                    {h === 'Date' && (sortDir === 'desc' ? <ChevronDown size={12} /> : <ChevronUp size={12} />)}
+                  </span>
+                </th>
               ))}
-            </div>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Paiement</label>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {['CASH', 'MPESA', 'AIRTEL_MONEY'].map(m => (
-                <button key={m} type="button" onClick={() => toggleMultiSelect(m, modesPaiement, setModesPaiement)}
-                  className={`px-2 py-1 rounded-lg text-xs font-medium border transition-all ${modesPaiement.includes(m) ? 'bg-green-100 border-green-400 text-green-700' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+            </tr>
+          </thead>
+          <tbody>
+            {ventes.length === 0 && (
+              <tr>
+                <td colSpan={11} className="py-10 text-center text-text-muted">
+                  Aucune vente pour les filtres sélectionnés.
+                </td>
+              </tr>
+            )}
+            {ventes.map((v) => {
+              const isProblematic = v.statut === 'RETOURNEE' || v.statut === 'ANNULEE';
+              const remise = Number(v.remiseFidelite ?? 0) + Number(v.remiseParrainage ?? 0);
+              const firstProduit = v.lignes?.[0]?.produit?.nom ?? '—';
+              const extraCount = (v.lignes?.length ?? 1) - 1;
+              return (
+                <tr
+                  key={v.id}
+                  className={cn(
+                    'border-b border-border/60 hover:bg-blue-50/40 transition-colors',
+                    isProblematic && 'bg-gray-50',
+                  )}
+                >
+                  <td className="px-3 py-2.5">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/sales/${v.id}`)}
+                      className="font-mono text-xs font-semibold text-primary-accent hover:underline"
+                    >
+                      {v.numeroVente ?? v.id.slice(0, 8)}
+                    </button>
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-text-muted whitespace-nowrap">
+                    {formatDateTime(v.createdAt)}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs">
+                    {v.client ? `${v.client.prenom} ${v.client.nom}`.slice(0, 18) : 'Anonyme'}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs">
+                    {firstProduit.slice(0, 18)}
+                    {extraCount > 0 && <span className="ml-1 text-text-muted">+{extraCount}</span>}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-text-muted">{v.agent?.nom ?? '—'}</td>
+                  <td className="px-3 py-2.5 text-xs text-text-muted">{v.site?.nom ?? '—'}</td>
+                  <td className="px-3 py-2.5 font-mono text-xs font-bold text-primary">
+                    {formatCDF(Number(v.montantNet ?? 0))}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs">
+                    <span className="badge badge-info">{v.modePaiement}</span>
+                  </td>
+                  <td className="px-3 py-2.5 text-xs">
+                    {remise > 0
+                      ? <span className="font-semibold text-danger">-{formatCDF(remise)}</span>
+                      : <span className="text-text-muted">—</span>}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs">
+                    {(v.pointsAttribues ?? 0) > 0
+                      ? <span className="font-semibold text-success">+{v.pointsAttribues} pts</span>
+                      : <span className="text-text-muted">—</span>}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full', STATUT_STYLE[v.statut] ?? 'badge-gray')}>
+                      {v.statut}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
-
-      {data?.totauxParAgent && data.totauxParAgent.length > 0 && (
-        <div className="card">
-          <h2 className="font-semibold text-gray-800 mb-3">Totaux par agent</h2>
-          <div className="flex flex-wrap gap-3">
-            {data.totauxParAgent.map(a => (
-              <div key={a.agentNom} className="bg-gray-50 rounded-xl p-4 border flex-1 min-w-40">
-                <p className="font-semibold text-gray-800 text-sm">{a.agentNom}</p>
-                <p className="text-xl font-black text-blue-700">{a.totalVentes} ventes</p>
-                <p className="text-sm text-green-700 font-semibold">{formatCDF(a.totalCA)}</p>
-              </div>
-            ))}
-          </div>
+      {meta.totalPages > 1 && (
+        <div className="px-4 py-3 border-t">
+          <Pagination
+            page={meta.page}
+            totalPages={meta.totalPages}
+            total={meta.total}
+            onPageChange={onPageChange}
+          />
         </div>
       )}
+    </div>
+  );
+}
 
-      <div className="card">
-        <h2 className="font-semibold text-gray-800 mb-4">Détail des ventes</h2>
-        {isLoading ? (
-          <div className="space-y-2">{[...Array(8)].map((_, i) => <div key={i} className="skeleton h-12 rounded" />)}</div>
-        ) : (
-          <div className="table-container">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-500 border-b text-xs uppercase">
-                  <th className="pb-3 font-semibold">N° Vente</th>
-                  <th className="pb-3 font-semibold">Date</th>
-                  <th className="pb-3 font-semibold">Client</th>
-                  <th className="pb-3 font-semibold">Agent</th>
-                  <th className="pb-3 font-semibold">Site</th>
-                  <th className="pb-3 font-semibold">Montant</th>
-                  <th className="pb-3 font-semibold">Paiement</th>
-                  <th className="pb-3 font-semibold">Statut</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {(data?.ventes || []).map(v => (
-                  <tr key={v.id} className="hover:bg-gray-50">
-                    <td className="py-3 font-mono text-blue-600 text-xs">{v.numero}</td>
-                    <td className="py-3 text-gray-500">{formatDate(v.date)}</td>
-                    <td className="py-3 text-gray-700">{v.clientNom}</td>
-                    <td className="py-3 text-gray-500">{v.agentNom}</td>
-                    <td className="py-3 text-gray-500">{v.siteNom}</td>
-                    <td className="py-3 font-bold text-gray-900">{formatCDF(v.montantTotal)}</td>
-                    <td className="py-3"><span className="badge badge-info text-xs">{v.modePaiement}</span></td>
-                    <td className="py-3">
-                      <span className={`badge text-xs ${v.statut === 'COMPLETE' ? 'badge-success' : v.statut === 'ANNULE' ? 'badge-danger' : 'badge-warning'}`}>{v.statut}</span>
-                    </td>
-                  </tr>
-                ))}
-                {(!data?.ventes || data.ventes.length === 0) && (
-                  <tr><td colSpan={8} className="py-10 text-center text-gray-400">Aucune vente pour les filtres sélectionnés.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+// ── Tableau performance agents ────────────────────────────────────────────────
+
+function AgentPerformanceTable({ data, isLoading, onAgentClick }: {
+  data: AgentPerformance[];
+  isLoading: boolean;
+  onAgentClick: (agentId: string) => void;
+}) {
+  if (isLoading) {
+    return (
+      <div className="card p-0 overflow-hidden">
+        <div className="p-4 border-b"><div className="skeleton h-5 w-48 rounded" /></div>
+        <div className="divide-y">
+          {[...Array(4)].map((_, i) => <div key={i} className="px-4 py-3"><div className="skeleton h-4 w-full rounded" /></div>)}
+        </div>
       </div>
+    );
+  }
+
+  if (!data || data.length === 0) return null;
+
+  const totals = {
+    nbVentes: data.reduce((s, a) => s + a.nbVentes, 0),
+    caTotal: data.reduce((s, a) => s + a.caTotal, 0),
+    caMoyen: 0,
+    remisesAccordees: data.reduce((s, a) => s + a.remisesAccordees, 0),
+  };
+
+  return (
+    <div className="card p-0 overflow-hidden">
+      <div className="px-4 py-3 border-b">
+        <h2 className="text-sm font-bold text-primary">Performance par agent</h2>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ background: '#1E3A5F' }}>
+              {['Agent', 'Site', 'Nb ventes', 'CA total', 'CA moyen', 'Remises'].map((h) => (
+                <th key={h} className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-white">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((a) => (
+              <tr
+                key={a.agentId}
+                onClick={() => onAgentClick(a.agentId)}
+                className="border-b border-border/60 cursor-pointer hover:bg-blue-50/40"
+              >
+                <td className="px-4 py-2.5 font-semibold text-primary">{a.agentNom}</td>
+                <td className="px-4 py-2.5 text-text-muted text-xs">{a.siteNom}</td>
+                <td className="px-4 py-2.5 tabular-nums">{a.nbVentes}</td>
+                <td className="px-4 py-2.5 font-bold text-success tabular-nums">{formatCDF(a.caTotal)}</td>
+                <td className="px-4 py-2.5 text-text-muted tabular-nums">{formatCDF(a.caMoyen)}</td>
+                <td className="px-4 py-2.5 tabular-nums text-danger">{a.remisesAccordees > 0 ? formatCDF(a.remisesAccordees) : '—'}</td>
+              </tr>
+            ))}
+            <tr className="border-t-2 border-primary/30 bg-slate-50">
+              <td className="px-4 py-2.5 font-bold text-primary" colSpan={2}>TOTAL</td>
+              <td className="px-4 py-2.5 font-bold tabular-nums">{totals.nbVentes}</td>
+              <td className="px-4 py-2.5 font-bold text-success tabular-nums">{formatCDF(totals.caTotal)}</td>
+              <td className="px-4 py-2.5 text-text-muted">—</td>
+              <td className="px-4 py-2.5 font-bold text-danger tabular-nums">{totals.remisesAccordees > 0 ? formatCDF(totals.remisesAccordees) : '—'}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function RapportVentesPage() {
+  const navigate = useNavigate();
+  const { hasRole } = useAuth();
+  const isDR = hasRole('DIRECTEUR_REGIONAL');
+
+  const [draft, setDraft] = useState<SalesFilters>(DEFAULT_FILTERS);
+  const [applied, setApplied] = useState<SalesFilters>(DEFAULT_FILTERS);
+  const [page, setPage] = useState(1);
+  const [agentFilter, setAgentFilter] = useState('');
+
+  const params: VentesDetailParams = {
+    siteId: applied.siteId || undefined,
+    agentId: agentFilter || applied.agentId || undefined,
+    modePaiement: applied.modePaiement || undefined,
+    dateDebut: toISODate(applied.dateRange.from),
+    dateFin: toISODate(applied.dateRange.to),
+    page,
+    limit: 50,
+  };
+
+  const { data, isLoading, isFetching, error, refetch } = useSalesDetailReport(params);
+
+  const ventes = useMemo(() => (data as any)?.ventes ?? [], [data]);
+  const meta = useMemo(() => (data as any)?.meta ?? { total: 0, page: 1, limit: 50, totalPages: 0 }, [data]);
+  const resume = useMemo(() => (data as any)?.resume ?? { totalCA: 0, nbVentes: 0, remisesAccordees: 0, ticketMoyen: 0, trends: { ca: 0, ventes: 0 } }, [data]);
+  const totauxParAgent = useMemo(() => (data as any)?.totauxParAgent ?? [], [data]);
+
+  const handleApply = () => { setApplied(draft); setPage(1); setAgentFilter(''); };
+  const handleReset = () => { setDraft(DEFAULT_FILTERS); setApplied(DEFAULT_FILTERS); setPage(1); setAgentFilter(''); };
+  const handleAgentClick = (agentId: string) => { setAgentFilter(agentId); setPage(1); };
+
+  const exportUrl = `/reports/export?type=VENTES_DETAIL&dateDebut=${toISODate(applied.dateRange.from)}&dateFin=${toISODate(applied.dateRange.to)}${applied.siteId ? `&siteId=${applied.siteId}` : ''}`;
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 min-h-[60vh]">
+        <AlertCircle size={36} className="text-danger" />
+        <p className="text-sm font-semibold text-primary">Impossible de charger le rapport.</p>
+        <button type="button" onClick={() => refetch()} className="btn-primary flex items-center gap-2">
+          <RefreshCw size={14} /> Réessayer
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="page-header">
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => navigate('/reports')} className="btn-ghost !min-h-0 !p-1.5 rounded-lg">
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1 className="text-page-title text-primary">Rapport Ventes Détaillé</h1>
+            <p className="text-xs text-text-muted">Analyse ligne par ligne des transactions</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate(exportUrl)}
+          className="btn-secondary !min-h-0 h-9 text-xs flex items-center gap-1.5"
+        >
+          <Download size={13} />
+          Export PDF/XLSX
+        </button>
+      </div>
+
+      {/* Filtres */}
+      <FiltersPanel draft={draft} setDraft={setDraft} onApply={handleApply} onReset={handleReset} />
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="CA Total" value={formatCDF(resume.totalCA)} trend={resume.trends?.ca} icon={<TrendingUp size={16} />} isLoading={isLoading} />
+        <StatCard label="Nb ventes" value={String(resume.nbVentes)} trend={resume.trends?.ventes} icon={<ShoppingCart size={16} />} isLoading={isLoading} />
+        <StatCard label="Remises accordées" value={formatCDF(resume.remisesAccordees)} icon={<Percent size={16} />} isLoading={isLoading} />
+        <StatCard label="Ticket moyen" value={formatCDF(resume.ticketMoyen)} icon={<Receipt size={16} />} isLoading={isLoading} />
+      </div>
+
+      {/* Tableau ventes */}
+      <SalesDetailTable
+        ventes={ventes}
+        meta={meta}
+        onPageChange={setPage}
+        isLoading={isLoading}
+        isFetching={isFetching}
+      />
+
+      {/* Performance agents */}
+      <AgentPerformanceTable
+        data={totauxParAgent}
+        isLoading={isLoading}
+        onAgentClick={handleAgentClick}
+      />
     </div>
   );
 }

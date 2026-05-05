@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
@@ -58,7 +58,7 @@ function downloadCsv(content: string, filename: string) {
 
 function downloadTemplate() {
   const csv = 'matricule,telephone\nNK-GOM-001-0001,+243812345678\nNK-GOM-001-0002,+243991234567\n';
-  downloadCsv(csv, 'modele_import_techshop.csv');
+  downloadCsv(csv, 'modele_import_progress_business.csv');
 }
 
 function downloadErrorReport(details: ImportDetail[]) {

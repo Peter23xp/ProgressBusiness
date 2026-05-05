@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('deps:', list\\(d.get\\('dependencies',{}\\).keys\\(\\)\\)\\); print\\('devDeps:', list\\(d.get\\('devDependencies',{}\\).keys\\(\\)\\)\\)\")",
+      "Bash(node -e \"const d=require\\('./package.json'\\); console.log\\('deps:', Object.keys\\(d.dependencies||{}\\).join\\(', '\\)\\); console.log\\('devDeps:', Object.keys\\(d.devDependencies||{}\\).join\\(', '\\)\\)\")",
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(grep -v \"^--$\")",
+      "Bash(npm run *)",
+      "Bash(npx prisma *)",
+      "Bash(curl -s -X POST http://localhost:3000/api/v1/portal/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"telephone\\\\\":\\\\\"+243902238740\\\\\",\\\\\"pin\\\\\":\\\\\"8740\\\\\"}\")",
+      "Bash(node -e ' *)",
+      "Bash(curl -s -X POST http://localhost:3000/api/v1/portal/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"telephone\\\\\":\\\\\"+243993915411\\\\\",\\\\\"pin\\\\\":\\\\\"5411\\\\\"}\")",
+      "Bash(bash *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(cat vite.config.ts)",
+      "Bash(cat vite.config.js)"
+    ]
+  }
+}

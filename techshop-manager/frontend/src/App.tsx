@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, Suspense, lazy } from 'react';
 import { useUIStore } from '@/store/ui.store';
 import { useAuthStore } from '@/store/auth.store';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -7,73 +7,84 @@ import { AuthGuard } from '@/components/layout/AuthGuard';
 import { RoleGuard } from '@/components/layout/RoleGuard';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
 
+// ── Lazy page imports (code-splitting par route) ───────────────────
 // Auth
-import LoginPage from '@/pages/auth/LoginPage';
-import ResetPasswordPage from '@/pages/auth/ResetPasswordPage';
+const LoginPage           = lazy(() => import('@/pages/auth/LoginPage'));
+const ResetPasswordPage   = lazy(() => import('@/pages/auth/ResetPasswordPage'));
 
 // Dashboard
-import DashboardPage from '@/pages/dashboard/DashboardPage';
-import DashboardRegionalPage from '@/pages/dashboard/DashboardRegionalPage';
+const DashboardPage         = lazy(() => import('@/pages/dashboard/DashboardPage'));
+const DashboardRegionalPage = lazy(() => import('@/pages/dashboard/DashboardRegionalPage'));
 
 // Clients
-import ClientsListPage from '@/pages/clients/ClientsListPage';
-import ClientDetailPage from '@/pages/clients/ClientDetailPage';
-import OnboardingRecitPage from '@/pages/clients/OnboardingRecitPage';
-import OnboardingFormationPage from '@/pages/clients/OnboardingFormationPage';
-import OnboardingFichePage from '@/pages/clients/OnboardingFichePage';
-import OnboardingActivationPage from '@/pages/clients/OnboardingActivationPage';
-import ImportMatriculesPage from '@/pages/clients/ImportMatriculesPage';
-import OnboardingQueuePage from '@/pages/clients/OnboardingQueuePage';
-import PaiementsOnboardingPage from '@/pages/clients/PaiementsOnboardingPage';
+const ClientsListPage        = lazy(() => import('@/pages/clients/ClientsListPage'));
+const ClientDetailPage       = lazy(() => import('@/pages/clients/ClientDetailPage'));
+const OnboardingRecitPage    = lazy(() => import('@/pages/clients/OnboardingRecitPage'));
+const OnboardingFormationPage = lazy(() => import('@/pages/clients/OnboardingFormationPage'));
+const OnboardingFichePage    = lazy(() => import('@/pages/clients/OnboardingFichePage'));
+const OnboardingActivationPage = lazy(() => import('@/pages/clients/OnboardingActivationPage'));
+const ImportMatriculesPage   = lazy(() => import('@/pages/clients/ImportMatriculesPage'));
+const OnboardingQueuePage    = lazy(() => import('@/pages/clients/OnboardingQueuePage'));
+const PaiementsOnboardingPage = lazy(() => import('@/pages/clients/PaiementsOnboardingPage'));
 
 // Ventes
-import POSPage from '@/pages/ventes/POSPage';
-import VentesHistoriquePage from '@/pages/ventes/VentesHistoriquePage';
-import VenteDetailPage from '@/pages/ventes/VenteDetailPage';
-import RecuPage from '@/pages/ventes/RecuPage';
-import RetoursPage from '@/pages/ventes/RetoursPage';
-import JournalRetoursPage from '@/pages/ventes/JournalRetoursPage';
-import AvoirDocumentPage from '@/pages/ventes/AvoirDocumentPage';
-import EcrituresOhadaPage from '@/pages/ventes/EcrituresOhadaPage';
+const POSPage              = lazy(() => import('@/pages/ventes/POSPage'));
+const VentesHistoriquePage = lazy(() => import('@/pages/ventes/VentesHistoriquePage'));
+const VenteDetailPage      = lazy(() => import('@/pages/ventes/VenteDetailPage'));
+const RecuPage             = lazy(() => import('@/pages/ventes/RecuPage'));
+const RetoursPage          = lazy(() => import('@/pages/ventes/RetoursPage'));
+const JournalRetoursPage   = lazy(() => import('@/pages/ventes/JournalRetoursPage'));
+const AvoirDocumentPage    = lazy(() => import('@/pages/ventes/AvoirDocumentPage'));
+const EcrituresOhadaPage   = lazy(() => import('@/pages/ventes/EcrituresOhadaPage'));
 
 // Stocks
-import InventairePage from '@/pages/stocks/InventairePage';
-import NouveauProduitPage from '@/pages/stocks/NouveauProduitPage';
-import ProduitStockPage from '@/pages/stocks/ProduitStockPage';
-import EntreeStockPage from '@/pages/stocks/EntreeStockPage';
-import TransfertPage from '@/pages/stocks/TransfertPage';
-import ReceptionTransfertPage from '@/pages/stocks/ReceptionTransfertPage';
-import AlertesStockPage from '@/pages/stocks/AlertesStockPage';
-import InventairePhysiquePage from '@/pages/stocks/InventairePhysiquePage';
+const InventairePage          = lazy(() => import('@/pages/stocks/InventairePage'));
+const NouveauProduitPage      = lazy(() => import('@/pages/stocks/NouveauProduitPage'));
+const ProduitStockPage        = lazy(() => import('@/pages/stocks/ProduitStockPage'));
+const EntreeStockPage         = lazy(() => import('@/pages/stocks/EntreeStockPage'));
+const TransfertPage           = lazy(() => import('@/pages/stocks/TransfertPage'));
+const ReceptionTransfertPage  = lazy(() => import('@/pages/stocks/ReceptionTransfertPage'));
+const AlertesStockPage        = lazy(() => import('@/pages/stocks/AlertesStockPage'));
+const InventairePhysiquePage  = lazy(() => import('@/pages/stocks/InventairePhysiquePage'));
 
 // Parrainage
-import ParrainageGlobalPage from '@/pages/parrainage/ParrainageGlobalPage';
-import ArbreParrainagePage from '@/pages/parrainage/ArbreParrainagePage';
-import ConfigRecompensesPage from '@/pages/parrainage/ConfigRecompensesPage';
+const ParrainageGlobalPage  = lazy(() => import('@/pages/parrainage/ParrainageGlobalPage'));
+const ArbreParrainagePage   = lazy(() => import('@/pages/parrainage/ArbreParrainagePage'));
+const ConfigRecompensesPage = lazy(() => import('@/pages/parrainage/ConfigRecompensesPage'));
 
 // Fidelite
-import FideliteProgrammePage from '@/pages/fidelite/FideliteProgrammePage';
-import ClientPointsPage from '@/pages/fidelite/ClientPointsPage';
-import ConfigFidelitePage from '@/pages/fidelite/ConfigFidelitePage';
+const FideliteProgrammePage = lazy(() => import('@/pages/fidelite/FideliteProgrammePage'));
+const ClientPointsPage      = lazy(() => import('@/pages/fidelite/ClientPointsPage'));
+const ConfigFidelitePage    = lazy(() => import('@/pages/fidelite/ConfigFidelitePage'));
 
 // Rapports
-import RapportsDashboardPage from '@/pages/rapports/RapportsDashboardPage';
-import RapportVentesPage from '@/pages/rapports/RapportVentesPage';
-import RapportStocksPage from '@/pages/rapports/RapportStocksPage';
-import RapportParrainagePage from '@/pages/rapports/RapportParrainagePage';
-import ExportPage from '@/pages/rapports/ExportPage';
+const RapportsDashboardPage  = lazy(() => import('@/pages/rapports/RapportsDashboardPage'));
+const RapportVentesPage      = lazy(() => import('@/pages/rapports/RapportVentesPage'));
+const RapportStocksPage      = lazy(() => import('@/pages/rapports/RapportStocksPage'));
+const RapportParrainagePage  = lazy(() => import('@/pages/rapports/RapportParrainagePage'));
+const ExportPage             = lazy(() => import('@/pages/rapports/ExportPage'));
 
 // Portal Client
-import PortalHomePage from '@/pages/portal/PortalHomePage';
-import PortalAchatsPage from '@/pages/portal/PortalAchatsPage';
-import PortalPointsPage from '@/pages/portal/PortalPointsPage';
-import PortalFilleulsPage from '@/pages/portal/PortalFilleulsPage';
+const PortalLoginPage   = lazy(() => import('@/pages/portal/PortalLoginPage'));
+const PortalHomePage    = lazy(() => import('@/pages/portal/PortalHomePage'));
+const PortalAchatsPage  = lazy(() => import('@/pages/portal/PortalAchatsPage'));
+const PortalPointsPage  = lazy(() => import('@/pages/portal/PortalPointsPage'));
+const PortalFilleulsPage = lazy(() => import('@/pages/portal/PortalFilleulsPage'));
 
 // Parametres
-import UsersPage from '@/pages/parametres/UsersPage';
-import SitesPage from '@/pages/parametres/SitesPage';
-import ProfilPage from '@/pages/parametres/ProfilPage';
-import ConfigGeneralePage from '@/pages/parametres/ConfigGeneralePage';
+const UsersPage         = lazy(() => import('@/pages/parametres/UsersPage'));
+const SitesPage         = lazy(() => import('@/pages/parametres/SitesPage'));
+const ProfilPage        = lazy(() => import('@/pages/parametres/ProfilPage'));
+const ConfigGeneralePage = lazy(() => import('@/pages/parametres/ConfigGeneralePage'));
+
+// ── Fallback de chargement ─────────────────────────────────────────
+function PageLoader() {
+  return (
+    <div className="flex h-full items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-accent border-t-transparent" />
+    </div>
+  );
+}
 
 export default function App() {
   const setOnline = useUIStore((s) => s.setOnline);
@@ -92,84 +103,85 @@ export default function App() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <OfflineBanner />
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/portal/login" element={<PortalLoginPage />} />
 
-        {/* Portal Client — role CLIENT */}
-        <Route path="/portal" element={<AuthGuard><RoleGuard minRole="CLIENT"><AppLayout /></RoleGuard></AuthGuard>}>
-          <Route path="home" element={<PortalHomePage />} />
-          <Route path="purchases" element={<PortalAchatsPage />} />
-          <Route path="points" element={<PortalPointsPage />} />
-          <Route path="referrals" element={<PortalFilleulsPage />} />
-        </Route>
+          {/* Portal Client — role CLIENT — each page owns its own PortalLayout */}
+          <Route path="/portal/home"      element={<AuthGuard><RoleGuard minRole="CLIENT"><PortalHomePage /></RoleGuard></AuthGuard>} />
+          <Route path="/portal/purchases" element={<AuthGuard><RoleGuard minRole="CLIENT"><PortalAchatsPage /></RoleGuard></AuthGuard>} />
+          <Route path="/portal/points"    element={<AuthGuard><RoleGuard minRole="CLIENT"><PortalPointsPage /></RoleGuard></AuthGuard>} />
+          <Route path="/portal/referrals" element={<AuthGuard><RoleGuard minRole="CLIENT"><PortalFilleulsPage /></RoleGuard></AuthGuard>} />
 
-        {/* App routes — role AGENT+ */}
-        <Route path="/" element={<AuthGuard><RoleGuard minRole="AGENT"><AppLayout /></RoleGuard></AuthGuard>}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
+          {/* App routes — role AGENT+ */}
+          <Route path="/" element={<AuthGuard><RoleGuard minRole="AGENT"><AppLayout /></RoleGuard></AuthGuard>}>
+            <Route index element={<Navigate to="/dashboard" replace />} />
 
-          {/* Dashboard */}
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="dashboard/regional" element={<RoleGuard minRole="DIRECTEUR_REGIONAL"><DashboardRegionalPage /></RoleGuard>} />
+            {/* Dashboard */}
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="dashboard/regional" element={<RoleGuard minRole="DIRECTEUR_REGIONAL"><DashboardRegionalPage /></RoleGuard>} />
 
-          {/* Clients */}
-          <Route path="clients" element={<ClientsListPage />} />
-          <Route path="clients/new/recit" element={<OnboardingRecitPage />} />
-          <Route path="clients/import" element={<RoleGuard minRole="GERANT"><ImportMatriculesPage /></RoleGuard>} />
-          <Route path="clients/queue" element={<OnboardingQueuePage />} />
-          <Route path="clients/paiements" element={<RoleGuard minRole="GERANT"><PaiementsOnboardingPage /></RoleGuard>} />
-          <Route path="clients/:id" element={<ClientDetailPage />} />
-          <Route path="clients/:id/formation" element={<RoleGuard minRole="FORMATEUR"><OnboardingFormationPage /></RoleGuard>} />
-          <Route path="clients/:id/fiche" element={<OnboardingFichePage />} />
-          <Route path="clients/:id/activate" element={<OnboardingActivationPage />} />
+            {/* Clients */}
+            <Route path="clients" element={<ClientsListPage />} />
+            <Route path="clients/new/recit" element={<OnboardingRecitPage />} />
+            <Route path="clients/import" element={<RoleGuard minRole="GERANT"><ImportMatriculesPage /></RoleGuard>} />
+            <Route path="clients/queue" element={<OnboardingQueuePage />} />
+            <Route path="clients/paiements" element={<RoleGuard minRole="GERANT"><PaiementsOnboardingPage /></RoleGuard>} />
+            <Route path="clients/:id" element={<ClientDetailPage />} />
+            <Route path="clients/:id/formation" element={<RoleGuard minRole="FORMATEUR"><OnboardingFormationPage /></RoleGuard>} />
+            <Route path="clients/:id/fiche" element={<OnboardingFichePage />} />
+            <Route path="clients/:id/activate" element={<OnboardingActivationPage />} />
 
-          {/* Ventes */}
-          <Route path="sales/pos" element={<POSPage />} />
-          <Route path="sales" element={<RoleGuard minRole="GERANT"><VentesHistoriquePage /></RoleGuard>} />
-          <Route path="sales/returns" element={<RoleGuard minRole="GERANT"><RetoursPage /></RoleGuard>} />
-          <Route path="sales/journal-retours" element={<RoleGuard minRole="GERANT"><JournalRetoursPage /></RoleGuard>} />
-          <Route path="sales/retours/:retourId/avoir" element={<AvoirDocumentPage />} />
-          <Route path="sales/retours/:retourId/ecritures" element={<RoleGuard minRole="GERANT"><EcrituresOhadaPage /></RoleGuard>} />
-          <Route path="sales/:id" element={<RoleGuard minRole="GERANT"><VenteDetailPage /></RoleGuard>} />
-          <Route path="sales/:id/receipt" element={<RecuPage />} />
+            {/* Ventes */}
+            <Route path="sales/pos" element={<POSPage />} />
+            <Route path="sales" element={<RoleGuard minRole="GERANT"><VentesHistoriquePage /></RoleGuard>} />
+            <Route path="sales/returns" element={<RoleGuard minRole="GERANT"><RetoursPage /></RoleGuard>} />
+            <Route path="sales/journal-retours" element={<RoleGuard minRole="GERANT"><JournalRetoursPage /></RoleGuard>} />
+            <Route path="sales/retours/:retourId/avoir" element={<AvoirDocumentPage />} />
+            <Route path="sales/retours/:retourId/ecritures" element={<RoleGuard minRole="GERANT"><EcrituresOhadaPage /></RoleGuard>} />
+            <Route path="sales/:id" element={<RoleGuard minRole="GERANT"><VenteDetailPage /></RoleGuard>} />
+            <Route path="sales/:id/receipt" element={<RecuPage />} />
 
-          {/* Stocks */}
-          <Route path="stocks" element={<InventairePage />} />
-          <Route path="stocks/new" element={<RoleGuard minRole="GERANT"><NouveauProduitPage /></RoleGuard>} />
-          <Route path="stocks/entry" element={<RoleGuard minRole="GERANT"><EntreeStockPage /></RoleGuard>} />
-          <Route path="stocks/transfer" element={<RoleGuard minRole="GERANT"><TransfertPage /></RoleGuard>} />
-          <Route path="stocks/alerts" element={<RoleGuard minRole="GERANT"><AlertesStockPage /></RoleGuard>} />
-          <Route path="stocks/inventory" element={<RoleGuard minRole="GERANT"><InventairePhysiquePage /></RoleGuard>} />
-          <Route path="stocks/transfer/:id/receive" element={<RoleGuard minRole="GERANT"><ReceptionTransfertPage /></RoleGuard>} />
-          <Route path="stocks/:produitId" element={<RoleGuard minRole="GERANT"><ProduitStockPage /></RoleGuard>} />
+            {/* Stocks */}
+            <Route path="stocks" element={<InventairePage />} />
+            <Route path="stocks/new" element={<RoleGuard minRole="GERANT"><NouveauProduitPage /></RoleGuard>} />
+            <Route path="stocks/entry" element={<RoleGuard minRole="GERANT"><EntreeStockPage /></RoleGuard>} />
+            <Route path="stocks/transfer" element={<RoleGuard minRole="GERANT"><TransfertPage /></RoleGuard>} />
+            <Route path="stocks/alerts" element={<RoleGuard minRole="GERANT"><AlertesStockPage /></RoleGuard>} />
+            <Route path="stocks/inventory" element={<RoleGuard minRole="GERANT"><InventairePhysiquePage /></RoleGuard>} />
+            <Route path="stocks/transfer/:id/receive" element={<RoleGuard minRole="GERANT"><ReceptionTransfertPage /></RoleGuard>} />
+            <Route path="stocks/:produitId" element={<RoleGuard minRole="GERANT"><ProduitStockPage /></RoleGuard>} />
 
-          {/* Parrainage */}
-          <Route path="parrainage" element={<RoleGuard minRole="GERANT"><ParrainageGlobalPage /></RoleGuard>} />
-          <Route path="parrainage/tree/:clientId" element={<ArbreParrainagePage />} />
-          <Route path="parrainage/config" element={<RoleGuard minRole="SUPER_ADMIN"><ConfigRecompensesPage /></RoleGuard>} />
+            {/* Parrainage */}
+            <Route path="parrainage" element={<RoleGuard minRole="GERANT"><ParrainageGlobalPage /></RoleGuard>} />
+            <Route path="parrainage/tree/:clientId" element={<ArbreParrainagePage />} />
+            <Route path="parrainage/config" element={<RoleGuard minRole="SUPER_ADMIN"><ConfigRecompensesPage /></RoleGuard>} />
 
-          {/* Fidelite */}
-          <Route path="fidelite" element={<RoleGuard minRole="GERANT"><FideliteProgrammePage /></RoleGuard>} />
-          <Route path="fidelite/client/:id" element={<ClientPointsPage />} />
-          <Route path="fidelite/config" element={<RoleGuard minRole="SUPER_ADMIN"><ConfigFidelitePage /></RoleGuard>} />
+            {/* Fidelite */}
+            <Route path="fidelite" element={<RoleGuard minRole="GERANT"><FideliteProgrammePage /></RoleGuard>} />
+            <Route path="fidelite/client/:id" element={<ClientPointsPage />} />
+            <Route path="fidelite/config" element={<RoleGuard minRole="SUPER_ADMIN"><ConfigFidelitePage /></RoleGuard>} />
 
-          {/* Rapports */}
-          <Route path="reports" element={<RoleGuard minRole="GERANT"><RapportsDashboardPage /></RoleGuard>} />
-          <Route path="reports/sales" element={<RoleGuard minRole="DIRECTEUR_REGIONAL"><RapportVentesPage /></RoleGuard>} />
-          <Route path="reports/stocks" element={<RoleGuard minRole="DIRECTEUR_REGIONAL"><RapportStocksPage /></RoleGuard>} />
-          <Route path="reports/parrainage" element={<RoleGuard minRole="GERANT"><RapportParrainagePage /></RoleGuard>} />
-          <Route path="reports/export" element={<RoleGuard minRole="GERANT"><ExportPage /></RoleGuard>} />
+            {/* Rapports */}
+            <Route path="reports" element={<RoleGuard minRole="GERANT"><RapportsDashboardPage /></RoleGuard>} />
+            <Route path="reports/sales" element={<RoleGuard minRole="DIRECTEUR_REGIONAL"><RapportVentesPage /></RoleGuard>} />
+            <Route path="reports/stocks" element={<RoleGuard minRole="DIRECTEUR_REGIONAL"><RapportStocksPage /></RoleGuard>} />
+            <Route path="reports/parrainage" element={<RoleGuard minRole="GERANT"><RapportParrainagePage /></RoleGuard>} />
+            <Route path="reports/export" element={<RoleGuard minRole="GERANT"><ExportPage /></RoleGuard>} />
 
-          {/* Parametres */}
-          <Route path="settings/users" element={<RoleGuard minRole="SUPER_ADMIN"><UsersPage /></RoleGuard>} />
-          <Route path="settings/sites" element={<RoleGuard minRole="SUPER_ADMIN"><SitesPage /></RoleGuard>} />
-          <Route path="settings/profile" element={<ProfilPage />} />
-          <Route path="settings/general" element={<RoleGuard minRole="SUPER_ADMIN"><ConfigGeneralePage /></RoleGuard>} />
-        </Route>
+            {/* Parametres */}
+            <Route path="settings/users" element={<RoleGuard minRole="SUPER_ADMIN"><UsersPage /></RoleGuard>} />
+            <Route path="settings/sites" element={<RoleGuard minRole="SUPER_ADMIN"><SitesPage /></RoleGuard>} />
+            <Route path="settings/profile" element={<ProfilPage />} />
+            <Route path="settings/general" element={<RoleGuard minRole="SUPER_ADMIN"><ConfigGeneralePage /></RoleGuard>} />
+          </Route>
 
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

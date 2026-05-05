@@ -1,6 +1,6 @@
+﻿
 
-
-# 🛒 TECHSHOP MANAGER — PROMPTS DE DÉVELOPPEMENT
+# 🛒 PROGRESS BUSINESS — PROMPTS DE DÉVELOPPEMENT
 ## Module DASHBOARD | Écrans SCR-003 & SCR-004
 
 > **MODE D'EMPLOI :**
@@ -15,7 +15,7 @@
 ## CONTEXTE GLOBAL (rappel rapide pour chaque prompt)
 
 ```
-Projet      : TechShop Manager — Système de Gestion Commercial Multi-Sites
+Projet      : Progress Business — Système de Gestion Commercial Multi-Sites
 Stack       : React 18 + TypeScript + Vite + TailwindCSS + shadcn/ui
 State       : Zustand (auth + UI) + TanStack Query v5 (serveur)
 Offline     : Dexie.js (IndexedDB) + Service Worker (Workbox)
@@ -37,7 +37,7 @@ Sites       : Goma (siège), Bukavu, Kinshasa
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/dashboard/DashboardPage.tsx
 Route       : /dashboard
 Accès       : Protégé — rôle minimum : AGENT
@@ -86,7 +86,7 @@ UI — STRUCTURE VISUELLE
 La page utilise le layout AppLayout (sidebar gauche fixe + header haut + zone contenu scrollable).
 
   ┌──────────────────────────────────────────────────────────────────┐
-  │  TECHSHOP   [GOMA ▼]                  Jean-Pierre ▾ [Déco.]    │  ← Header
+  │  PROGRESS BUSINESS   [GOMA ▼]                  Jean-Pierre ▾ [Déco.]    │  ← Header
   ├──────────────┬───────────────────────────────────────────────────┤
   │  Dashboard   │  Tableau de Bord           Aujourd'hui ▾          │
   │  Clients     │                                                    │
@@ -142,7 +142,7 @@ Navigation latérale complète de l'application.
 
 Structure visuelle :
   ┌────────────────────────┐
-  │  [LOGO] TechShop       │   ← Logo + nom, fond #1E3A5F
+  │  [LOGO] Progress Business       │   ← Logo + nom, fond #1E3A5F
   ├────────────────────────┤
   │  ○ Dashboard           │   ← Lien actif : fond #2E86C1, texte blanc
   │  ○ Clients             │   ← Lien inactif : texte gris-200, hover fond #2E86C1/20
@@ -442,7 +442,7 @@ CACHE DEXIE — Modification db.ts
 -----------------------------------
 Ajouter la table dashboardCache au schéma Dexie existant (version 2) :
 
-  // Ajouter à la classe TechShopDB :
+  // Ajouter à la classe ProgressBusinessDB :
   dashboardCache!: EntityTable<DashboardCache, 'id'>;
 
   interface DashboardCache {
@@ -773,7 +773,7 @@ TESTS
 ```
 CONTEXTE
 --------
-Projet      : TechShop Manager
+Projet      : Progress Business
 Fichier cible principal : apps/client/src/pages/dashboard/RegionalDashboardPage.tsx
 Route       : /dashboard/regional
 Accès       : Protégé — rôle minimum : DIR_REGIONAL
@@ -812,7 +812,7 @@ UI — STRUCTURE VISUELLE
 Même AppLayout que SCR-003 (sidebar + header). Contenu spécifique :
 
   ┌──────────────────────────────────────────────────────────────────┐
-  │  TECHSHOP   [GOMA ▼]                  Jean-Pierre ▾ [Déco.]    │
+  │  PROGRESS BUSINESS   [GOMA ▼]                  Jean-Pierre ▾ [Déco.]    │
   ├──────────────┬───────────────────────────────────────────────────┤
   │  Sidebar     │  Vue Régionale        [Ce mois ▾] [Export PDF]   │
   │  (identique) │                                                    │
@@ -1261,4 +1261,4 @@ Prompt 2 (SCR-004 Dashboard Régional)
 
 ---
 
-*TechShop Manager — Prompts Développement Dashboard SCR-003 & SCR-004 — Goma, RDC — v1.0 — 2025*
+*Progress Business — Prompts Développement Dashboard SCR-003 & SCR-004 — Goma, RDC — v1.0 — 2025*

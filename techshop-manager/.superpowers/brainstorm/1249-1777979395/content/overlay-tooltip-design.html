@@ -1,0 +1,124 @@
+<h2>Design : Overlay + Tooltip</h2>
+<p class="subtitle">Aperçu visuel du système Spotlight + bulle pédagogique</p>
+
+<!-- Mockup Overlay + Tooltip -->
+<div class="mockup" style="margin-bottom: 32px;">
+  <div class="mockup-header">Aperçu — TutorialOverlay + TutorialTooltip</div>
+  <div class="mockup-body" style="padding:0; background:#1a1a2e; min-height:380px; position:relative; overflow:hidden; border-radius:0 0 8px 8px;">
+
+    <!-- Faux AppLayout -->
+    <div style="display:flex; height:380px;">
+      <!-- Sidebar simulée -->
+      <div style="width:200px; background:#1E3A5F; padding:12px; flex-shrink:0;">
+        <div style="color:white; font-weight:bold; font-size:13px; margin-bottom:16px; padding:8px; background:rgba(255,255,255,0.1); border-radius:6px;">TechShop Manager</div>
+        <div style="color:rgba(255,255,255,0.5); font-size:11px; margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">Navigation</div>
+        <div style="color:rgba(255,255,255,0.6); font-size:12px; padding:6px 8px; margin-bottom:4px; border-radius:4px;">📊 Dashboard</div>
+        <div style="color:rgba(255,255,255,0.6); font-size:12px; padding:6px 8px; margin-bottom:4px; border-radius:4px;">👥 Clients</div>
+        <div style="color:rgba(255,255,255,0.6); font-size:12px; padding:6px 8px; margin-bottom:4px; border-radius:4px;">🛒 Ventes</div>
+        <!-- Élément ciblé par spotlight -->
+        <div id="target-el" style="color:white; font-size:12px; padding:6px 8px; margin-bottom:4px; border-radius:4px; background:rgba(46,134,193,0.3); position:relative; z-index:10000; border:2px dashed #2E86C1;">
+          ⚙️ Paramètres
+        </div>
+        <div style="color:rgba(255,255,255,0.6); font-size:12px; padding:6px 8px; margin-bottom:4px; border-radius:4px;">📈 Rapports</div>
+      </div>
+
+      <!-- Contenu principal -->
+      <div style="flex:1; background:#f5f7fa; padding:16px; position:relative;">
+        <!-- Overlay SVG simulé -->
+        <div style="position:absolute; inset:0; background:rgba(0,0,0,0.65); z-index:9998; border-radius:0 0 8px 0;"></div>
+        <!-- "Fenêtre" transparente simulée sur l'élément (effet visuel) -->
+
+        <div style="color:#666; font-size:12px; margin-bottom:12px; position:relative; z-index:1; opacity:0.3;">Contenu masqué par l'overlay...</div>
+
+        <!-- Tooltip ancré -->
+        <div style="
+          position:absolute;
+          left:220px; top:80px;
+          width:300px;
+          background:white;
+          border-radius:12px;
+          box-shadow:0 8px 32px rgba(0,0,0,0.25);
+          z-index:9999;
+          overflow:hidden;
+        ">
+          <!-- Progress bar interne -->
+          <div style="background:#f0f4f8; padding:8px 14px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; gap:5px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:#2E86C1;"></div>
+              <div style="width:8px;height:8px;border-radius:50%;background:#2E86C1;"></div>
+              <div style="width:8px;height:8px;border-radius:50%;background:#2E86C1;"></div>
+              <div style="width:8px;height:8px;border-radius:50%;background:#ccc;"></div>
+              <div style="width:8px;height:8px;border-radius:50%;background:#ccc;"></div>
+            </div>
+            <span style="font-size:11px; color:#888;">Navigation · Étape 3/5</span>
+          </div>
+          <!-- Contenu tooltip -->
+          <div style="padding:16px;">
+            <div style="font-size:15px; font-weight:700; color:#1E3A5F; margin-bottom:8px;">⚙️ Paramètres — Panneau d'admin</div>
+            <div style="font-size:13px; color:#333; line-height:1.5; margin-bottom:12px;">
+              En tant que Super Admin, vous avez accès au panneau Paramètres qui vous permet de gérer les utilisateurs, les sites, et toute la configuration.
+            </div>
+            <!-- Tip -->
+            <div style="background:#D6E4F0; border-left:3px solid #2E86C1; border-radius:0 6px 6px 0; padding:8px 10px; font-size:12px; color:#1E3A5F; margin-bottom:14px;">
+              💡 Seul le Super Admin voit ce menu dans la sidebar.
+            </div>
+            <!-- Actions -->
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button style="font-size:12px; color:#999; background:none; border:none; cursor:pointer; padding:0;">✕ Quitter</button>
+              <div style="flex:1;"></div>
+              <button style="font-size:12px; color:#1E3A5F; background:none; border:1px solid #1E3A5F; border-radius:6px; padding:5px 12px; cursor:pointer;">← Précédent</button>
+              <button style="font-size:12px; color:white; background:#1E3A5F; border:none; border-radius:6px; padding:5px 12px; cursor:pointer;">Suivant →</button>
+            </div>
+          </div>
+          <!-- Flèche SVG vers la gauche -->
+          <div style="position:absolute; left:-8px; top:50%; transform:translateY(-50%); width:0; height:0; border-top:8px solid transparent; border-bottom:8px solid transparent; border-right:8px solid white;"></div>
+        </div>
+
+        <!-- Contenu page masqué -->
+        <div style="margin-top:40px; opacity:0.2; position:relative; z-index:1;">
+          <div style="background:white; border-radius:8px; padding:12px; margin-bottom:8px; font-size:12px;">Dashboard content...</div>
+          <div style="background:white; border-radius:8px; padding:12px; font-size:12px;">More content...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Barre de progression globale -->
+<div class="mockup">
+  <div class="mockup-header">TutorialProgressBar — barre globale top</div>
+  <div class="mockup-body" style="padding:0; background:#f5f7fa; height:40px; position:relative; border-radius:0 0 8px 8px; overflow:hidden;">
+    <div style="position:absolute; top:0; left:0; width:35%; height:3px; background:#2E86C1; transition:width 0.3s;"></div>
+    <div style="position:absolute; top:0; left:0; right:0; height:3px; background:#E0E0E0; z-index:-1;"></div>
+    <div style="padding:8px 16px; font-size:12px; color:#666; margin-top:4px;">← barre 3px en haut (35% = étape 3/9)</div>
+  </div>
+</div>
+
+<!-- Spécifications techniques -->
+<div class="section" style="margin-top:24px;">
+  <h3>Spécifications TutorialOverlay</h3>
+  <ul style="font-size:13px; line-height:1.8; color:#444;">
+    <li>SVG plein écran (position:fixed, z-index:9998) avec <strong>SVG mask</strong> découpant une fenêtre transparente</li>
+    <li>Contour bleu <code>#2E86C1</code> en pointillés (<code>strokeDasharray="6 3"</code>) autour de l'élément</li>
+    <li>Padding 6px + borderRadius 8px autour de l'élément ciblé</li>
+    <li><strong>MutationObserver</strong> pour détecter les éléments rendus après navigation</li>
+    <li><strong>ResizeObserver</strong> pour recalculer au resize fenêtre</li>
+    <li>Retry x5 toutes les 500ms si élément introuvable</li>
+    <li>Scroll automatique : <code>scrollIntoView({ behavior: 'smooth', block: 'center' })</code></li>
+    <li>Animation entrée : opacity 0→1, 200ms ease</li>
+    <li>Transition spotlight entre étapes : 300ms ease-in-out</li>
+  </ul>
+
+  <h3 style="margin-top:16px;">Spécifications TutorialTooltip</h3>
+  <ul style="font-size:13px; line-height:1.8; color:#444;">
+    <li>Largeur 340px desktop / 280px mobile, z-index:9999</li>
+    <li>Positionnement <strong>'auto'</strong> : calcul selon espace disponible (tiers écran)</li>
+    <li>Offset 12px entre élément et bulle + flèche SVG 10px</li>
+    <li>Touches clavier : <code>→</code> suivant · <code>←</code> précédent · <code>Esc</code> dialog quitter</li>
+    <li>Focus trap pendant le tutoriel (accessibilité)</li>
+    <li><code>role="dialog"</code> + <code>aria-live="polite"</code> pour la progression</li>
+    <li>Bouton "Terminer ✓" à la dernière étape (remplace "Suivant →")</li>
+  </ul>
+</div>
+
+<p class="subtitle">Regardez le rendu ci-dessus — est-ce le design souhaité ?</p>

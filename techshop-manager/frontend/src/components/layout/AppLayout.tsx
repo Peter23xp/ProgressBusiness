@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -65,7 +65,7 @@ const SETTINGS_GROUP: NavGroupDef = {
     { label: 'Utilisateurs', icon: <UserCog size={15} />,        to: '/settings/users',   minRole: 'SUPER_ADMIN' },
     { label: 'Sites',        icon: <Building2 size={15} />,      to: '/settings/sites',   minRole: 'SUPER_ADMIN' },
     { label: 'Profil',       icon: <User size={15} />,           to: '/settings/profile', minRole: 'AGENT' },
-    { label: 'Config',       icon: <SlidersHorizontal size={15} />, to: '/settings/config', minRole: 'SUPER_ADMIN' },
+    { label: 'Config',       icon: <SlidersHorizontal size={15} />, to: '/settings/general', minRole: 'SUPER_ADMIN' },
   ],
 };
 
@@ -104,7 +104,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
           <Zap size={15} className="text-white" />
         </div>
         <div className="flex flex-col leading-none">
-          <span className="text-[13px] font-bold tracking-tight" style={{ color: '#e8edf5' }}>TechShop</span>
+          <span className="text-[13px] font-bold tracking-tight" style={{ color: '#e8edf5' }}>Progress Business</span>
           <span className="text-[10px] font-medium" style={{ color: '#3d5478' }}>Manager v1.0</span>
         </div>
         {onClose && (

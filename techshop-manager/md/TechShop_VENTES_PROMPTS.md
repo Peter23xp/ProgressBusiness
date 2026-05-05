@@ -1,4 +1,4 @@
-# 🛒 TECHSHOP MANAGER — PROMPTS DE DÉVELOPPEMENT
+﻿# 🛒 PROGRESS BUSINESS — PROMPTS DE DÉVELOPPEMENT
 ## Module VENTES | Écrans SCR-012 à SCR-016 | 5 écrans
 
 > **MODE D'EMPLOI :**
@@ -13,7 +13,7 @@
 ## CONTEXTE GLOBAL (rappel rapide pour chaque prompt)
 
 ```
-Projet      : TechShop Manager — Système de Gestion Commercial Multi-Sites
+Projet      : Progress Business — Système de Gestion Commercial Multi-Sites
 Stack       : React 18 + TypeScript + Vite + TailwindCSS + shadcn/ui
 State       : Zustand (auth + cart + UI) + TanStack Query v5 (serveur)
 Offline     : Dexie.js (IndexedDB) + Service Worker (Workbox)
@@ -36,7 +36,7 @@ Impression  : Imprimante thermique ESC/POS 80mm et 58mm (via navigateur ou USB)
 ```
 CONTEXTE
 --------
-Projet       : TechShop Manager
+Projet       : Progress Business
 Fichier cible: apps/client/src/pages/sales/PosPage.tsx
 Route        : /sales/pos
 Accès        : Authentifié — rôle AGENT minimum
@@ -700,7 +700,7 @@ DÉFINITION DE "TERMINÉ" — CHECKLIST SCR-012
 ```
 CONTEXTE
 --------
-Projet       : TechShop Manager
+Projet       : Progress Business
 Fichier cible: apps/client/src/pages/sales/SalesHistoryPage.tsx
 Route        : /sales
 Accès        : Authentifié — rôle GERANT minimum
@@ -906,7 +906,7 @@ Clic sur le bouton Exporter → ouvre un Popover avec 2 options :
 Export CSV côté client :
   - Colonnes : N° Vente, Date, Agent, Client, Montant CDF, Mode Paiement, Statut
   - Utiliser la lib papaparse (déjà dans le projet ou à installer)
-  - Nom du fichier : "ventes-techshop-{AAAAMM}.csv"
+  - Nom du fichier : "ventes-progress-business-{AAAAMM}.csv"
 
 Export PDF côté serveur (déclenche SCR-034 en arrière-plan) :
   - POST /api/v1/rapports/export { type: 'VENTES', format: 'PDF', filtres }
@@ -985,7 +985,7 @@ DÉFINITION DE "TERMINÉ" — CHECKLIST SCR-013
 ```
 CONTEXTE
 --------
-Projet       : TechShop Manager
+Projet       : Progress Business
 Fichier cible: apps/client/src/pages/sales/SaleDetailPage.tsx
 Route        : /sales/:id
 Accès        : Authentifié — rôle GERANT minimum
@@ -1028,7 +1028,7 @@ UI — STRUCTURE VISUELLE
   │  │ N° Vente   : GOM-202501-047     │  │ Mode    : 💵 Cash       │   │
   │  │ Date       : 17/01/2025 14:32   │  │ Montant : 513 950 CDF   │   │
   │  │ Agent      : Jean-Pierre B.     │  │ Reçu    : 550 000 CDF   │   │
-  │  │ Site       : TechShop Goma      │  │ Monnaie : 36 050 CDF    │   │
+  │  │ Site       : Progress Business Goma      │  │ Monnaie : 36 050 CDF    │   │
   │  │ Statut     : ✓ Validée         │  └─────────────────────────┘   │
   │  └─────────────────────────────────┘                                │
   │                                                                      │
@@ -1260,7 +1260,7 @@ DÉFINITION DE "TERMINÉ" — CHECKLIST SCR-014
 ```
 CONTEXTE
 --------
-Projet       : TechShop Manager
+Projet       : Progress Business
 Fichier cible: apps/client/src/pages/sales/ReceiptPage.tsx
 Route        : /sales/:id/receipt
 Accès        : Authentifié — tout rôle ayant accès à la vente
@@ -1301,8 +1301,8 @@ La page en mode ÉCRAN (avant impression) :
   ├─────────────────────────────────────────────────────────────────┤
   │                                                                 │
   │  ┌─────────────────────────────────────┐                       │
-  │  │           TECHSHOP MANAGER          │                       │
-  │  │          TechShop Goma              │                       │
+  │  │           PROGRESS BUSINESS          │                       │
+  │  │          Progress Business Goma              │                       │
   │  │      Q. Himbi, Av. des Volcans      │                       │
   │  │        Goma, Nord-Kivu, RDC         │                       │
   │  │       Tél : +243 81 XXX XXXX        │                       │
@@ -1329,7 +1329,7 @@ La page en mode ÉCRAN (avant impression) :
   │  │  Solde points  : 2 963 pts (■ Or)   │                       │
   │  │─────────────────────────────────────│                       │
   │  │  Merci pour votre achat !           │                       │
-  │  │  TechShop Manager — www.techshop.cd │                       │
+  │  │  Progress Business — www.progress_business.cd │                       │
   │  └─────────────────────────────────────┘                       │
   │                                                                 │
   └─────────────────────────────────────────────────────────────────┘
@@ -1359,7 +1359,7 @@ Règles de mise en page :
 Pied de page du reçu :
   "Merci pour votre achat !"
   "Ce reçu est votre preuve d'achat."
-  "TechShop Manager — Goma, RDC"
+  "Progress Business — Goma, RDC"
 
 
 FICHIER thermal-print.css
@@ -1462,7 +1462,7 @@ POST /api/v1/ventes/:id/sms-recu
 Back-end — POST /api/v1/ventes/:id/sms-recu :
   1. Récupérer la vente avec ses lignes
   2. Générer un résumé SMS compact (max 160 chars) :
-     "TechShop Goma | Recu N°GOM-202501-047 | Total: 513 950 CDF | Merci !"
+     "Progress Business Goma | Recu N°GOM-202501-047 | Total: 513 950 CDF | Merci !"
   3. Envoyer via SmsService (Africa's Talking) au numéro fourni
   4. Logger l'envoi dans la table SmsLog (venteId, telephone, status, sentAt)
   5. Vérifier le rate limit : max 3 SMS par vente par heure (Redis)
@@ -1538,7 +1538,7 @@ DÉFINITION DE "TERMINÉ" — CHECKLIST SCR-015
 ```
 CONTEXTE
 --------
-Projet       : TechShop Manager
+Projet       : Progress Business
 Fichier cible: apps/client/src/pages/sales/ReturnPage.tsx
 Route        : /sales/returns?venteId=:id
 Accès        : Authentifié — rôle GERANT minimum
@@ -1990,4 +1990,4 @@ Prompt 5 (SCR-016 Retours)
 
 ---
 
-*TechShop Manager — Prompts Développement Module Ventes SCR-012 à SCR-016 — Goma, RDC — v1.0 — 2025*
+*Progress Business — Prompts Développement Module Ventes SCR-012 à SCR-016 — Goma, RDC — v1.0 — 2025*

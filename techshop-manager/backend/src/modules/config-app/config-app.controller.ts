@@ -2,7 +2,9 @@ import {
   Controller,
   Get,
   Put,
+  Post,
   Body,
+  Patch,
   UseGuards,
 } from '@nestjs/common';
 import { ConfigAppService } from './config-app.service';
@@ -26,5 +28,23 @@ export class ConfigAppController {
   @Roles(Role.SUPER_ADMIN)
   updateConfig(@Body() dto: any) {
     return this.configAppService.updateConfig(dto);
+  }
+
+  @Patch()
+  @Roles(Role.SUPER_ADMIN)
+  patchConfig(@Body() dto: any) {
+    return this.configAppService.updateConfig(dto);
+  }
+
+  @Post('test-sms')
+  @Roles(Role.SUPER_ADMIN)
+  testSms(@Body('phone') phone: string) {
+    return this.configAppService.testSms(phone);
+  }
+
+  @Get('system-stats')
+  @Roles(Role.SUPER_ADMIN)
+  getSystemStats() {
+    return this.configAppService.getSystemStats();
   }
 }

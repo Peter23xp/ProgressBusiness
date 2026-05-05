@@ -1,138 +1,372 @@
-import { useQuery } from '@tanstack/react-query';
-import { Package, AlertTriangle } from 'lucide-react';
-import { api } from '@/lib/api';
-import { formatCDF, statutStockColor } from '@/lib/utils';
+import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Package, MapPin, BarChart2, AlertTriangle, Download, RefreshCw } from 'lucide-react';
+import { useStocksReport } from '@/hooks/useStocksReport';
+import { useDebounce } from '@/hooks/useDebounce';
+import { formatCDF, cn } from '@/lib/utils';
 
-interface StockConsolide {
-  produitId: string;
-  sku: string;
-  nom: string;
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function abbreviateCDF(amount: number): string {
+  if (amount >= 1_000_000) return (amount / 1_000_000).toFixed(1) + ' M CDF';
+  if (amount >= 1_000) return Math.round(amount / 1_000) + ' k CDF';
+  return amount + ' CDF';
+}
+
+// ── Stat card stocks ──────────────────────────────────────────────────────────
+
+function StockValueCard({ label, value, sub, icon: Icon, isLoading, color = '#2E86C1' }: {
+  label: string;
+  value: string;
+  sub?: string;
+  icon: React.ElementType;
+  isLoading?: boolean;
+  color?: string;
+}) {
+  return (
+    <div className="stat-card">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: color + '18' }}>
+          <Icon size={20} style={{ color }} />
+        </div>
+        <div className="min-w-0">
+          {isLoading ? (
+            <>
+              <div className="skeleton h-6 w-28 rounded mb-1" />
+              <div className="skeleton h-3 w-20 rounded" />
+            </>
+          ) : (
+            <>
+              <p className="text-lg font-bold text-primary leading-tight">{value}</p>
+              <p className="text-xs text-text-muted">{label}</p>
+              {sub && <p className="text-[11px] text-text-muted">{sub}</p>}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Tableau stocks consolidés ─────────────────────────────────────────────────
+
+function ConsolidatedStockTable({ rawData, search, categorie, isLoading }: {
+  rawData: any;
+  search: string;
   categorie: string;
-  prix: number;
-  stockParSite: Record<string, number>;
-  stockTotal: number;
-  valeurTotale: number;
-  statut: string;
-}
+  isLoading: boolean;
+}) {
+  const navigate = useNavigate();
+  const [sortField, setSortField] = useState<'total' | 'nom'>('total');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
-interface RapportStocks {
-  produits: StockConsolide[];
-  sites: string[];
-  valeurTotaleInventaire: number;
-  produitsEnRupture: Array<{ nom: string; sku: string; site: string }>;
-}
+  const sites: Array<{ id: string; nom: string }> = useMemo(() => {
+    if (!rawData?.data?.length) return [];
+    const siteMap: Record<string, string> = {};
+    for (const item of rawData.data) {
+      for (const s of item.sites ?? []) {
+        siteMap[s.site.id] = s.site.nom;
+      }
+    }
+    return Object.entries(siteMap).map(([id, nom]) => ({ id, nom }));
+  }, [rawData]);
 
-export default function RapportStocksPage() {
-  const { data, isLoading } = useQuery<RapportStocks>({
-    queryKey: ['rapport-stocks'],
-    queryFn: () => api.get('/rapports/stocks').then(r => r.data),
-  });
+  const produits = useMemo(() => {
+    if (!rawData?.data) return [];
+    return rawData.data.map((item: any) => {
+      const stockParSite: Record<string, number> = {};
+      const valeurParSite: Record<string, number> = {};
+      let hasRupture = false;
+      for (const s of item.sites ?? []) {
+        stockParSite[s.site.id] = s.quantite;
+        valeurParSite[s.site.id] = s.quantite * Number(item.produit.prixAchat ?? 0);
+        if (s.quantite === 0) hasRupture = true;
+      }
+      return {
+        ...item.produit,
+        stockParSite,
+        valeurParSite,
+        totalStock: item.totalQuantite,
+        valeurTotale: item.valeurStock,
+        hasRupture,
+      };
+    });
+  }, [rawData]);
+
+  const filtered = useMemo(() => {
+    let list = produits;
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter((p: any) => p.nom.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+    }
+    if (categorie) {
+      list = list.filter((p: any) => p.categorie === categorie);
+    }
+    return list.sort((a: any, b: any) => {
+      if (a.hasRupture && !b.hasRupture) return -1;
+      if (!a.hasRupture && b.hasRupture) return 1;
+      if (sortField === 'nom') return sortDir === 'asc' ? a.nom.localeCompare(b.nom) : b.nom.localeCompare(a.nom);
+      return sortDir === 'asc' ? a.totalStock - b.totalStock : b.totalStock - a.totalStock;
+    });
+  }, [produits, search, categorie, sortField, sortDir]);
+
+  const totals = useMemo(() => {
+    const t: Record<string, number> = { all: 0 };
+    for (const p of filtered) {
+      for (const [sid, qty] of Object.entries(p.stockParSite as Record<string, number>)) {
+        t[sid] = (t[sid] ?? 0) + qty;
+        t.all += qty;
+      }
+    }
+    return t;
+  }, [filtered]);
+
+  const toggleSort = (field: 'total' | 'nom') => {
+    if (sortField === field) setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="card p-0 overflow-hidden">
+        <div className="p-4 border-b"><div className="skeleton h-5 w-56 rounded" /></div>
+        <div className="divide-y">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="px-4 py-3 space-y-1">
+              <div className="skeleton h-4 w-full rounded" />
+              <div className="skeleton h-3 w-3/4 rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center gap-3">
-        <Package size={26} className="text-blue-600" />
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Rapport des stocks</h1>
-          <p className="text-sm text-gray-500">Vue consolidée de l'inventaire</p>
+    <div className="card p-0 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[700px]">
+          <thead>
+            <tr style={{ background: '#1E3A5F' }}>
+              <th
+                className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-white sticky left-0 bg-[#1E3A5F] min-w-[100px] cursor-pointer"
+                onClick={() => toggleSort('nom')}
+              >SKU / Nom</th>
+              <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-white">Catégorie</th>
+              <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-white">P. Achat</th>
+              {sites.map((s) => (
+                <th key={s.id} className="px-3 py-2.5 text-center text-[11px] font-bold uppercase tracking-wide text-white">{s.nom}</th>
+              ))}
+              <th
+                className="px-3 py-2.5 text-center text-[11px] font-bold uppercase tracking-wide text-white cursor-pointer"
+                onClick={() => toggleSort('total')}
+              >Total</th>
+              <th className="px-3 py-2.5 text-right text-[11px] font-bold uppercase tracking-wide text-white">Valeur</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 && (
+              <tr><td colSpan={5 + sites.length} className="py-10 text-center text-text-muted">Aucun produit trouvé.</td></tr>
+            )}
+            {filtered.map((p: any, idx: number) => (
+              <tr
+                key={p.id}
+                className={cn('border-b border-border/60', idx % 2 === 1 ? 'bg-gray-50/50' : 'bg-white')}
+              >
+                <td className="px-3 py-2.5 sticky left-0 bg-inherit">
+                  <p className="font-mono text-[11px] text-text-muted">{p.sku}</p>
+                  <p
+                    className="font-semibold text-primary text-xs cursor-pointer hover:underline"
+                    onClick={() => navigate(`/stocks/${p.id}`)}
+                  >
+                    {p.nom.length > 22 ? p.nom.slice(0, 22) + '…' : p.nom}
+                  </p>
+                </td>
+                <td className="px-3 py-2.5 text-xs text-text-muted">{p.categorie}</td>
+                <td className="px-3 py-2.5 text-xs tabular-nums">{formatCDF(Number(p.prixAchat ?? 0))}</td>
+                {sites.map((s) => {
+                  const qty = p.stockParSite[s.id] ?? 0;
+                  return (
+                    <td
+                      key={s.id}
+                      className={cn(
+                        'px-3 py-2.5 text-center font-bold tabular-nums text-sm',
+                        qty === 0 ? 'bg-red-100 text-red-700' : 'text-text',
+                      )}
+                    >
+                      {qty === 0 ? '🔴 0' : qty}
+                    </td>
+                  );
+                })}
+                <td className="px-3 py-2.5 text-center font-black tabular-nums text-primary">{p.totalStock}</td>
+                <td className="px-3 py-2.5 text-right font-mono text-xs tabular-nums text-success">
+                  {abbreviateCDF(p.valeurTotale)}
+                </td>
+              </tr>
+            ))}
+            {/* TOTAL row */}
+            <tr className="border-t-2 border-primary/30 bg-slate-100">
+              <td className="px-3 py-2.5 font-bold text-primary sticky left-0 bg-slate-100" colSpan={3}>TOTAL</td>
+              {sites.map((s) => (
+                <td key={s.id} className="px-3 py-2.5 text-center font-bold tabular-nums">{totals[s.id] ?? 0}</td>
+              ))}
+              <td className="px-3 py-2.5 text-center font-black tabular-nums text-primary">{totals.all}</td>
+              <td className="px-3 py-2.5 text-right font-mono font-bold tabular-nums text-success">
+                {abbreviateCDF(filtered.reduce((s: number, p: any) => s + p.valeurTotale, 0))}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function RapportStocksPage() {
+  const navigate = useNavigate();
+  const [searchInput, setSearchInput] = useState('');
+  const [categorie, setCategorie] = useState('');
+  const search = useDebounce(searchInput, 200);
+
+  const { data: rawData, isLoading, error, refetch } = useStocksReport();
+
+  const summary = useMemo(() => {
+    if (!rawData) return { nbSites: 0, nbProduits: 0, nbAvecAlerte: 0, valeurTotale: 0 };
+    let nbAvecAlerte = 0;
+    let valeurTotale = 0;
+    for (const item of rawData.data ?? []) {
+      for (const s of item.sites ?? []) {
+        if (s.alerte) nbAvecAlerte++;
+      }
+      valeurTotale += item.valeurStock ?? 0;
+    }
+    return {
+      nbSites: rawData.totalSites ?? 0,
+      nbProduits: rawData.totalProduits ?? 0,
+      nbAvecAlerte,
+      valeurTotale,
+    };
+  }, [rawData]);
+
+  const rupturesProduits = useMemo(() => {
+    if (!rawData?.data) return [];
+    return rawData.data.filter((item: any) =>
+      item.sites?.some((s: any) => s.quantite === 0),
+    );
+  }, [rawData]);
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 min-h-[60vh]">
+        <AlertTriangle size={36} className="text-danger" />
+        <p className="text-sm font-semibold text-primary">Impossible de charger le rapport stocks.</p>
+        <button type="button" onClick={() => refetch()} className="btn-primary flex items-center gap-2">
+          <RefreshCw size={14} /> Réessayer
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="page-header">
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => navigate('/reports')} className="btn-ghost !min-h-0 !p-1.5 rounded-lg">
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1 className="text-page-title text-primary">Rapport Stocks Multi-Sites</h1>
+            <p className="text-xs text-text-muted">Inventaire consolidé par site</p>
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={() => navigate('/reports/export?type=STOCKS')}
+          className="btn-secondary !min-h-0 h-9 text-xs flex items-center gap-1.5"
+        >
+          <Download size={13} />
+          Export XLSX
+        </button>
       </div>
 
+      {/* KPI cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="stat-card col-span-1 sm:col-span-2">
-          <div className="flex items-center gap-4">
-            <div className="bg-blue-100 p-3 rounded-xl"><Package size={22} className="text-blue-600" /></div>
-            <div>
-              {isLoading ? <div className="skeleton h-8 w-40 rounded" /> : (
-                <>
-                  <p className="text-2xl font-bold text-gray-900">{formatCDF(data?.valeurTotaleInventaire || 0)}</p>
-                  <p className="text-sm text-gray-500">Valeur totale de l'inventaire</p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="stat-card bg-red-50 border-red-200">
-          <div className="flex items-center gap-4">
-            <div className="bg-red-100 p-3 rounded-xl"><AlertTriangle size={22} className="text-red-600" /></div>
-            <div>
-              {isLoading ? <div className="skeleton h-8 w-20 rounded" /> : (
-                <>
-                  <p className="text-2xl font-bold text-red-700">{data?.produitsEnRupture?.length || 0}</p>
-                  <p className="text-sm text-red-600">Produits en rupture</p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+        <StockValueCard label="Sites actifs" value={String(summary.nbSites)} icon={MapPin} isLoading={isLoading} color="#1E3A5F" />
+        <StockValueCard
+          label="Produits référencés"
+          value={String(summary.nbProduits)}
+          sub={summary.nbAvecAlerte > 0 ? `${summary.nbAvecAlerte} avec alerte/rupture` : undefined}
+          icon={Package}
+          isLoading={isLoading}
+          color={summary.nbAvecAlerte > 0 ? '#E65100' : '#1A6B3A'}
+        />
+        <StockValueCard
+          label="Valeur totale inventaire"
+          value={isLoading ? '…' : abbreviateCDF(summary.valeurTotale)}
+          icon={BarChart2}
+          isLoading={isLoading}
+          color="#2E86C1"
+        />
       </div>
 
-      {data?.produitsEnRupture && data.produitsEnRupture.length > 0 && (
-        <div className="card bg-red-50 border-red-200">
-          <h2 className="font-semibold text-red-800 mb-3 flex items-center gap-2">
-            <AlertTriangle size={16} /> Produits en rupture de stock
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {data.produitsEnRupture.map((p, i) => (
-              <div key={i} className="bg-white border border-red-200 rounded-lg px-3 py-2 text-sm">
-                <p className="font-semibold text-red-700">{p.nom}</p>
-                <p className="text-xs text-gray-500">{p.sku} · {p.site}</p>
-              </div>
+      {/* Alert ruptures */}
+      {rupturesProduits.length > 0 && !isLoading && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle size={18} className="text-danger" />
+            <h2 className="text-sm font-bold text-danger">
+              Produits nécessitant attention — {rupturesProduits.length} produit{rupturesProduits.length !== 1 ? 's' : ''} en rupture partielle ou totale
+            </h2>
+          </div>
+          <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
+            {rupturesProduits.map((item: any) => (
+              <button
+                key={item.produit.id}
+                type="button"
+                onClick={() => navigate(`/stocks/${item.produit.id}`)}
+                className="bg-white border border-red-200 rounded-lg px-3 py-1.5 text-left hover:border-red-400 transition-colors"
+              >
+                <p className="font-mono text-[11px] text-text-muted">{item.produit.sku}</p>
+                <p className="text-xs font-semibold text-danger">{item.produit.nom}</p>
+              </button>
             ))}
           </div>
         </div>
       )}
 
-      <div className="card p-0 overflow-hidden">
-        <div className="p-4 border-b">
-          <h2 className="font-semibold text-gray-800">Inventaire consolidé</h2>
-        </div>
-        {isLoading ? (
-          <div className="p-4 space-y-2">{[...Array(8)].map((_, i) => <div key={i} className="skeleton h-12 rounded" />)}</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-500 border-b text-xs uppercase bg-gray-50">
-                  <th className="px-4 py-3 font-semibold">SKU</th>
-                  <th className="px-4 py-3 font-semibold">Produit</th>
-                  <th className="px-4 py-3 font-semibold">Catégorie</th>
-                  <th className="px-4 py-3 font-semibold">Prix unit.</th>
-                  {(data?.sites || []).map(s => (
-                    <th key={s} className="px-4 py-3 font-semibold text-center">{s}</th>
-                  ))}
-                  <th className="px-4 py-3 font-semibold text-center">Total</th>
-                  <th className="px-4 py-3 font-semibold text-right">Valeur</th>
-                  <th className="px-4 py-3 font-semibold">Statut</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {(data?.produits || []).map(p => (
-                  <tr key={p.produitId} className={`hover:bg-gray-50 ${p.statut === 'RUPTURE' ? 'bg-red-50' : p.statut === 'ALERTE' ? 'bg-orange-50' : ''}`}>
-                    <td className="px-4 py-3 font-mono text-xs text-gray-500">{p.sku}</td>
-                    <td className="px-4 py-3 font-medium text-gray-800">{p.nom}</td>
-                    <td className="px-4 py-3 text-gray-500">{p.categorie}</td>
-                    <td className="px-4 py-3 text-gray-700">{formatCDF(p.prix)}</td>
-                    {(data?.sites || []).map(s => (
-                      <td key={s} className="px-4 py-3 text-center font-semibold text-gray-700">
-                        {p.stockParSite?.[s] ?? 0}
-                      </td>
-                    ))}
-                    <td className="px-4 py-3 text-center font-black text-gray-900">{p.stockTotal}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-green-700">{formatCDF(p.valeurTotale)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`badge text-xs ${statutStockColor(p.statut as any)}`}>{p.statut}</span>
-                    </td>
-                  </tr>
-                ))}
-                {(!data?.produits || data.produits.length === 0) && (
-                  <tr><td colSpan={8} className="py-10 text-center text-gray-400">Aucun produit en stock.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {/* Filtres */}
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          type="text"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Rechercher par nom ou SKU…"
+          className="h-9 rounded-lg border border-border bg-white px-3 text-sm min-w-[220px] focus:outline-none focus:ring-2 focus:ring-primary-accent/30"
+        />
+        <select
+          value={categorie}
+          onChange={(e) => setCategorie(e.target.value)}
+          className="h-9 rounded-lg border border-border bg-white px-3 text-sm"
+          aria-label="Filtrer par catégorie"
+        >
+          <option value="">Toutes catégories</option>
+          <option value="Smartphones">Smartphones</option>
+          <option value="Accessoires">Accessoires</option>
+          <option value="Audio">Audio</option>
+          <option value="Informatique">Informatique</option>
+        </select>
       </div>
+
+      {/* Tableau consolidé */}
+      <ConsolidatedStockTable
+        rawData={rawData}
+        search={search}
+        categorie={categorie}
+        isLoading={isLoading}
+      />
     </div>
   );
 }

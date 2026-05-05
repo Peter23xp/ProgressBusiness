@@ -1,8 +1,8 @@
 {
-  "name": "techshop-manager-backend",
+  "name": "progress-business-backend",
   "version": "1.0.0",
-  "description": "TechShop Manager - Backend API NestJS",
-  "author": "TechShop Manager",
+  "description": "Progress Business - Backend API NestJS",
+  "author": "Progress Business",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {

@@ -1,4 +1,4 @@
-# 🏆 TECHSHOP MANAGER — PROMPTS DE DÉVELOPPEMENT
+﻿# 🏆 PROGRESS BUSINESS — PROMPTS DE DÉVELOPPEMENT
 ## Module FIDÉLITÉ | Écrans SCR-027 à SCR-029 | 3 écrans
 
 > **MODE D'EMPLOI :**
@@ -13,7 +13,7 @@
 ## CONTEXTE GLOBAL (rappel rapide pour chaque prompt)
 
 ```
-Projet      : TechShop Manager — Système de Gestion Commercial Multi-Sites
+Projet      : Progress Business — Système de Gestion Commercial Multi-Sites
 Stack       : React 18 + TypeScript + Vite + TailwindCSS + shadcn/ui
 State       : Zustand (auth + cart) + TanStack Query v5 (serveur)
 Offline     : Dexie.js (IndexedDB) + Service Worker (Workbox)
@@ -41,7 +41,7 @@ NIVEAUX FIDÉLITÉ PAR DÉFAUT (configurables dans SCR-029) :
 ```
 CONTEXTE
 --------
-Projet       : TechShop Manager
+Projet       : Progress Business
 Fichier cible: apps/client/src/pages/fidelite/FidelitePage.tsx
 Route        : /fidelite
 Accès        : Authentifié — rôle GERANT minimum
@@ -505,7 +505,7 @@ DÉFINITION DE "TERMINÉ" — CHECKLIST SCR-027
 ```
 CONTEXTE
 --------
-Projet       : TechShop Manager
+Projet       : Progress Business
 Fichier cible: apps/client/src/pages/fidelite/ClientPointsPage.tsx
 Route        : /fidelite/client/:clientId
 Accès        : Authentifié — rôle AGENT minimum
@@ -849,7 +849,7 @@ DÉFINITION DE "TERMINÉ" — CHECKLIST SCR-028
 ```
 CONTEXTE
 --------
-Projet       : TechShop Manager
+Projet       : Progress Business
 Fichier cible: apps/client/src/pages/fidelite/FideliteConfigPage.tsx
 Route        : /fidelite/config
 Accès        : Authentifié — rôle SUPER_ADMIN uniquement
@@ -1399,4 +1399,4 @@ Prompt 3 (SCR-029 Configuration Niveaux)
 
 ---
 
-*TechShop Manager — Prompts Développement Module Fidélité SCR-027 à SCR-029 — Goma, RDC — v1.0 — 2025*
+*Progress Business — Prompts Développement Module Fidélité SCR-027 à SCR-029 — Goma, RDC — v1.0 — 2025*

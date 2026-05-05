@@ -1,4 +1,4 @@
-node_modules/
+﻿node_modules/
 dist/
 build/
 .env
@@ -34,4 +34,4 @@ Thumbs.db
 *.swp
 
 # Exports temp
-/tmp/techshop-exports/
+/tmp/progress-business-exports/

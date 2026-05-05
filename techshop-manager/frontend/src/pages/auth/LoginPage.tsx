@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Loader2, Wifi, WifiOff, ShoppingCart, Users, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -176,7 +176,7 @@ export default function LoginPage() {
                 </svg>
               </div>
               <div>
-                <p className="text-[9px] font-bold tracking-[0.25em] text-white/30 uppercase">TechShop</p>
+                <p className="text-[9px] font-bold tracking-[0.25em] text-white/30 uppercase">Progress Business</p>
                 <p className="text-[15px] font-black text-white tracking-tight leading-none">MANAGER</p>
               </div>
             </div>
@@ -212,7 +212,7 @@ export default function LoginPage() {
           </div>
 
           {/* Pied */}
-          <p className="text-[11px] text-white/20">v1.0 · TechShop RDC © 2025</p>
+          <p className="text-[11px] text-white/20">v1.0 · Progress Business RDC © 2025</p>
         </div>
 
         {/* ── Colonne droite : formulaire ────────────────────────── */}
@@ -227,7 +227,7 @@ export default function LoginPage() {
                 <path d="M15.8 17l.9.9 1.7-1.7" stroke="#2563eb" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <p className="text-[14px] font-black text-white tracking-tight">TECHSHOP MANAGER</p>
+            <p className="text-[14px] font-black text-white tracking-tight">PROGRESS BUSINESS</p>
           </div>
 
           <div className="w-full max-w-[400px]">
@@ -406,7 +406,7 @@ export default function LoginPage() {
 
             {/* Version mobile */}
             <p className="lg:hidden text-center text-[11px] text-white/15 mt-8">
-              v1.0 · TechShop RDC © 2025
+              v1.0 · Progress Business RDC © 2025
             </p>
           </div>
         </div>

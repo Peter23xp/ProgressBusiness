@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Printer, MessageSquare, X, Loader2 } from 'lucide-react';
@@ -11,7 +11,7 @@ import type { ModePaiement, NiveauFidelite, StatutVente } from '@/types';
 
 type ReceiptFormat = '80mm' | '58mm';
 
-const LS_FORMAT_KEY = 'techshop_receipt_format';
+const LS_FORMAT_KEY = 'progress_business_receipt_format';
 
 interface LigneRecu {
   id: string;
@@ -297,8 +297,8 @@ export default function RecuPage() {
             {/* En-tête */}
             <div className="text-center mb-1">
               <p>{sep}</p>
-              <p className="font-bold text-[14px]">TECHSHOP MANAGER</p>
-              <p>TechShop {vente.site.nom}</p>
+              <p className="font-bold text-[14px]">PROGRESS BUSINESS</p>
+              <p>Progress Business {vente.site.nom}</p>
               <p>{sep}</p>
             </div>
 
@@ -405,7 +405,7 @@ export default function RecuPage() {
             <div className="text-center">
               <p>Merci pour votre achat !</p>
               <p>Ce reçu est votre preuve d'achat.</p>
-              <p>TechShop Manager — Goma, RDC</p>
+              <p>Progress Business — Goma, RDC</p>
             </div>
             <p>{sep}</p>
           </div>

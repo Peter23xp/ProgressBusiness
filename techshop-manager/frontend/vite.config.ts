@@ -31,4 +31,20 @@ export default defineConfig({
       },
     },
   },
+  // ── Vitest ──────────────────────────────────────────────────────────────────
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    css: false,
+    alias: {
+      '@': resolve(__dirname, './src'),
+    },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      thresholds: { lines: 80, functions: 80, branches: 70, statements: 80 },
+    },
+  },
 });
+

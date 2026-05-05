@@ -180,6 +180,9 @@ model Client {
   niveauFidelite    NiveauFidelite @default(BRONZE)
   notes             String?
   dateActivation    DateTime?
+  pinHash           String?
+  tentativesPin     Int            @default(0)
+  bloqueJusquA      DateTime?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 

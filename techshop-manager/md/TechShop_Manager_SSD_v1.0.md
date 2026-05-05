@@ -1,4 +1,4 @@
-**TECHSHOP MANAGER**
+﻿**PROGRESS BUSINESS**
 
 Système de Gestion Commercial Multi-Sites
 
@@ -22,7 +22,7 @@ Date
 
 Projet
 
-TechShop Manager — Goma, Nord-Kivu, RDC
+Progress Business — Goma, Nord-Kivu, RDC
 
 Destinataires
 
@@ -540,7 +540,7 @@ Super Admin
 
 +---------------------------------------------------------------+
 
-| \[ LOGO TECHSHOP MANAGER \] |
+| \[ LOGO PROGRESS BUSINESS \] |
 
 | Systeme de Gestion Commercial — Goma, RDC |
 
@@ -576,7 +576,7 @@ Super Admin
 
 **Note**
 
-Logo TechShop
+Logo Progress Business
 
 Image statique
 
@@ -770,7 +770,7 @@ Reponse: { success, message }
 
 +------------------------------------------------------------------+
 
-| TECHSHOP \[GOMA▼\] Jean-Pierre ▾ \[Deconnexion\]|
+| PROGRESS BUSINESS \[GOMA▼\] Jean-Pierre ▾ \[Deconnexion\]|
 
 +------------+-----------------------------------------------------+
 
@@ -1968,7 +1968,7 @@ Display
 
 —
 
-Logo TechShop, nom site, adresse, date/heure, N° recu
+Logo Progress Business, nom site, adresse, date/heure, N° recu
 
 Info client
 
@@ -4602,7 +4602,7 @@ Fichier valide, fichier avec erreurs, fichier vide
 
 **\# === BASE DE DONNEES ===**
 
-DATABASE\_URL=postgresql://user:password@localhost:5432/techshop
+DATABASE\_URL=postgresql://user:password@localhost:5432/progress_business
 
 REDIS\_URL=redis://localhost:6379
 
@@ -4626,7 +4626,7 @@ PORT=3000
 
 NODE\_ENV=production
 
-CORS\_ORIGIN=https://techshop.yourdomain.com
+CORS\_ORIGIN=https://progress_business.yourdomain.com
 
 DEFAULT\_CURRENCY=CDF
 
@@ -4636,13 +4636,13 @@ AT\_API\_KEY=<cle\_api\_africa\_talking>
 
 AT\_USERNAME=<username\_africa\_talking>
 
-SMS\_SENDER\_ID=TechShopMgr
+SMS\_SENDER\_ID=ProgressBiz
 
 **\# === STOCKAGE FICHIERS ===**
 
 STORAGE\_ENDPOINT=<url\_minio\_ou\_s3>
 
-STORAGE\_BUCKET=techshop-files
+STORAGE\_BUCKET=progress-business-files
 
 STORAGE\_ACCESS\_KEY=<access\_key>
 
@@ -4656,8 +4656,8 @@ OFFLINE\_SYNC\_INTERVAL\_MS=300000
 
 EXPORT\_MAX\_ROWS=50000
 
-EXPORT\_TEMP\_DIR=/tmp/techshop-exports
+EXPORT\_TEMP\_DIR=/tmp/progress-business-exports
 
 _— FIN DU DOCUMENT DE SPECIFICATION DES ECRANS —_
 
-TechShop Manager | SSD v1.0 | 42 ecrans | 10 modules | Goma, RDC | 2025
+Progress Business | SSD v1.0 | 42 ecrans | 10 modules | Goma, RDC | 2025

@@ -12,10 +12,14 @@ import {
   OnboardingFicheDto,
 } from './dto/client.dto';
 import { EtapeOnboarding, ModePaiement, Role, StatutClient, StatutEtape } from '@prisma/client';
+import { PortalAuthService } from '../portal/portal-auth.service';
 
 @Injectable()
 export class ClientsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private portalAuthService: PortalAuthService,
+  ) {}
 
   async findAll(
     query: {
@@ -506,6 +510,16 @@ export class ClientsService {
 
       return updated;
     });
+
+    // Définir le PIN par défaut = 4 derniers chiffres du téléphone
+    const defaultPin = await this.portalAuthService.initDefaultPin(
+      activatedClient.id,
+      activatedClient.telephone,
+    );
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[PORTAL PIN] Client ${activatedClient.telephone} → PIN par défaut: ${defaultPin}`);
+    }
 
     return this.findOne(activatedClient.id);
   }

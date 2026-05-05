@@ -1,0 +1,77 @@
+<h2>Position du Tooltip pédagogique</h2>
+<p class="subtitle">Quand le tutoriel met en surbrillance un élément, où la bulle d'info apparaît-elle ?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Ancrée à l'élément (floating)</h3>
+      <p>La bulle apparaît juste à côté de l'élément surligné — en haut, bas, gauche ou droite selon l'espace disponible. Se déplace avec l'élément au scroll.</p>
+      <div style="margin-top:12px; background:#f5f8ff; border-radius:8px; padding:12px; font-size:12px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <div style="width:80px; height:32px; background:#1E3A5F; border-radius:6px; border:2px dashed #2E86C1;"></div>
+          <div style="background:white; border:1px solid #ddd; border-radius:8px; padding:8px 12px; font-size:11px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+            💬 Bulle ancrée ici<br>
+            <span style="color:#666">→ suit l'élément</span>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons" style="margin-top:8px;">
+        <div class="pros"><h4>Pour</h4><ul><li>Contexte immédiat</li><li>Lien visuel fort</li></ul></div>
+        <div class="cons"><h4>Contre</h4><ul><li>Plus complexe à positionner</li><li>Peut déborder sur mobile</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Panneau latéral fixe</h3>
+      <p>La bulle est dans un panneau fixe à droite (ou en bas sur mobile). L'élément est surligné, et le panneau explique toujours depuis la même position.</p>
+      <div style="margin-top:12px; background:#f5f8ff; border-radius:8px; padding:12px; font-size:12px;">
+        <div style="display:flex; gap:8px;">
+          <div style="flex:1; background:#eee; border-radius:4px; height:60px; display:flex; align-items:center; justify-content:center; font-size:11px; color:#666;">App UI<br><span style="color:#2E86C1; font-weight:bold; border:2px dashed #2E86C1; padding:2px 6px; border-radius:4px;">élément ici</span></div>
+          <div style="width:120px; background:white; border:1px solid #ddd; border-radius:8px; padding:8px; font-size:11px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+            📋 Panneau fixe<br>
+            <span style="color:#666">toujours à droite</span>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons" style="margin-top:8px;">
+        <div class="pros"><h4>Pour</h4><ul><li>Prévisible, stable</li><li>Facile sur mobile</li></ul></div>
+        <div class="cons"><h4>Contre</h4><ul><li>Moins immersif</li><li>Prend de la place</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Mixte : ancré sur desktop, bas sur mobile</h3>
+      <p>Sur desktop ≥768px : bulle ancrée à l'élément (option A). Sur mobile : bulle fixe en bas de l'écran (comme une bottom sheet). Le meilleur des deux mondes.</p>
+      <div style="margin-top:12px; background:#f5f8ff; border-radius:8px; padding:12px; font-size:12px;">
+        <div style="display:flex; gap:12px;">
+          <div style="text-align:center;">
+            <div style="font-size:10px; color:#666; margin-bottom:4px;">Desktop</div>
+            <div style="display:flex; gap:4px; align-items:center;">
+              <div style="width:40px; height:20px; background:#1E3A5F; border-radius:4px; border:1px dashed #2E86C1;"></div>
+              <div style="background:white; border:1px solid #ddd; border-radius:6px; padding:4px 6px; font-size:10px;">💬</div>
+            </div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:10px; color:#666; margin-bottom:4px;">Mobile</div>
+            <div style="width:50px; background:#eee; border-radius:4px; height:40px; position:relative; overflow:hidden;">
+              <div style="position:absolute; bottom:0; left:0; right:0; background:white; border-top:1px solid #ddd; padding:3px; font-size:9px; text-align:center;">💬 bas</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons" style="margin-top:8px;">
+        <div class="pros"><h4>Pour</h4><ul><li>Optimal sur chaque device</li><li>Recommandé UX</li></ul></div>
+        <div class="cons"><h4>Contre</h4><ul><li>Deux comportements à gérer</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Cliquez pour sélectionner, puis confirmez dans le terminal.</p>

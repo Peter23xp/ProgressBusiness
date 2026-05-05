@@ -1,4 +1,4 @@
-import { PrismaClient, Role, TypeRecompense, NiveauFidelite } from '@prisma/client';
+﻿import { PrismaClient, Role, TypeRecompense, NiveauFidelite } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -16,7 +16,7 @@ async function main() {
     update: {},
     create: {
       id: 'site-goma-001',
-      nom: 'TechShop Goma',
+      nom: 'Progress Business Goma',
       ville: 'Goma',
       adresse: 'Avenue du Commerce, Goma, Nord-Kivu',
       actif: true,
@@ -28,7 +28,7 @@ async function main() {
     update: {},
     create: {
       id: 'site-bukavu-001',
-      nom: 'TechShop Bukavu',
+      nom: 'Progress Business Bukavu',
       ville: 'Bukavu',
       adresse: 'Boulevard Patrice Lumumba, Bukavu, Sud-Kivu',
       actif: true,
@@ -40,7 +40,7 @@ async function main() {
     update: {},
     create: {
       id: 'site-kinshasa-001',
-      nom: 'TechShop Kinshasa',
+      nom: 'Progress Business Kinshasa',
       ville: 'Kinshasa',
       adresse: 'Avenue Kasa-Vubu, Gombe, Kinshasa',
       actif: true,
@@ -137,7 +137,7 @@ async function main() {
       data: {
         smsApiKey: null,
         smsUsername: null,
-        smsSenderId: 'TechShop',
+        smsSenderId: 'Progress Business',
         matriculeExterneActif: false,
         matriculeRegex: null,
         dureeSectionHeures: 8,

@@ -1,14 +1,14 @@
-# TechShop Manager — Guide Développement
+﻿# Progress Business — Guide Développement
 
 ## Vue d'ensemble
 
-Système de Gestion Commercial Multi-Sites pour TechShop (Goma, Bukavu, Kinshasa — RDC).
+Système de Gestion Commercial Multi-Sites pour Progress Business (Goma, Bukavu, Kinshasa — RDC).
 **42 écrans | 10 modules | 6 rôles | Offline-First**
 
 ## Architecture
 
 ```
-techshop-manager/
+progress-business/
 ├── backend/          # NestJS + Prisma + PostgreSQL
 │   ├── src/
 │   │   ├── modules/  # 12 modules métier
