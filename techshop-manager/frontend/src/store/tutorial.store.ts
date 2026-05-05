@@ -58,10 +58,17 @@ export const useTutorialStore = create<TutorialState>()((set, get) => ({
   savedStepIndex: 0,
 
   loadSteps: (steps, savedIndex = 0) =>
-    set({ steps, savedStepIndex: savedIndex }),
+    set({ steps, savedStepIndex: Math.min(savedIndex, Math.max(0, steps.length - 1)) }),
 
-  start: () =>
-    set({ isActive: true, currentStepIndex: 0, showWelcomeModal: false }),
+  start: () => {
+    const { steps } = get();
+    set({
+      isActive: true,
+      currentStepIndex: 0,
+      showWelcomeModal: false,
+      highlightedElementId: steps[0]?.targetId ?? null,
+    });
+  },
 
   resume: () => {
     const { savedStepIndex } = get();
