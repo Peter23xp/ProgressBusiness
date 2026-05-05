@@ -1,4 +1,5 @@
-import { useState, createPortal } from 'react';
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { HelpCircle } from 'lucide-react';
 import { useTutorialStore } from '@/store/tutorial.store';
 import { useTutorialContext } from './TutorialProvider';

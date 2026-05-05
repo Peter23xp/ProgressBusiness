@@ -1,4 +1,5 @@
-import { useEffect, createPortal } from 'react';
+import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTutorialStore } from '@/store/tutorial.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useTutorialContext } from './TutorialProvider';
