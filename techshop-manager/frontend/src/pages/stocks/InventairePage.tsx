@@ -142,6 +142,7 @@ export default function InventairePage() {
                 type="button"
                 onClick={() => navigate('/stocks/entry')}
                 className="btn-secondary"
+                data-tutorial="stocks-btn-entree"
               >
                 <Plus size={14} />
                 Entrée
@@ -150,6 +151,7 @@ export default function InventairePage() {
                 type="button"
                 onClick={() => navigate('/stocks/transfer')}
                 className="btn-primary"
+                data-tutorial="stocks-btn-transfert"
               >
                 <ArrowRightLeft size={14} />
                 Transfert
@@ -216,7 +218,7 @@ export default function InventairePage() {
           <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-subtle" />
         </div>
 
-        <div className="relative">
+        <div className="relative" data-tutorial="stocks-filter-statut">
           <select
             value={statut}
             onChange={e => handleStatut(e.target.value as StatutStock | '')}
@@ -253,7 +255,7 @@ export default function InventairePage() {
       )}
 
       {/* Tableau */}
-      <div className="table-container">
+      <div className="table-container" data-tutorial="stocks-table">
         <table>
           <thead>
             <tr>

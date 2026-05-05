@@ -116,6 +116,7 @@ export default function ClientsListPage() {
             <Link
               to="/clients/new/recit"
               className="btn-primary flex items-center gap-1.5 text-[13px]"
+              data-tutorial="clients-btn-nouveau"
             >
               <UserPlus size={15} aria-hidden />
               Nouveau client
@@ -131,7 +132,7 @@ export default function ClientsListPage() {
         <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 px-4 py-3 border-b border-border">
 
           {/* Recherche — prend toute la largeur disponible */}
-          <div className="relative flex-1">
+          <div className="relative flex-1" data-tutorial="clients-search-bar">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle pointer-events-none" aria-hidden />
             <input
               type="search"
@@ -147,7 +148,7 @@ export default function ClientsListPage() {
           <div className="flex items-center gap-2 flex-shrink-0">
 
             {/* Filtre statut */}
-            <div className="relative">
+            <div className="relative" data-tutorial="clients-filter-statut">
               <select
                 value={statut}
                 onChange={(e) => { setStatut(e.target.value as StatutClient | ''); setPage(1); }}
@@ -208,7 +209,7 @@ export default function ClientsListPage() {
         </div>
 
         {/* Corps du tableau */}
-        <div className={cn('overflow-x-auto transition-opacity duration-150', isFetching && !isLoading && 'opacity-70')}>
+        <div className={cn('overflow-x-auto transition-opacity duration-150', isFetching && !isLoading && 'opacity-70')} data-tutorial="clients-table">
           {isLoading ? (
             <div className="p-2">
               <TableSkeleton />

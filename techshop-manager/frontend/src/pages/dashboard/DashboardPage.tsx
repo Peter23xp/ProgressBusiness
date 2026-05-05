@@ -147,86 +147,96 @@ export default function DashboardPage() {
 
       {/* ── KPIs ────────────────────────────────────────────── */}
       <div className={cn('grid gap-4', canSeeAlertesKpi ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2')}>
-        <KpiCard
-          accent="primary"
-          title="Clients actifs"
-          value={stats.data?.clientsActifs?.toLocaleString('fr') ?? '—'}
-          icon={Users}
-          iconColor="bg-primary-light text-primary-accent"
-          isLoading={stats.isLoading}
-          trend={stats.data?.trends?.clientsActifs !== undefined ? {
-            value: stats.data.trends.clientsActifs,
-            label: 'vs mois préc.',
-          } : undefined}
-          onClick={() => navigate('/clients?statut=ACTIF')}
-        />
+        <div data-tutorial="dashboard-kpi-clients">
+          <KpiCard
+            accent="primary"
+            title="Clients actifs"
+            value={stats.data?.clientsActifs?.toLocaleString('fr') ?? '—'}
+            icon={Users}
+            iconColor="bg-primary-light text-primary-accent"
+            isLoading={stats.isLoading}
+            trend={stats.data?.trends?.clientsActifs !== undefined ? {
+              value: stats.data.trends.clientsActifs,
+              label: 'vs mois préc.',
+            } : undefined}
+            onClick={() => navigate('/clients?statut=ACTIF')}
+          />
+        </div>
 
-        <KpiCard
-          accent="success"
-          title={ventesLabel}
-          value={stats.data?.ventesJour !== undefined ? formatCDF(stats.data.ventesJour) : '—'}
-          icon={ShoppingCart}
-          iconColor="bg-green-100 text-success"
-          isLoading={stats.isLoading}
-          trend={stats.data?.trends?.ventesJour !== undefined ? {
-            value: stats.data.trends.ventesJour,
-            label: 'vs hier',
-          } : undefined}
-          onClick={() => navigate('/sales')}
-        />
+        <div data-tutorial="dashboard-kpi-ventes">
+          <KpiCard
+            accent="success"
+            title={ventesLabel}
+            value={stats.data?.ventesJour !== undefined ? formatCDF(stats.data.ventesJour) : '—'}
+            icon={ShoppingCart}
+            iconColor="bg-green-100 text-success"
+            isLoading={stats.isLoading}
+            trend={stats.data?.trends?.ventesJour !== undefined ? {
+              value: stats.data.trends.ventesJour,
+              label: 'vs hier',
+            } : undefined}
+            onClick={() => navigate('/sales')}
+          />
+        </div>
 
         {canSeeAlertesKpi && (
-          <KpiCard
-            accent={(stats.data?.alertesStock ?? 0) > 5 ? 'danger' : 'warning'}
-            title="Alertes stock"
-            value={stats.data?.alertesStock ?? '—'}
-            icon={AlertTriangle}
-            iconColor={
-              (stats.data?.alertesStock ?? 0) > 5
-                ? 'bg-red-100 text-danger'
-                : 'bg-orange-100 text-warning'
-            }
-            isLoading={stats.isLoading}
-            badge={
-              (stats.data?.rupturesStock ?? 0) > 0
-                ? `${stats.data!.rupturesStock} en rupture`
-                : undefined
-            }
-            badgeVariant="danger"
-            onClick={() => navigate('/stocks/alerts')}
-          />
+          <div data-tutorial="dashboard-kpi-alertes">
+            <KpiCard
+              accent={(stats.data?.alertesStock ?? 0) > 5 ? 'danger' : 'warning'}
+              title="Alertes stock"
+              value={stats.data?.alertesStock ?? '—'}
+              icon={AlertTriangle}
+              iconColor={
+                (stats.data?.alertesStock ?? 0) > 5
+                  ? 'bg-red-100 text-danger'
+                  : 'bg-orange-100 text-warning'
+              }
+              isLoading={stats.isLoading}
+              badge={
+                (stats.data?.rupturesStock ?? 0) > 0
+                  ? `${stats.data!.rupturesStock} en rupture`
+                  : undefined
+              }
+              badgeVariant="danger"
+              onClick={() => navigate('/stocks/alerts')}
+            />
+          </div>
         )}
 
-        <KpiCard
-          accent="primary"
-          title="Nouveaux filleuls"
-          value={stats.data?.nouveauxFilleuls ?? '—'}
-          icon={GitBranch}
-          iconColor="bg-purple-100 text-platine"
-          isLoading={stats.isLoading}
-          trend={stats.data?.trends?.nouveauxFilleuls !== undefined ? {
-            value: stats.data.trends.nouveauxFilleuls,
-            label: 'vs mois préc.',
-          } : undefined}
-          onClick={() => navigate('/parrainage')}
-        />
+        <div data-tutorial="dashboard-kpi-filleuls">
+          <KpiCard
+            accent="primary"
+            title="Nouveaux filleuls"
+            value={stats.data?.nouveauxFilleuls ?? '—'}
+            icon={GitBranch}
+            iconColor="bg-purple-100 text-platine"
+            isLoading={stats.isLoading}
+            trend={stats.data?.trends?.nouveauxFilleuls !== undefined ? {
+              value: stats.data.trends.nouveauxFilleuls,
+              label: 'vs mois préc.',
+            } : undefined}
+            onClick={() => navigate('/parrainage')}
+          />
+        </div>
       </div>
 
       {/* ── Graphique ventes ────────────────────────────────── */}
       {canSeeChart && (
-        <SalesChart
-          data={salesChart.data}
-          isLoading={salesChart.isLoading}
-          selectedSiteId={effectiveSiteId}
-        />
+        <div data-tutorial="dashboard-chart-ventes">
+          <SalesChart
+            data={salesChart.data}
+            isLoading={salesChart.isLoading}
+            selectedSiteId={effectiveSiteId}
+          />
+        </div>
       )}
 
       {/* ── Transactions + Alertes ───────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3" data-tutorial="dashboard-transactions">
           <RecentTransactions data={recentTransactions.data} isLoading={recentTransactions.isLoading} />
         </div>
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2" data-tutorial="dashboard-alertes-stock">
           <StockAlerts
             data={stockAlerts.data}
             isLoading={stockAlerts.isLoading}

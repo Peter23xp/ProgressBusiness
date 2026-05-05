@@ -255,10 +255,12 @@ export default function RapportsDashboardPage() {
 
         {/* Controls */}
         <div className="flex flex-wrap items-center gap-2">
-          <PeriodSelector
-            value={preset}
-            onChange={handlePresetChange}
-          />
+          <div data-tutorial="reports-period-selector">
+            <PeriodSelector
+              value={preset}
+              onChange={handlePresetChange}
+            />
+          </div>
 
           {preset === 'custom' && (
             <DateRangePicker
@@ -315,7 +317,7 @@ export default function RapportsDashboardPage() {
       </div>
 
       {/* ── CA Evolution Line Chart ── */}
-      <div className="card">
+      <div className="card" data-tutorial="reports-chart-ca">
         <h2 className="text-sm font-bold text-primary mb-4">
           Évolution du CA — par site
         </h2>
@@ -337,7 +339,7 @@ export default function RapportsDashboardPage() {
         )}
 
         <div className={isGerant ? 'lg:col-span-2' : ''}>
-          <div className="card h-full flex flex-col gap-4">
+          <div className="card h-full flex flex-col gap-4" data-tutorial="reports-sites-table">
             <h2 className="text-sm font-bold text-primary">Résumé par site</h2>
             <SitesSummaryTable
               data={data?.parSite ?? []}
