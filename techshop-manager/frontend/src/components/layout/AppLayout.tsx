@@ -28,6 +28,14 @@ import { useUIStore } from '@/store/ui.store';
 import { cn } from '@/lib/utils';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import type { Role } from '@/types';
+import { TutorialProvider } from '@/components/tutorial/TutorialProvider';
+import { TutorialOverlay } from '@/components/tutorial/TutorialOverlay';
+import { TutorialTooltip } from '@/components/tutorial/TutorialTooltip';
+import { TutorialWelcomeModal } from '@/components/tutorial/TutorialWelcomeModal';
+import { TutorialCompletionModal } from '@/components/tutorial/TutorialCompletionModal';
+import { TutorialResumeDialog } from '@/components/tutorial/TutorialResumeDialog';
+import { TutorialProgressBar } from '@/components/tutorial/TutorialProgressBar';
+import { HelpButton } from '@/components/tutorial/HelpButton';
 
 interface NavItemDef {
   label: string;
@@ -67,6 +75,16 @@ const SETTINGS_GROUP: NavGroupDef = {
     { label: 'Profil',       icon: <User size={15} />,           to: '/settings/profile', minRole: 'AGENT' },
     { label: 'Config',       icon: <SlidersHorizontal size={15} />, to: '/settings/general', minRole: 'SUPER_ADMIN' },
   ],
+};
+
+const NAV_TUTORIAL_ATTRS: Record<string, string> = {
+  '/dashboard':   'sidebar-nav-dashboard',
+  '/clients':     'sidebar-nav-clients',
+  '/sales/pos':   'sidebar-nav-ventes',
+  '/stocks':      'sidebar-nav-stocks',
+  '/parrainage':  'sidebar-nav-parrainage',
+  '/fidelite':    'sidebar-nav-fidelite',
+  '/reports':     'sidebar-nav-rapports',
 };
 
 // ── Nav section label ─────────────────────────────────────────────
@@ -134,6 +152,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
                   end
                   onClick={onClose}
                   className={({ isActive }) => cn('sidebar-link', isActive && 'active')}
+                  data-tutorial={NAV_TUTORIAL_ATTRS[item.to]}
                 >
                   <span className="sidebar-icon">{item.icon}</span>
                   <span>{item.label}</span>
@@ -154,6 +173,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
                   end={item.to === '/clients'}
                   onClick={onClose}
                   className={({ isActive }) => cn('sidebar-link', isActive && 'active')}
+                  data-tutorial={NAV_TUTORIAL_ATTRS[item.to]}
                 >
                   <span className="sidebar-icon">{item.icon}</span>
                   <span>{item.label}</span>
@@ -173,6 +193,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
                   to={item.to}
                   onClick={onClose}
                   className={({ isActive }) => cn('sidebar-link', isActive && 'active')}
+                  data-tutorial={NAV_TUTORIAL_ATTRS[item.to]}
                 >
                   <span className="sidebar-icon">{item.icon}</span>
                   <span>{item.label}</span>
@@ -192,6 +213,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
                   to={item.to}
                   onClick={onClose}
                   className={({ isActive }) => cn('sidebar-link', isActive && 'active')}
+                  data-tutorial={NAV_TUTORIAL_ATTRS[item.to]}
                 >
                   <span className="sidebar-icon">{item.icon}</span>
                   <span>{item.label}</span>
@@ -214,6 +236,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
                   settingsOpen && 'active',
                 )}
                 aria-expanded={settingsOpen}
+                data-tutorial="sidebar-nav-parametres"
               >
                 <span className="flex items-center gap-3">
                   <span className="sidebar-icon">{SETTINGS_GROUP.icon}</span>
@@ -282,7 +305,7 @@ function Header({ onMenuClick }: { onMenuClick: () => void }) {
         </button>
 
         {siteName && (
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0" data-tutorial="header-site-selector">
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary-light flex-shrink-0">
               <Building2 size={12} className="text-primary-accent" aria-hidden />
             </div>
@@ -294,7 +317,7 @@ function Header({ onMenuClick }: { onMenuClick: () => void }) {
       {/* Right */}
       <div className="flex items-center gap-3 flex-shrink-0">
         {user && (
-          <div className="hidden sm:flex flex-col items-end leading-none gap-0.5">
+          <div className="hidden sm:flex flex-col items-end leading-none gap-0.5" data-tutorial="header-user-menu">
             <span className="text-[13px] font-semibold text-text">{user.name}</span>
             <span className="text-[11px] text-text-muted capitalize">
               {user.role.replace(/_/g, ' ').toLowerCase()}
@@ -335,7 +358,7 @@ export function AppLayout() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <>
+    <TutorialProvider>
       <OfflineBanner />
 
       <div className="flex h-screen overflow-hidden bg-bg">
@@ -366,6 +389,15 @@ export function AppLayout() {
           </main>
         </div>
       </div>
-    </>
+
+      {/* Tutorial components — rendered via createPortal to document.body */}
+      <TutorialProgressBar />
+      <TutorialOverlay />
+      <TutorialTooltip />
+      <TutorialWelcomeModal />
+      <TutorialCompletionModal />
+      <TutorialResumeDialog />
+      <HelpButton />
+    </TutorialProvider>
   );
 }
