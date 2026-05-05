@@ -21,12 +21,22 @@ export interface ResetPasswordResponse {
   tempPassword?: string;
 }
 
+export interface UpdateUserPayload {
+  nom?: string;
+  email?: string;
+  role?: Role;
+  siteId?: string | null;
+}
+
 export const usersApi = {
   getAll: (params?: { role?: string; siteId?: string; actif?: string }) =>
     api.get<UsersListResponse>('/users', { params }).then((r) => r.data),
 
   create: (payload: CreateUserPayload) =>
     api.post<Utilisateur>('/users', payload).then((r) => r.data),
+
+  update: (id: string, payload: UpdateUserPayload) =>
+    api.patch<Utilisateur>(`/users/${id}`, payload).then((r) => r.data),
 
   desactiver: (id: string) =>
     api.patch<Utilisateur>(`/users/${id}/desactiver`).then((r) => r.data),

@@ -50,7 +50,7 @@ function ConfirmDialog({ open, title, message, confirmLabel, danger, onConfirm, 
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
         <h3 className="font-bold text-primary">{title}</h3>
         <p className="text-sm text-text-muted">{message}</p>
@@ -101,7 +101,7 @@ function SiteDialog({ mode, site, onClose, onSaved }: {
   const title = mode === 'create' ? 'Nouveau site' : `Modifier — ${site?.nom}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-up"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       role="dialog" aria-modal="true" aria-label={title}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">

@@ -41,6 +41,24 @@ export class UpdateProfileDto {
   langue?: string;
 }
 
+export class UpdateUserDto {
+  @IsOptional()
+  @IsString()
+  nom?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsEnum(Role)
+  role?: Role;
+
+  @IsOptional()
+  @IsString()
+  siteId?: string | null;
+}
+
 export class ChangePasswordDto {
   @IsString()
   currentPassword: string;

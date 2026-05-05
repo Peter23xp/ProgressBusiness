@@ -26,7 +26,8 @@
       "Bash(./node_modules/.bin/prisma generate *)",
       "Bash(D:/PETER/Progress app/techshop-manager/backend/node_modules/.bin/prisma *)",
       "Bash(node node_modules/typescript/bin/tsc --noEmit)",
-      "Bash(node -e \"const { create } = require\\('./node_modules/zustand/index.js'\\); console.log\\(Object.keys\\(require\\('./node_modules/zustand'\\)\\)\\)\")"
+      "Bash(node -e \"const { create } = require\\('./node_modules/zustand/index.js'\\); console.log\\(Object.keys\\(require\\('./node_modules/zustand'\\)\\)\\)\")",
+      "Skill(impeccable)"
     ]
   }
 }

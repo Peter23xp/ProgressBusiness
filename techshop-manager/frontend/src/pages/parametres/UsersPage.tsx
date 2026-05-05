@@ -6,9 +6,9 @@ import { z } from 'zod';
 import {
   UserCog, Plus, Search, RotateCcw, Lock, Unlock, X,
   CheckCircle, AlertCircle, RefreshCw, ChevronDown,
-  Users, ShieldCheck, Shield, Eye, EyeOff, Copy,
+  Users, ShieldCheck, Eye, EyeOff, Pencil,
 } from 'lucide-react';
-import { usersApi, sitesApi, type CreateUserPayload } from '@/lib/settings.api';
+import { usersApi, sitesApi, type CreateUserPayload, type UpdateUserPayload } from '@/lib/settings.api';
 import { UserRoleBadge } from '@/components/settings/UserRoleBadge';
 import { cn, formatRelative, initials } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/api';
@@ -81,7 +81,7 @@ function ConfirmDialog({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
         <h3 className="font-bold text-primary text-base">{title}</h3>
         <p className="text-sm text-text-muted">{message}</p>
@@ -138,7 +138,7 @@ function CreateUserDialog({ open, onClose, onCreated }: {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-up"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       role="dialog" aria-modal="true" aria-label="Créer un utilisateur">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
         {/* Header */}
@@ -239,6 +239,145 @@ function CreateUserDialog({ open, onClose, onCreated }: {
   );
 }
 
+// ── EditUserDialog ─────────────────────────────────────────────────
+const editSchema = z.object({
+  nom: z.string().min(2, 'Nom trop court (min 2 caractères)'),
+  email: z.string().email('Email invalide').or(z.literal('')).optional(),
+  role: z.enum(['SUPER_ADMIN', 'DIRECTEUR_REGIONAL', 'GERANT', 'AGENT', 'FORMATEUR']),
+  siteId: z.string().optional(),
+});
+type EditForm = z.infer<typeof editSchema>;
+
+function EditUserDialog({ user, onClose, onSaved }: {
+  user: Utilisateur; onClose: () => void; onSaved: () => void;
+}) {
+  const qc = useQueryClient();
+  const { data: sitesData } = useQuery({ queryKey: ['sites'], queryFn: () => sitesApi.getAll() });
+
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<EditForm>({
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      nom: user.nom,
+      email: user.email ?? '',
+      role: user.role as EditForm['role'],
+      siteId: user.siteId ?? '',
+    },
+  });
+
+  const role = watch('role');
+  const needsSite = ['GERANT', 'AGENT', 'FORMATEUR'].includes(role);
+
+  const mutation = useMutation({
+    mutationFn: (data: EditForm) => {
+      const payload: UpdateUserPayload = {
+        nom: data.nom,
+        email: data.email || undefined,
+        role: data.role,
+        siteId: needsSite ? (data.siteId || null) : null,
+      };
+      return usersApi.update(user.id, payload);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+      onSaved();
+      onClose();
+    },
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Modifier l'utilisateur"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-light">
+              <Pencil size={15} className="text-primary-accent" />
+            </div>
+            <div>
+              <h2 className="font-bold text-primary text-[14px] leading-none">Modifier l'utilisateur</h2>
+              <p className="text-[11px] text-text-muted mt-0.5">{user.telephone}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-slate-100 transition-colors"
+            aria-label="Fermer"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Body scrollable */}
+        <form
+          onSubmit={handleSubmit((d) => mutation.mutate(d))}
+          className="overflow-y-auto flex-1 p-6 space-y-4"
+        >
+          <div className="form-group">
+            <label className="form-label" htmlFor="eu-nom">Nom complet</label>
+            <input id="eu-nom" {...register('nom')} autoFocus />
+            {errors.nom && <p className="form-error">{errors.nom.message}</p>}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="eu-email">Email <span className="text-text-subtle font-normal">(optionnel)</span></label>
+            <input id="eu-email" type="email" {...register('email')} placeholder="user@example.com" />
+            {errors.email && <p className="form-error">{errors.email.message}</p>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="form-group">
+              <label className="form-label" htmlFor="eu-role">Rôle</label>
+              <div className="relative">
+                <select id="eu-role" {...register('role')} className="appearance-none pr-8">
+                  {ALL_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                </select>
+                <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-subtle" />
+              </div>
+              {errors.role && <p className="form-error">{errors.role.message}</p>}
+            </div>
+
+            {needsSite && (
+              <div className="form-group">
+                <label className="form-label" htmlFor="eu-site">Site</label>
+                <div className="relative">
+                  <select id="eu-site" {...register('siteId')} className="appearance-none pr-8">
+                    <option value="">— Aucun —</option>
+                    {sitesData?.data.filter(s => s.actif).map((s) => (
+                      <option key={s.id} value={s.id}>{s.nom}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-subtle" />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {mutation.isError && (
+            <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5" role="alert">
+              <AlertCircle size={14} className="text-danger flex-shrink-0" />
+              <p className="text-xs text-danger">{getErrorMessage(mutation.error)}</p>
+            </div>
+          )}
+
+          {/* Footer actions — inside form so submit works */}
+          <div className="flex gap-3 pt-2">
+            <button type="button" className="btn-secondary flex-1" onClick={onClose}>Annuler</button>
+            <button type="submit" className="btn-primary flex-1" disabled={mutation.isPending}>
+              {mutation.isPending ? <><RefreshCw size={14} className="animate-spin" /> Enregistrement…</> : 'Enregistrer'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── UsersPage ──────────────────────────────────────────────────────
 export default function UsersPage() {
   const qc = useQueryClient();
@@ -246,6 +385,7 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [actifFilter, setActifFilter] = useState<string>('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [editUser, setEditUser] = useState<Utilisateur | null>(null);
   const [confirm, setConfirm] = useState<{ user: Utilisateur; action: 'desactiver' | 'reactiver' | 'reset' } | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -501,6 +641,15 @@ export default function UsersPage() {
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
+                          onClick={() => setEditUser(user)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-text-muted border border-border hover:border-primary-accent hover:text-primary-accent hover:bg-primary-light/40 transition-colors"
+                          title="Modifier l'utilisateur"
+                          aria-label={`Modifier ${user.nom}`}
+                        >
+                          <Pencil size={11} /> Modifier
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => setConfirm({ user, action: 'reset' })}
                           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-text-muted border border-border hover:border-amber-300 hover:text-amber-700 hover:bg-amber-50 transition-colors"
                           title="Réinitialiser le mot de passe"
@@ -558,6 +707,14 @@ export default function UsersPage() {
         onClose={() => setCreateOpen(false)}
         onCreated={(pwd) => showToast(`Utilisateur créé. MDP temp : ${pwd}`)}
       />
+
+      {editUser && (
+        <EditUserDialog
+          user={editUser}
+          onClose={() => setEditUser(null)}
+          onSaved={() => showToast(`${editUser.nom} mis à jour`)}
+        />
+      )}
 
       <ConfirmDialog
         open={!!confirm}

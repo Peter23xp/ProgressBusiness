@@ -55,7 +55,7 @@ export function EditSeuilModal({
   const preview = getStockStatut(currentStock, seuil);
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div
         className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl"
         onClick={e => e.stopPropagation()}

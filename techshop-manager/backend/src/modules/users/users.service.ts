@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
-import { CreateUserDto, UpdateProfileDto, ChangePasswordDto } from './dto/user.dto';
+import { CreateUserDto, UpdateProfileDto, ChangePasswordDto, UpdateUserDto } from './dto/user.dto';
 
 @Injectable()
 export class UsersService {
@@ -113,6 +113,49 @@ export class UsersService {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Utilisateur introuvable' });
     }
     return user;
+  }
+
+  async updateUser(id: string, dto: UpdateUserDto) {
+    const user = await this.prisma.utilisateur.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Utilisateur introuvable' });
+    }
+
+    if (dto.email && dto.email !== user.email) {
+      const existing = await this.prisma.utilisateur.findUnique({ where: { email: dto.email } });
+      if (existing) {
+        throw new ConflictException({ code: 'ERR_CONFLICT', message: 'Cet email est déjà utilisé' });
+      }
+    }
+
+    if (dto.siteId) {
+      const site = await this.prisma.site.findUnique({ where: { id: dto.siteId } });
+      if (!site) {
+        throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Site introuvable' });
+      }
+    }
+
+    return this.prisma.utilisateur.update({
+      where: { id },
+      data: {
+        ...(dto.nom !== undefined && { nom: dto.nom }),
+        ...(dto.email !== undefined && { email: dto.email }),
+        ...(dto.role !== undefined && { role: dto.role }),
+        ...(dto.siteId !== undefined && { siteId: dto.siteId }),
+      },
+      select: {
+        id: true,
+        nom: true,
+        telephone: true,
+        email: true,
+        role: true,
+        actif: true,
+        langue: true,
+        siteId: true,
+        site: { select: { id: true, nom: true } },
+        derniereConnexion: true,
+      },
+    });
   }
 
   async reactiverUser(id: string) {

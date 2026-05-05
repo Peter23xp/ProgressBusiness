@@ -67,13 +67,15 @@ function ConfirmModal({
   isLoading: boolean;
 }) {
   return (
-    <>
-      <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onCancel} aria-hidden />
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
-        className="fixed inset-x-4 top-1/2 z-50 max-w-md mx-auto -translate-y-1/2 rounded-2xl bg-white shadow-2xl border border-border p-6 space-y-4"
+        className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-border p-6 space-y-4"
       >
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-amber-100">
@@ -110,7 +112,7 @@ function ConfirmModal({
           </button>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

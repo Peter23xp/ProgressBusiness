@@ -86,23 +86,20 @@ export function EditClientModal({
   const apiError = extractApiError(error);
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      aria-hidden="false"
+    >
       {/* Panel */}
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-modal-title"
-        className="fixed inset-x-4 top-1/2 z-50 max-w-lg mx-auto -translate-y-1/2 rounded-2xl bg-white shadow-2xl border border-border animate-fade-up"
+        className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-2xl border border-border"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
           <h2 id="edit-modal-title" className="text-[15px] font-bold text-primary">
             Modifier le client
           </h2>
@@ -117,8 +114,8 @@ export function EditClientModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit(onSubmit)} noValidate>
-          <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col flex-1 min-h-0">
+          <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
 
             {/* Erreur API globale */}
             {apiError && (
@@ -247,7 +244,7 @@ export function EditClientModal({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border flex-shrink-0">
             <button
               type="button"
               onClick={onClose}
@@ -276,6 +273,6 @@ export function EditClientModal({
           </div>
         </form>
       </div>
-    </>
+    </div>
   );
 }
