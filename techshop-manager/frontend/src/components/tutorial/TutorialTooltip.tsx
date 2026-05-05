@@ -14,7 +14,7 @@ function calcPlacement(targetEl: Element | null, requestedPlacement?: string): P
   if (r.left < vw * 0.25) return 'right';
   if (r.top < vh * 0.33) return 'bottom';
   if (r.top > vh * 0.66) return 'top';
-  return r.right < vw / 2 ? 'right' : 'left';
+  return (vw - r.right) > r.left ? 'right' : 'left';
 }
 
 function computeTooltipPosition(
@@ -76,6 +76,9 @@ function ArrowSVG({ placement }: { placement: Placement }) {
 
 function renderMarkdown(text: string): string {
   return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\n/g, '<br />');
 }
@@ -139,6 +142,21 @@ export function TutorialTooltip() {
     tooltipRef.current.focus();
   }, [isActive, currentStepIndex]);
 
+  // Simple focus trap
+  function handleFocusTrap(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== 'Tab' || !tooltipRef.current) return;
+    const focusable = tooltipRef.current.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+    }
+  }
+
   if (!isActive || !currentStep) return null;
   if (currentStep.type === 'welcome' || currentStep.type === 'completion') return null;
 
@@ -151,6 +169,7 @@ export function TutorialTooltip() {
         role="dialog"
         aria-label="Tutoriel TechShop Manager"
         tabIndex={-1}
+        onKeyDown={handleFocusTrap}
         style={{
           position: 'fixed',
           top: pos.top,
@@ -196,11 +215,11 @@ export function TutorialTooltip() {
 
         {/* Content */}
         <div style={{ padding: '16px' }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#1E3A5F', marginBottom: 8 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#1E3A5F', marginBottom: 8 }}>
             {currentStep.title}
           </div>
           <div
-            style={{ fontSize: 13, color: '#212121', lineHeight: 1.6, marginBottom: 12 }}
+            style={{ fontSize: 14, color: '#212121', lineHeight: 1.6, marginBottom: 12 }}
             dangerouslySetInnerHTML={{ __html: renderMarkdown(currentStep.description) }}
           />
 
@@ -280,11 +299,16 @@ export function TutorialTooltip() {
           background: 'rgba(0,0,0,0.5)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <div style={{
-            background: 'white', borderRadius: 12, padding: 24,
-            maxWidth: 360, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-          }}>
-            <h3 style={{ margin: '0 0 8px', color: '#1E3A5F', fontSize: 16 }}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tutorial-quit-dialog-title"
+            style={{
+              background: 'white', borderRadius: 12, padding: 24,
+              maxWidth: 360, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+            }}
+          >
+            <h3 id="tutorial-quit-dialog-title" style={{ margin: '0 0 8px', color: '#1E3A5F', fontSize: 16 }}>
               Quitter le tutoriel ?
             </h3>
             <p style={{ margin: '0 0 20px', fontSize: 13, color: '#555' }}>
@@ -295,7 +319,7 @@ export function TutorialTooltip() {
                 onClick={() => store.setShowQuitDialog(false)}
                 style={{
                   padding: '8px 16px', borderRadius: 6, border: '1px solid #ddd',
-                  background: 'none', cursor: 'pointer', fontSize: 13,
+                  background: 'none', cursor: 'pointer', fontSize: 13, minHeight: 44,
                 }}
               >
                 Continuer le tutoriel
@@ -304,7 +328,7 @@ export function TutorialTooltip() {
                 onClick={store.quit}
                 style={{
                   padding: '8px 16px', borderRadius: 6, border: 'none',
-                  background: '#B71C1C', color: 'white', cursor: 'pointer', fontSize: 13,
+                  background: '#B71C1C', color: 'white', cursor: 'pointer', fontSize: 13, minHeight: 44,
                 }}
               >
                 Quitter
