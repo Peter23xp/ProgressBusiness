@@ -15,7 +15,7 @@ export interface FicheAdhesionData {
   telephone: string;
   email?: string;
   adresse?: string;
-  ville: string;           // Juste la ville : "Goma", "Bukavu", "Kinshasa"
+  ville: string;
   numeroFiche: string;
   dateActivation: string;
   parrainNom?: string;
@@ -27,205 +27,227 @@ export interface FicheAdhesionData {
 }
 
 const BLUE = '#1E3A5F';
-const BORDER = '#555555';
-const LIGHT_BORDER = '#AAAAAA';
+const RED = '#CC0000';
+const BORDER = '#444444';
+const DOT_BORDER = '#999999';
+const LOGO_URL = '/assets/Progress business logo.png';
+
+// A4 = 595×842pt — watermark centered
+const WM = 280;
+const WM_LEFT = (595 - WM) / 2;  // 157.5
+const WM_TOP  = (842 - WM) / 2;  // 281
 
 const styles = StyleSheet.create({
   page: {
     fontFamily: 'Helvetica',
-    fontSize: 8,
-    paddingTop: 20,
-    paddingBottom: 20,
-    paddingLeft: 28,
-    paddingRight: 28,
+    fontSize: 7.5,
+    paddingTop: 14,
+    paddingBottom: 14,
+    paddingLeft: 20,
+    paddingRight: 20,
     color: '#111111',
     backgroundColor: '#FFFFFF',
+    lineHeight: 1.15,
   },
 
-  // ── Header ─────────────────────────────────────────────
+  watermark: {
+    position: 'absolute',
+    top: WM_TOP,
+    left: WM_LEFT,
+    width: WM,
+    height: WM,
+    opacity: 0.06,
+  },
+
+  // ── Header ────────────────────────────────────────────────
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 5,
   },
   logo: {
-    width: 60,
-    height: 60,
+    width: 55,
+    height: 55,
   },
   companyBlock: {
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
   },
   companyName: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: 'Helvetica-Bold',
     color: BLUE,
-    letterSpacing: 1,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   companyNameAccent: {
-    color: '#CC0000',
+    color: RED,
   },
   companyMeta: {
-    fontSize: 6.5,
+    fontSize: 6,
     color: '#333333',
     textAlign: 'center',
-    marginTop: 3,
-    lineHeight: 1.5,
+    marginTop: 2,
+    lineHeight: 1.4,
   },
 
-  // ── Title ──────────────────────────────────────────────
+  // ── Title ─────────────────────────────────────────────────
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: 6,
+    marginBottom: 6,
     borderTop: '1.5pt solid ' + BLUE,
     borderBottom: '1.5pt solid ' + BLUE,
-    paddingTop: 4,
-    paddingBottom: 4,
+    paddingTop: 3,
+    paddingBottom: 3,
   },
   titleText: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: 'Helvetica-Bold',
     color: BLUE,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   ficheNumLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: 'Helvetica-Bold',
     color: '#111111',
   },
 
-  // ── Info fields ────────────────────────────────────────
+  // ── Info fields ───────────────────────────────────────────
   infoRow: {
     flexDirection: 'row',
-    marginBottom: 5,
+    marginBottom: 4,
     alignItems: 'flex-end',
   },
   infoLabel: {
-    fontSize: 8,
+    fontSize: 7.5,
     fontFamily: 'Helvetica-Bold',
     color: '#111111',
     flexShrink: 0,
   },
   infoUnderline: {
     flex: 1,
-    fontSize: 8,
+    fontSize: 7.5,
     color: '#111111',
-    borderBottom: '0.5pt solid ' + LIGHT_BORDER,
+    borderBottom: '0.75pt dotted ' + DOT_BORDER,
     paddingBottom: 1,
     marginLeft: 2,
   },
 
-  // ── Date + signature zone ──────────────────────────────
+  // ── Date + signature ──────────────────────────────────────
   dateSignRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 6,
-    marginBottom: 8,
+    marginTop: 5,
+    marginBottom: 6,
   },
   dateSignBlock: {
     alignItems: 'flex-end',
   },
   dateSignText: {
-    fontSize: 7.5,
+    fontSize: 7,
     color: '#111111',
     textAlign: 'right',
   },
   signatureLabelSmall: {
-    fontSize: 7.5,
+    fontSize: 7,
     color: '#111111',
-    marginTop: 3,
+    marginTop: 2,
     textAlign: 'right',
   },
   signatureLine: {
     borderBottom: '0.5pt solid ' + BORDER,
-    width: 140,
-    marginTop: 18,
+    width: 130,
+    marginTop: 16,
   },
 
-  // ── COTATIONS table ────────────────────────────────────
+  // ── Table ─────────────────────────────────────────────────
   tableLabel: {
-    fontSize: 9,
+    fontSize: 8.5,
     fontFamily: 'Helvetica-Bold',
     color: '#111111',
     textTransform: 'uppercase',
-    marginBottom: 3,
+    letterSpacing: 0.3,
+    marginBottom: 2,
   },
 
-  // ── Satisfaction box ───────────────────────────────────
+  // ── Satisfaction ──────────────────────────────────────────
   satRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 10,
-    marginBottom: 12,
+    marginTop: 8,
+    marginBottom: 10,
   },
   satCheckbox: {
-    width: 11,
-    height: 11,
+    width: 10,
+    height: 10,
     border: '1pt solid ' + BORDER,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
     marginTop: 1,
-    marginRight: 5,
+    marginRight: 4,
   },
   satCheckMark: {
-    fontSize: 9,
-    color: '#111111',
+    fontSize: 8,
+    color: RED,
     fontFamily: 'Helvetica-Bold',
   },
   satText: {
-    fontSize: 8,
-    color: '#111111',
+    fontSize: 7.5,
+    color: RED,
     flex: 1,
-    lineHeight: 1.4,
+    lineHeight: 1.35,
+  },
+  satBold: {
+    fontFamily: 'Helvetica-Bold',
+    color: RED,
   },
 
-  // ── Footer ─────────────────────────────────────────────
+  // ── Footer ────────────────────────────────────────────────
+  footerDateText: {
+    fontSize: 7,
+    color: '#111111',
+    textAlign: 'center',
+    marginBottom: 3,
+  },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    marginTop: 4,
+    marginTop: 3,
   },
   footerSigBlock: {
     alignItems: 'center',
-    width: 140,
+    width: 130,
   },
   footerSigLine: {
     borderBottom: '0.5pt solid ' + BORDER,
-    width: 140,
-    marginTop: 22,
-    marginBottom: 3,
+    width: 130,
+    marginTop: 18,
+    marginBottom: 2,
   },
   footerSigLabel: {
-    fontSize: 7.5,
+    fontSize: 7,
     color: '#111111',
     textAlign: 'center',
-  },
-  footerDateText: {
-    fontSize: 7.5,
-    color: '#111111',
-    textAlign: 'center',
-    marginBottom: 4,
   },
 });
 
-// Largeurs colonnes table (total doit tenir en A4 moins les paddings: 595-56=539pt)
+// Column widths — 555pt usable (595-40)
 const C = {
-  num:     24,   // N°
-  date:    62,   // Date
-  prix:    60,   // PRIX
-  points:  52,   // Point cumulés
-  agent:   90,   // Nom agent
-  produit: 90,   // Produit
-  sig:     60,   // Signature agent
-  // total: 438 — ok
+  num:     22,
+  date:    58,
+  prix:    58,
+  points:  48,
+  agent:   86,
+  produit: 86,
+  sig:     56,
 };
 
 function formatCDF(amount: number): string {
@@ -239,31 +261,31 @@ function cell(
 ) {
   return {
     width,
-    borderRight: '0.5pt solid ' + BORDER,
-    borderBottom: '0.5pt solid ' + BORDER,
-    paddingTop: 3,
-    paddingBottom: 3,
+    borderRight: '0.75pt solid ' + BORDER,
+    borderBottom: '0.75pt solid ' + BORDER,
+    paddingTop: 2,
+    paddingBottom: 2,
     paddingLeft: 3,
     paddingRight: 3,
-    fontSize: isHeader ? 7 : 7.5,
-    fontFamily: isHeader ? 'Helvetica-Bold' : 'Helvetica',
+    fontSize: isHeader ? 6.5 : 7,
+    fontFamily: isHeader ? ('Helvetica-Bold' as const) : ('Helvetica' as const),
     color: isHeader ? '#FFFFFF' : '#111111',
     textAlign: align,
     flexShrink: 0,
   };
 }
 
-const LOGO_URL = '/assets/Progress business logo.png';
-
 export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
 
-        {/* ── Header ─────────────────────────────────────────────── */}
+        {/* ── Watermark — painted first, stays behind all content ── */}
+        <Image src={LOGO_URL} style={styles.watermark} />
+
+        {/* ── Header ───────────────────────────────────────────────── */}
         <View style={styles.headerRow}>
           <Image src={LOGO_URL} style={styles.logo} />
-
           <View style={styles.companyBlock}>
             <Text style={styles.companyName}>
               PROGRESS{' '}
@@ -273,57 +295,42 @@ export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
               {'RCCM : RDC/RCCM/19-B-0615\nIDNAT : 5-83-N685001\nIMPOT : A19086215'}
             </Text>
           </View>
-
           <Image src={LOGO_URL} style={styles.logo} />
         </View>
 
-        {/* ── Title ──────────────────────────────────────────────── */}
+        {/* ── Title ────────────────────────────────────────────────── */}
         <View style={styles.titleRow}>
           <Text style={styles.titleText}>Fiche d'Adhésion Progressive</Text>
           <Text style={styles.ficheNumLabel}>N°{data.numeroFiche}</Text>
         </View>
 
-        {/* ── Client info ────────────────────────────────────────── */}
-
-        {/* Nom & Post-nom */}
+        {/* ── Client info ──────────────────────────────────────────── */}
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Nom &amp; Post-nom : </Text>
           <Text style={styles.infoUnderline}>{data.nomComplet}</Text>
         </View>
 
-        {/* Invité par : _____ N° : _____ ou ID : _____ */}
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Invité par : </Text>
-          <Text style={[styles.infoUnderline, { maxWidth: 120 }]}>
-            {data.parrainNom ?? ''}
-          </Text>
-          <Text style={[styles.infoLabel, { marginLeft: 8 }]}>N° : </Text>
-          <Text style={[styles.infoUnderline, { maxWidth: 60 }]}>
-            {data.parrainCode ?? ''}
-          </Text>
-          <Text style={[styles.infoLabel, { marginLeft: 8 }]}>ou ID : </Text>
-          <Text style={[styles.infoUnderline, { maxWidth: 60 }]}>{''}</Text>
+          <Text style={[styles.infoUnderline, { maxWidth: 110 }]}>{data.parrainNom ?? ''}</Text>
+          <Text style={[styles.infoLabel, { marginLeft: 7 }]}>N° : </Text>
+          <Text style={[styles.infoUnderline, { maxWidth: 55 }]}>{data.parrainCode ?? ''}</Text>
+          <Text style={[styles.infoLabel, { marginLeft: 7 }]}>ou ID : </Text>
+          <Text style={[styles.infoUnderline, { maxWidth: 55 }]}>{''}</Text>
         </View>
 
-        {/* Adresse + Ville */}
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Adresse : </Text>
-          <Text style={[styles.infoUnderline, { maxWidth: 200 }]}>
-            {data.adresse ?? ''}
-          </Text>
-          <Text style={[styles.infoLabel, { marginLeft: 10 }]}>Ville </Text>
-          <Text style={[styles.infoUnderline, { maxWidth: 80 }]}>
-            {data.ville}
-          </Text>
+          <Text style={[styles.infoUnderline, { maxWidth: 190 }]}>{data.adresse ?? ''}</Text>
+          <Text style={[styles.infoLabel, { marginLeft: 9 }]}>Ville </Text>
+          <Text style={[styles.infoUnderline, { maxWidth: 75 }]}>{data.ville}</Text>
         </View>
 
-        {/* Téléphone */}
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Téléphone : </Text>
           <Text style={styles.infoUnderline}>{data.telephone}</Text>
         </View>
 
-        {/* E-mail */}
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>E-mail : </Text>
           <Text style={styles.infoUnderline}>{data.email ?? ''}</Text>
@@ -340,15 +347,15 @@ export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
           </View>
         </View>
 
-        {/* ── COTATIONS DU MEMBRE ────────────────────────────────── */}
+        {/* ── COTATIONS DU MEMBRE ──────────────────────────────────── */}
         <Text style={styles.tableLabel}>COTATIONS DU MEMBRE</Text>
 
-        {/* En-tête table */}
+        {/* Header row */}
         <View style={{
           flexDirection: 'row',
           backgroundColor: BLUE,
-          borderTop: '0.5pt solid ' + BORDER,
-          borderLeft: '0.5pt solid ' + BORDER,
+          borderTop: '0.75pt solid ' + BORDER,
+          borderLeft: '0.75pt solid ' + BORDER,
         }}>
           <Text style={cell(C.num, true)}>N°</Text>
           <Text style={cell(C.date, true)}>Date</Text>
@@ -360,7 +367,7 @@ export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
         </View>
 
         {/* Ligne 1 — données réelles */}
-        <View style={{ flexDirection: 'row', borderLeft: '0.5pt solid ' + BORDER }}>
+        <View style={{ flexDirection: 'row', borderLeft: '0.75pt solid ' + BORDER }}>
           <Text style={cell(C.num)}>1.</Text>
           <Text style={cell(C.date, false, 'left')}>le {data.dateActivation}</Text>
           <Text style={cell(C.prix, false, 'right')}>{formatCDF(data.produitPrix)}</Text>
@@ -370,9 +377,9 @@ export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
           <Text style={cell(C.sig)}>{' '}</Text>
         </View>
 
-        {/* Lignes vides 2–5 pour entrées manuelles */}
+        {/* Lignes vides 2–5 */}
         {[2, 3, 4, 5].map((n) => (
-          <View key={n} style={{ flexDirection: 'row', borderLeft: '0.5pt solid ' + BORDER }}>
+          <View key={n} style={{ flexDirection: 'row', borderLeft: '0.75pt solid ' + BORDER }}>
             <Text style={cell(C.num)}>{n}.</Text>
             <Text style={cell(C.date)}>{' '}</Text>
             <Text style={cell(C.prix)}>{' '}</Text>
@@ -386,8 +393,8 @@ export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
         {/* Ligne Points Total */}
         <View style={{
           flexDirection: 'row',
-          borderLeft: '0.5pt solid ' + BORDER,
-          backgroundColor: '#F5F5F5',
+          borderLeft: '0.75pt solid ' + BORDER,
+          backgroundColor: '#EEF2F7',
         }}>
           <Text style={{
             ...cell(C.num + C.date, false, 'left'),
@@ -400,21 +407,21 @@ export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
           <Text style={cell(C.sig)}>{' '}</Text>
         </View>
 
-        {/* ── Case satisfaction ───────────────────────────────────── */}
+        {/* ── Satisfaction ─────────────────────────────────────────── */}
         <View style={styles.satRow}>
           <View style={styles.satCheckbox}>
             <Text style={styles.satCheckMark}>✓</Text>
           </View>
           <Text style={styles.satText}>
-            <Text style={{ fontFamily: 'Helvetica-Bold' }}>
+            <Text style={styles.satBold}>
               Le membre a atteint les points de satisfaction (40 points),{' '}
             </Text>
-            Désormais membre{'\n'}officiel de{' '}
-            <Text style={{ fontFamily: 'Helvetica-Bold' }}>PROGRESS BUSNESS</Text>
+            Désormais membre officiel de{' '}
+            <Text style={styles.satBold}>PROGRESS BUSINESS</Text>
           </Text>
         </View>
 
-        {/* ── Footer ─────────────────────────────────────────────── */}
+        {/* ── Footer ───────────────────────────────────────────────── */}
         <Text style={styles.footerDateText}>
           Fait à {data.ville}, le {data.dateActivation}
         </Text>
