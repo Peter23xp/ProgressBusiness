@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CreditCard, TrendingUp, Receipt, FileText } from 'lucide-react';
 import { api } from '@/lib/api';
-import { formatUSD, formatDate, cn } from '@/lib/utils';
+import { formatCDF, formatDate, cn } from '@/lib/utils';
 import { useSites } from '@/hooks/useSites';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -103,7 +103,7 @@ export default function PaiementsOnboardingPage() {
           </div>
           {isLoading
             ? <div className="skeleton h-7 w-28 rounded" />
-            : <p className="text-[20px] font-black text-primary">{formatUSD(data?.kpis.totalEncaisseJour ?? 0)}</p>}
+            : <p className="text-[20px] font-black text-primary">{formatCDF(data?.kpis.totalEncaisseJour ?? 0)}</p>}
         </div>
 
         <div className="rounded-xl border border-border bg-white px-4 py-3">
@@ -112,7 +112,7 @@ export default function PaiementsOnboardingPage() {
             ? <div className="skeleton h-7 w-16 rounded" />
             : <>
                 <p className="text-[18px] font-black text-blue-700">{data?.kpis.nbRecitJour ?? 0}</p>
-                <p className="text-[10px] text-text-muted">{formatUSD(data?.kpis.montantRecitJour ?? 0)}</p>
+                <p className="text-[10px] text-text-muted">{formatCDF(data?.kpis.montantRecitJour ?? 0)}</p>
               </>}
         </div>
 
@@ -122,7 +122,7 @@ export default function PaiementsOnboardingPage() {
             ? <div className="skeleton h-7 w-16 rounded" />
             : <>
                 <p className="text-[18px] font-black text-emerald-700">{data?.kpis.nbFicheJour ?? 0}</p>
-                <p className="text-[10px] text-text-muted">{formatUSD(data?.kpis.montantFicheJour ?? 0)}</p>
+                <p className="text-[10px] text-text-muted">{formatCDF(data?.kpis.montantFicheJour ?? 0)}</p>
               </>}
         </div>
 
@@ -130,7 +130,7 @@ export default function PaiementsOnboardingPage() {
           <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mb-1">Total période</p>
           {isLoading
             ? <div className="skeleton h-7 w-28 rounded" />
-            : <p className="text-[18px] font-black text-primary">{formatUSD(data?.kpis.totalEncaisse ?? 0)}</p>}
+            : <p className="text-[18px] font-black text-primary">{formatCDF(data?.kpis.totalEncaisse ?? 0)}</p>}
         </div>
       </div>
 
@@ -244,7 +244,7 @@ export default function PaiementsOnboardingPage() {
                         <EtapeBadge etape={p.etape} />
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-[13px] font-bold text-success">
-                        {formatUSD(p.montant)}
+                        {formatCDF(p.montant)}
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell text-[12px] text-text-muted">
                         {MODE_LABEL[p.modePaiement] ?? p.modePaiement}
