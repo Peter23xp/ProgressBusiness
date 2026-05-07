@@ -1,14 +1,19 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, CheckCircle2, XCircle, Phone, MapPin, CreditCard,
-  Copy, UserCheck, AlertTriangle, Loader2, Zap, Users,
+  Copy, AlertTriangle, Loader2, Zap, Users, FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { pdf } from '@react-pdf/renderer';
 import { api, getErrorMessage } from '@/lib/api';
 import { cn, formatCDF, formatDate, initials } from '@/lib/utils';
 import { OnboardingStepper } from '@/components/clients/OnboardingStepper';
+import { ProduitSearchInput } from '@/components/clients/ProduitSearchInput';
+import { FicheAdhesionPDF, FicheAdhesionData } from '@/components/clients/FicheAdhesionPDF';
+import { useAuthStore } from '@/store/auth.store';
+import { Produit } from '@/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -120,33 +125,70 @@ function ConfirmModal({
 
 function SuccessScreen({
   result,
+  client,
   clientId,
   onNavigate,
 }: {
   result: ActivationResult;
+  client: ClientActivation;
   clientId: string;
   onNavigate: () => void;
 }) {
-  const [countdown, setCountdown] = useState(5);
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setCountdown((c) => {
-        if (c <= 1) { clearInterval(t); onNavigate(); return 0; }
-        return c - 1;
-      });
-    }, 1000);
-    return () => clearInterval(t);
-  }, [onNavigate]);
+  const user = useAuthStore((s) => s.user);
+  const [selectedProduit, setSelectedProduit] = useState<Produit | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [generated, setGenerated] = useState(false);
 
   const copyCode = () => {
     navigator.clipboard.writeText(result.codeParrain).catch(() => {});
     toast.success('Code copié !');
   };
 
+  async function handleGeneratePDF() {
+    if (!selectedProduit) return;
+    setGenerating(true);
+    try {
+      const dateStr = new Date(result.dateActivation).toLocaleDateString('fr-FR', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+      });
+      const numeroFiche = result.id.slice(-4).toUpperCase();
+      const ficheData: FicheAdhesionData = {
+        nomComplet: `${result.prenom} ${result.nom}`.toUpperCase(),
+        telephone: result.telephone,
+        ville: client.site?.nom ?? '',
+        siteVille: client.site?.nom ?? 'Goma',
+        numeroFiche,
+        dateActivation: dateStr,
+        parrainNom: client.parrain
+          ? `${client.parrain.prenom} ${client.parrain.nom}`
+          : undefined,
+        parrainCode: client.parrain?.codeParrain ?? undefined,
+        agentNom: user?.nom ?? user?.name ?? 'Agent',
+        produitNom: selectedProduit.nom,
+        produitPrix: selectedProduit.prixVente,
+        pointsCumules: 40,
+      };
+      const blob = await pdf(<FicheAdhesionPDF data={ficheData} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fiche-${result.prenom}-${result.nom}-${numeroFiche}.pdf`
+        .toLowerCase()
+        .replace(/\s+/g, '-');
+      a.click();
+      URL.revokeObjectURL(url);
+      setGenerated(true);
+      toast.success('Fiche générée avec succès !');
+    } catch {
+      toast.error('Erreur lors de la génération du PDF.');
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   return (
-    <div className="flex flex-col items-center text-center py-12 px-6 space-y-5">
-      <CheckCircle2 size={80} className="text-success" aria-hidden />
+    <div className="flex flex-col items-center text-center py-10 px-6 space-y-5">
+      <CheckCircle2 size={72} className="text-success" aria-hidden />
       <div>
         <h2 className="text-[22px] font-extrabold text-primary">Compte activé avec succès !</h2>
         <p className="text-[14px] text-text-muted mt-1">
@@ -154,6 +196,7 @@ function SuccessScreen({
         </p>
       </div>
 
+      {/* Code parrain */}
       <div className="rounded-xl border border-blue-100 bg-blue-50 px-6 py-4 space-y-3 w-full max-w-sm">
         <p className="text-[11px] font-bold uppercase tracking-widest text-primary-accent">Code parrain attribué</p>
         <p className="text-[28px] font-extrabold font-mono text-primary tracking-widest">{result.codeParrain}</p>
@@ -172,24 +215,59 @@ function SuccessScreen({
         <span className="italic">(si le service SMS est configuré)</span>
       </p>
 
-      <div className="flex items-center gap-3 flex-wrap justify-center">
-        <Link
-          to={`/clients/${clientId}`}
-          className="btn-primary text-[13px]"
+      {/* Fiche generation block */}
+      <div className="w-full max-w-sm rounded-xl border border-border bg-white shadow-sm p-5 space-y-4 text-left">
+        <div>
+          <p className="text-[13px] font-bold text-primary">Générer la Fiche d'Adhésion</p>
+          <p className="text-[11px] text-text-muted mt-0.5">
+            Sélectionnez le produit physique acheté par le client pour compléter la fiche.
+          </p>
+        </div>
+
+        <ProduitSearchInput
+          siteId={client.siteInscriptionId}
+          selected={selectedProduit}
+          onSelect={setSelectedProduit}
+          onClear={() => { setSelectedProduit(null); setGenerated(false); }}
+        />
+
+        {selectedProduit && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-text-muted">
+            Prix : <span className="font-mono font-bold text-text">
+              {new Intl.NumberFormat('fr-CD').format(selectedProduit.prixVente)} CDF
+            </span>
+            {' · '}Points : <span className="font-bold text-primary">40P</span>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={handleGeneratePDF}
+          disabled={!selectedProduit || generating}
+          className="btn-primary w-full text-[13px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
+          {generating
+            ? <><Loader2 size={14} className="animate-spin" aria-hidden /> Génération…</>
+            : <><FileText size={14} aria-hidden /> Générer la Fiche PDF</>
+          }
+        </button>
+
+        {generated && (
+          <p className="text-[11px] text-success text-center font-medium">
+            ✓ Fiche téléchargée. Vous pouvez en générer une nouvelle si besoin.
+          </p>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <div className="flex items-center gap-3 flex-wrap justify-center pt-2">
+        <Link to={`/clients/${clientId}`} className="btn-primary text-[13px]">
           Voir la fiche client
         </Link>
-        <Link
-          to="/clients/new/recit"
-          className="btn-secondary text-[13px]"
-        >
+        <Link to="/clients/new/recit" className="btn-secondary text-[13px]">
           + Nouveau client
         </Link>
       </div>
-
-      <p className="text-[11px] text-text-muted">
-        Redirection automatique vers la fiche dans {countdown} seconde{countdown !== 1 ? 's' : ''}…
-      </p>
     </div>
   );
 }
@@ -274,6 +352,7 @@ export default function OnboardingActivationPage() {
       <div className="max-w-2xl mx-auto rounded-xl border border-border bg-white shadow-sm">
         <SuccessScreen
           result={successResult}
+          client={client}
           clientId={id!}
           onNavigate={handleSuccessNavigate}
         />
