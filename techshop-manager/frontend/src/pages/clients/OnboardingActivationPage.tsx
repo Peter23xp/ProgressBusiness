@@ -152,11 +152,12 @@ function SuccessScreen({
         day: '2-digit', month: '2-digit', year: 'numeric',
       });
       const numeroFiche = result.id.slice(-4).toUpperCase();
+      // Extraire juste la ville depuis le nom du site ("Progress Business Goma" → "Goma")
+      const siteVille = client.site?.nom?.split(' ').pop() ?? 'Goma';
       const ficheData: FicheAdhesionData = {
         nomComplet: `${result.prenom} ${result.nom}`.toUpperCase(),
         telephone: result.telephone,
-        ville: client.site?.nom ?? '',
-        siteVille: client.site?.nom ?? 'Goma',
+        ville: siteVille,
         numeroFiche,
         dateActivation: dateStr,
         parrainNom: client.parrain
