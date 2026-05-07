@@ -118,3 +118,16 @@ export class OnboardingFicheDto {
   @IsString()
   numeroTransaction?: string;
 }
+
+export class OnboardingActivateDto {
+  @IsString()
+  @IsNotEmpty()
+  produitId: string;
+
+  @IsEnum(ModePaiement)
+  modePaiement: ModePaiement;
+
+  @IsOptional()
+  @IsString()
+  referenceTransaction?: string;
+}

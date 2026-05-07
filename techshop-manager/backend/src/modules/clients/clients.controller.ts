@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ClientsService } from './clients.service';
-import { UpdateClientDto, OnboardingFormationDto, OnboardingFicheDto } from './dto/client.dto';
+import { UpdateClientDto, OnboardingFormationDto, OnboardingFicheDto, OnboardingActivateDto } from './dto/client.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -171,8 +171,9 @@ export class ClientsController {
   @Post(':id/onboarding/activate')
   onboardingActivate(
     @Param('id') clientId: string,
+    @Body() dto: OnboardingActivateDto,
     @CurrentUser() user: any,
   ) {
-    return this.clientsService.onboardingActivate(clientId, user.id);
+    return this.clientsService.onboardingActivate(clientId, dto, user.id);
   }
 }

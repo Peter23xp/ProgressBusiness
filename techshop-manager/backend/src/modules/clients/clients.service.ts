@@ -10,8 +10,9 @@ import {
   UpdateClientDto,
   OnboardingFormationDto,
   OnboardingFicheDto,
+  OnboardingActivateDto,
 } from './dto/client.dto';
-import { EtapeOnboarding, ModePaiement, Role, StatutClient, StatutEtape } from '@prisma/client';
+import { EtapeOnboarding, ModePaiement, Role, StatutClient, StatutEtape, TypeMouvement } from '@prisma/client';
 import { PortalAuthService } from '../portal/portal-auth.service';
 
 @Injectable()
@@ -447,7 +448,7 @@ export class ClientsService {
     });
   }
 
-  async onboardingActivate(clientId: string, agentId: string) {
+  async onboardingActivate(clientId: string, dto: OnboardingActivateDto, agentId: string) {
     const client = await this.prisma.client.findUnique({
       where: { id: clientId },
       include: { onboardingEtapes: true },
@@ -473,8 +474,47 @@ export class ClientsService {
       });
     }
 
+    // Vérifier que le produit existe
+    const produit = await this.prisma.produit.findUnique({
+      where: { id: dto.produitId, actif: true },
+    });
+    if (!produit) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Produit introuvable ou inactif' });
+    }
+
+    // Vérifier le stock disponible sur le site du client
+    const stockSite = await this.prisma.stockSite.findUnique({
+      where: { produitId_siteId: { produitId: dto.produitId, siteId: client.siteInscriptionId } },
+    });
+    if (!stockSite || stockSite.quantite < 1) {
+      throw new ConflictException({
+        code: 'ERR_STOCK_INSUFFISANT',
+        message: `Stock insuffisant pour ${produit.nom}. Disponible: ${stockSite?.quantite ?? 0}`,
+      });
+    }
+
     // Générer un code parrain unique format TSG-XXXX
     const codeParrain = await this.generateUniqueCodeParrain();
+
+    // Générer le numéro de vente
+    const siteCodeRaw = (await this.prisma.site.findUnique({
+      where: { id: client.siteInscriptionId },
+      select: { nom: true },
+    }))?.nom ?? 'SITE';
+    const siteCode = siteCodeRaw.substring(0, 3).toUpperCase();
+    const now = new Date();
+    const prefix = `${siteCode}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-`;
+    const lastVente = await this.prisma.vente.findFirst({
+      where: { numeroVente: { startsWith: prefix } },
+      orderBy: { createdAt: 'desc' },
+      select: { numeroVente: true },
+    });
+    const seq = lastVente?.numeroVente
+      ? (parseInt(lastVente.numeroVente.split('-').pop() ?? '0', 10) || 0) + 1
+      : 1;
+    const numeroVente = `${prefix}${String(seq).padStart(4, '0')}`;
+
+    const prixVente = Number(produit.prixVente);
 
     const activatedClient = await this.prisma.$transaction(async (tx) => {
       // Activer le client
@@ -494,6 +534,9 @@ export class ClientsService {
           etape: EtapeOnboarding.ACTIVATION,
           statut: StatutEtape.COMPLETE,
           completeeAt: new Date(),
+          montant: prixVente,
+          modePaiement: dto.modePaiement,
+          referenceTransaction: dto.referenceTransaction,
           clientId,
           agentId,
           siteId: client.siteInscriptionId,
@@ -501,6 +544,54 @@ export class ClientsService {
         update: {
           statut: StatutEtape.COMPLETE,
           completeeAt: new Date(),
+          montant: prixVente,
+          modePaiement: dto.modePaiement,
+          referenceTransaction: dto.referenceTransaction,
+          agentId,
+        },
+      });
+
+      // Créer la vente pour le produit d'activation
+      await tx.vente.create({
+        data: {
+          numeroVente,
+          siteId: client.siteInscriptionId,
+          agentId,
+          clientId,
+          modePaiement: dto.modePaiement,
+          referenceTransaction: dto.referenceTransaction,
+          montantBrut: prixVente,
+          remiseFidelite: 0,
+          montantNet: prixVente,
+          pointsAttribues: 0,
+          lignes: {
+            create: [{
+              produitId: dto.produitId,
+              quantite: 1,
+              prixUnitaire: prixVente,
+              sousTotal: prixVente,
+            }],
+          },
+        },
+      });
+
+      // Décrémenter le stock
+      const quantiteApres = stockSite.quantite - 1;
+      await tx.stockSite.update({
+        where: { produitId_siteId: { produitId: dto.produitId, siteId: client.siteInscriptionId } },
+        data: { quantite: quantiteApres },
+      });
+
+      // Créer le mouvement stock
+      await tx.mouvementStock.create({
+        data: {
+          type: TypeMouvement.SORTIE_VENTE,
+          quantite: 1,
+          quantiteAvant: stockSite.quantite,
+          quantiteApres,
+          reference: numeroVente,
+          produitId: dto.produitId,
+          siteId: client.siteInscriptionId,
           agentId,
         },
       });

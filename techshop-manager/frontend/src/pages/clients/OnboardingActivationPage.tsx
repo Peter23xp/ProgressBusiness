@@ -22,6 +22,8 @@ interface ClientActivation {
   prenom: string;
   nom: string;
   telephone: string;
+  email?: string;
+  adresse?: string;
   statut: string;
   codeParrain: string | null;
   siteInscriptionId: string;
@@ -47,6 +49,13 @@ interface ActivationResult {
   telephone: string;
 }
 
+const MODE_PAIEMENT = [
+  { value: 'CASH',         label: 'Cash' },
+  { value: 'MPESA',        label: 'M-Pesa' },
+  { value: 'AIRTEL_MONEY', label: 'Airtel Money' },
+  { value: 'VIREMENT',     label: 'Virement' },
+] as const;
+
 const ETAPE_REQUIRED: Array<{ key: 'RECIT' | 'FICHE'; label: string }> = [
   { key: 'RECIT', label: 'Récit de vente' },
   { key: 'FICHE', label: 'Fiche client' },
@@ -61,12 +70,16 @@ const MODE_LABEL: Record<string, string> = {
 function ConfirmModal({
   client,
   nextCode,
+  produit,
+  modePaiement,
   onConfirm,
   onCancel,
   isLoading,
 }: {
   client: ClientActivation;
   nextCode: string | null;
+  produit: Produit;
+  modePaiement: string;
   onConfirm: () => void;
   onCancel: () => void;
   isLoading: boolean;
@@ -97,6 +110,15 @@ function ConfirmModal({
             </p>
           </div>
         </div>
+
+        {/* Récap produit */}
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-[12px] space-y-1">
+          <p className="font-bold text-text">Produit acheté</p>
+          <p className="text-text-muted">{produit.nom} — <span className="font-mono font-bold text-text">{new Intl.NumberFormat('fr-CD').format(produit.prixVente)} CDF</span></p>
+          <p className="text-text-muted">Mode de paiement : <span className="font-semibold text-text">{MODE_LABEL[modePaiement] ?? modePaiement}</span></p>
+          <p className="text-orange-600 text-[11px] font-medium mt-1">⚠ 1 unité sera retirée du stock.</p>
+        </div>
+
         <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
           <button
             type="button"
@@ -127,15 +149,16 @@ function SuccessScreen({
   result,
   client,
   clientId,
+  activationProduit,
   onNavigate,
 }: {
   result: ActivationResult;
   client: ClientActivation;
   clientId: string;
+  activationProduit: Produit;
   onNavigate: () => void;
 }) {
   const user = useAuthStore((s) => s.user);
-  const [selectedProduit, setSelectedProduit] = useState<Produit | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
 
@@ -145,18 +168,18 @@ function SuccessScreen({
   };
 
   async function handleGeneratePDF() {
-    if (!selectedProduit) return;
     setGenerating(true);
     try {
       const dateStr = new Date(result.dateActivation).toLocaleDateString('fr-FR', {
         day: '2-digit', month: '2-digit', year: 'numeric',
       });
       const numeroFiche = result.id.slice(-4).toUpperCase();
-      // Extraire juste la ville depuis le nom du site ("Progress Business Goma" → "Goma")
       const siteVille = client.site?.nom?.split(' ').pop() ?? 'Goma';
       const ficheData: FicheAdhesionData = {
         nomComplet: `${result.prenom} ${result.nom}`.toUpperCase(),
         telephone: result.telephone,
+        email: client.email ?? undefined,
+        adresse: client.adresse ?? undefined,
         ville: siteVille,
         numeroFiche,
         dateActivation: dateStr,
@@ -165,8 +188,8 @@ function SuccessScreen({
           : undefined,
         parrainCode: client.parrain?.codeParrain ?? undefined,
         agentNom: user?.nom ?? user?.name ?? 'Agent',
-        produitNom: selectedProduit.nom,
-        produitPrix: selectedProduit.prixVente,
+        produitNom: activationProduit.nom,
+        produitPrix: activationProduit.prixVente,
         pointsCumules: 40,
       };
       const blob = await pdf(<FicheAdhesionPDF data={ficheData} />).toBlob();
@@ -216,35 +239,26 @@ function SuccessScreen({
         <span className="italic">(si le service SMS est configuré)</span>
       </p>
 
-      {/* Fiche generation block */}
+      {/* Récap produit vendu + stock */}
+      <div className="w-full max-w-sm rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-left space-y-1">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-success">Produit vendu · Stock mis à jour</p>
+        <p className="text-[13px] font-semibold text-text">{activationProduit.nom}</p>
+        <p className="text-[12px] text-text-muted font-mono">{new Intl.NumberFormat('fr-CD').format(activationProduit.prixVente)} CDF · 1 unité retirée du stock</p>
+      </div>
+
+      {/* Génération fiche PDF */}
       <div className="w-full max-w-sm rounded-xl border border-border bg-white shadow-sm p-5 space-y-4 text-left">
         <div>
           <p className="text-[13px] font-bold text-primary">Générer la Fiche d'Adhésion</p>
           <p className="text-[11px] text-text-muted mt-0.5">
-            Sélectionnez le produit physique acheté par le client pour compléter la fiche.
+            Le produit <strong>{activationProduit.nom}</strong> est inclus dans la fiche.
           </p>
         </div>
-
-        <ProduitSearchInput
-          siteId={client.siteInscriptionId}
-          selected={selectedProduit}
-          onSelect={setSelectedProduit}
-          onClear={() => { setSelectedProduit(null); setGenerated(false); }}
-        />
-
-        {selectedProduit && (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-text-muted">
-            Prix : <span className="font-mono font-bold text-text">
-              {new Intl.NumberFormat('fr-CD').format(selectedProduit.prixVente)} CDF
-            </span>
-            {' · '}Points : <span className="font-bold text-primary">40P</span>
-          </div>
-        )}
 
         <button
           type="button"
           onClick={handleGeneratePDF}
-          disabled={!selectedProduit || generating}
+          disabled={generating}
           className="btn-primary w-full text-[13px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {generating
@@ -279,8 +293,13 @@ export default function OnboardingActivationPage() {
   const { id }   = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc       = useQueryClient();
+
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [successResult, setSuccessResult] = useState<ActivationResult | null>(null);
+
+  // Produit + mode de paiement — saisis AVANT la confirmation
+  const [selectedProduit, setSelectedProduit] = useState<Produit | null>(null);
+  const [modePaiement, setModePaiement] = useState<string>('CASH');
 
   const { data: client, isLoading } = useQuery<ClientActivation>({
     queryKey: ['client-activation', id],
@@ -288,7 +307,6 @@ export default function OnboardingActivationPage() {
     enabled: !!id,
   });
 
-  // Prévisualisation du prochain code parrain
   const { data: nextCodeData } = useQuery<{ nextCode: string }>({
     queryKey: ['next-code', client?.site?.id],
     queryFn: () =>
@@ -300,10 +318,12 @@ export default function OnboardingActivationPage() {
   const handleSuccessNavigate = useCallback(() => navigate(`/clients/${id}`), [navigate, id]);
 
   const mutation = useMutation({
-    mutationFn: () => api.post(`/clients/${id}/onboarding/activate`),
+    mutationFn: () => api.post(`/clients/${id}/onboarding/activate`, {
+      produitId: selectedProduit!.id,
+      modePaiement,
+    }),
     onSuccess: (res) => {
       setConfirmOpen(false);
-      // La réponse est le client complet via findOne
       const c = res.data;
       setSuccessResult({
         id:             c.id,
@@ -316,19 +336,22 @@ export default function OnboardingActivationPage() {
       });
       qc.invalidateQueries({ queryKey: ['client', id] });
       qc.invalidateQueries({ queryKey: ['clients'] });
+      qc.invalidateQueries({ queryKey: ['stocks'] });
     },
     onError: (error: any) => {
       setConfirmOpen(false);
       const code = error?.response?.data?.code;
       if (code === 'ERR_CONFLICT' || code === 'ERR_ALREADY_ACTIVE') {
         toast.error('Ce client est déjà activé.');
+      } else if (code === 'ERR_STOCK_INSUFFISANT') {
+        toast.error(error?.response?.data?.message ?? 'Stock insuffisant pour ce produit.');
       } else {
         toast.error(getErrorMessage(error) || "Erreur lors de l'activation.");
       }
     },
   });
 
-  // ── Loading ──────────────────────────────────────────────────────
+  // ── Loading ──────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="max-w-2xl mx-auto space-y-5 animate-pulse">
@@ -347,21 +370,22 @@ export default function OnboardingActivationPage() {
     );
   }
 
-  // ── Succès ───────────────────────────────────────────────────────
-  if (successResult) {
+  // ── Succès ───────────────────────────────────────────────────
+  if (successResult && selectedProduit) {
     return (
       <div className="max-w-2xl mx-auto rounded-xl border border-border bg-white shadow-sm">
         <SuccessScreen
           result={successResult}
           client={client}
           clientId={id!}
+          activationProduit={selectedProduit}
           onNavigate={handleSuccessNavigate}
         />
       </div>
     );
   }
 
-  // ── Calculs ──────────────────────────────────────────────────────
+  // ── Calculs ──────────────────────────────────────────────────
   const recit = client.onboardingEtapes.find(e => e.etape === 'RECIT');
   const fiche = client.onboardingEtapes.find(e => e.etape === 'FICHE');
 
@@ -378,6 +402,8 @@ export default function OnboardingActivationPage() {
     RECIT: '/clients/new/recit',
     FICHE: `/clients/${id}/fiche`,
   };
+
+  const canActivate = allComplete && !!selectedProduit;
 
   return (
     <>
@@ -425,7 +451,7 @@ export default function OnboardingActivationPage() {
           </div>
         )}
 
-        {/* Récapitulatif */}
+        {/* Récapitulatif client */}
         <div className="rounded-xl border border-border bg-white shadow-sm p-5 space-y-5">
           <h2 className="text-[14px] font-bold text-primary uppercase tracking-wide">
             Récapitulatif avant activation
@@ -449,7 +475,6 @@ export default function OnboardingActivationPage() {
               </div>
             </div>
 
-            {/* Parrain */}
             {client.parrain ? (
               <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
                 <Users size={13} className="text-primary-accent flex-shrink-0" aria-hidden />
@@ -467,7 +492,6 @@ export default function OnboardingActivationPage() {
               <p className="text-[12px] text-text-muted italic">Aucun parrain.</p>
             )}
 
-            {/* Code parrain prévisualisé */}
             {!client.codeParrain && (
               <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2.5 text-center">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-primary-accent mb-1">
@@ -539,7 +563,60 @@ export default function OnboardingActivationPage() {
           </div>
         </div>
 
-        {/* CTA activation — uniquement si toutes les étapes sont OK */}
+        {/* Produit d'activation + mode de paiement — obligatoires */}
+        {allComplete && (
+          <div className="rounded-xl border border-border bg-white shadow-sm p-5 space-y-4">
+            <h2 className="text-[14px] font-bold text-primary uppercase tracking-wide">
+              Produit acheté à l'activation
+            </h2>
+            <p className="text-[12px] text-text-muted -mt-2">
+              Sélectionnez le produit physique acheté par le client. Il sera déduit du stock.
+            </p>
+
+            <ProduitSearchInput
+              siteId={client.siteInscriptionId}
+              selected={selectedProduit}
+              onSelect={setSelectedProduit}
+              onClear={() => setSelectedProduit(null)}
+            />
+
+            {selectedProduit && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-text-muted">
+                Prix : <span className="font-mono font-bold text-text">
+                  {new Intl.NumberFormat('fr-CD').format(selectedProduit.prixVente)} CDF
+                </span>
+                {' · '}Points : <span className="font-bold text-primary">40P</span>
+                {' · '}Stock : <span className="font-bold text-orange-600">−1 unité après activation</span>
+              </div>
+            )}
+
+            {/* Mode de paiement */}
+            <div className="space-y-2">
+              <label className="text-[12px] font-bold text-text-muted uppercase tracking-wide">
+                Mode de paiement
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {MODE_PAIEMENT.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setModePaiement(value)}
+                    className={cn(
+                      'px-3 py-2.5 rounded-lg border text-[12px] font-semibold transition-colors',
+                      modePaiement === value
+                        ? 'border-primary-accent bg-primary-accent/10 text-primary-accent'
+                        : 'border-border bg-white text-text-muted hover:border-border-strong',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CTA activation */}
         {allComplete && (
           <div className="rounded-xl border border-border bg-white shadow-sm p-5">
             <div className="flex items-start gap-3 mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
@@ -548,11 +625,16 @@ export default function OnboardingActivationPage() {
                 Cette action est irréversible. Le compte sera définitivement activé.
               </p>
             </div>
+            {!selectedProduit && (
+              <p className="text-[12px] text-danger text-center mb-3 font-medium">
+                ⚠ Sélectionnez un produit avant d'activer.
+              </p>
+            )}
             <button
               type="button"
               onClick={() => setConfirmOpen(true)}
-              disabled={mutation.isPending}
-              className="btn-primary w-full text-[14px] py-3 flex items-center justify-center gap-2"
+              disabled={!canActivate || mutation.isPending}
+              className="btn-primary w-full text-[14px] py-3 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Zap size={16} aria-hidden />
               ✓ Activer le compte et générer le code parrain
@@ -563,10 +645,12 @@ export default function OnboardingActivationPage() {
       </div>
 
       {/* Modale de confirmation */}
-      {confirmOpen && client && (
+      {confirmOpen && client && selectedProduit && (
         <ConfirmModal
           client={client}
           nextCode={nextCode}
+          produit={selectedProduit}
+          modePaiement={modePaiement}
           onConfirm={() => mutation.mutate()}
           onCancel={() => setConfirmOpen(false)}
           isLoading={mutation.isPending}
