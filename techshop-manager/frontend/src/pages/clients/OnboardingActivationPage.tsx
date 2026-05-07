@@ -402,7 +402,7 @@ export default function OnboardingActivationPage() {
   const missingSteps = stepsOk.filter(s => !s.done);
   const allComplete  = missingSteps.length === 0;
 
-  const totalPaye = (recit?.montant ?? 0) + (fiche?.montant ?? 0);
+  const totalPaye = Number(recit?.montant ?? 0) + Number(fiche?.montant ?? 0);
 
   const firstMissingRoute: Record<string, string> = {
     RECIT: '/clients/new/recit',
@@ -531,7 +531,7 @@ export default function OnboardingActivationPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-[13px] font-bold font-mono text-text">
-                    {etape?.montant ? formatCDF(etape.montant) : '—'}
+                    {etape?.montant ? formatCDF(Number(etape.montant)) : '—'}
                   </p>
                   {etape?.completeeAt && (
                     <p className="text-[10px] text-text-muted">
