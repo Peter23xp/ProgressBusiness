@@ -32,22 +32,22 @@ const BORDER = '#444444';
 const DOT_BORDER = '#999999';
 const LOGO_URL = '/assets/Progress business logo.png';
 
-// A4 = 595×842pt — watermark centered
-const WM = 280;
-const WM_LEFT = (595 - WM) / 2;  // 157.5
-const WM_TOP  = (842 - WM) / 2;  // 281
+// A4 = 595×842pt — watermark centré sur la page entière
+const WM = 300;
+const WM_LEFT = (595 - WM) / 2;
+const WM_TOP  = (842 - WM) / 2;
 
 const styles = StyleSheet.create({
   page: {
     fontFamily: 'Helvetica',
-    fontSize: 7.5,
-    paddingTop: 14,
-    paddingBottom: 14,
-    paddingLeft: 20,
-    paddingRight: 20,
+    fontSize: 9,
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingLeft: 22,
+    paddingRight: 22,
     color: '#111111',
     backgroundColor: '#FFFFFF',
-    lineHeight: 1.15,
+    lineHeight: 1.2,
   },
 
   watermark: {
@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     left: WM_LEFT,
     width: WM,
     height: WM,
-    opacity: 0.06,
+    opacity: 0.07,
   },
 
   // ── Header ────────────────────────────────────────────────
@@ -64,33 +64,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 5,
+    marginBottom: 6,
   },
   logo: {
-    width: 55,
-    height: 55,
+    width: 62,
+    height: 62,
   },
   companyBlock: {
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
   },
   companyName: {
-    fontSize: 13,
+    fontSize: 16,
     fontFamily: 'Helvetica-Bold',
     color: BLUE,
-    letterSpacing: 1.5,
+    letterSpacing: 2,
     textTransform: 'uppercase',
   },
   companyNameAccent: {
     color: RED,
   },
   companyMeta: {
-    fontSize: 6,
+    fontSize: 7.5,
     color: '#333333',
     textAlign: 'center',
-    marginTop: 2,
-    lineHeight: 1.4,
+    marginTop: 3,
+    lineHeight: 1.5,
   },
 
   // ── Title ─────────────────────────────────────────────────
@@ -99,21 +99,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 6,
-    marginBottom: 6,
-    borderTop: '1.5pt solid ' + BLUE,
-    borderBottom: '1.5pt solid ' + BLUE,
-    paddingTop: 3,
-    paddingBottom: 3,
+    marginBottom: 7,
+    borderTop: '2pt solid ' + BLUE,
+    borderBottom: '2pt solid ' + BLUE,
+    paddingTop: 4,
+    paddingBottom: 4,
   },
   titleText: {
-    fontSize: 11,
+    fontSize: 13,
     fontFamily: 'Helvetica-Bold',
     color: BLUE,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   ficheNumLabel: {
-    fontSize: 9,
+    fontSize: 11,
     fontFamily: 'Helvetica-Bold',
     color: '#111111',
   },
@@ -121,18 +121,18 @@ const styles = StyleSheet.create({
   // ── Info fields ───────────────────────────────────────────
   infoRow: {
     flexDirection: 'row',
-    marginBottom: 4,
+    marginBottom: 5,
     alignItems: 'flex-end',
   },
   infoLabel: {
-    fontSize: 7.5,
+    fontSize: 9,
     fontFamily: 'Helvetica-Bold',
     color: '#111111',
     flexShrink: 0,
   },
   infoUnderline: {
     flex: 1,
-    fontSize: 7.5,
+    fontSize: 9,
     color: '#111111',
     borderBottom: '0.75pt dotted ' + DOT_BORDER,
     paddingBottom: 1,
@@ -143,37 +143,37 @@ const styles = StyleSheet.create({
   dateSignRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 5,
-    marginBottom: 6,
+    marginTop: 6,
+    marginBottom: 8,
   },
   dateSignBlock: {
     alignItems: 'flex-end',
   },
   dateSignText: {
-    fontSize: 7,
+    fontSize: 8.5,
     color: '#111111',
     textAlign: 'right',
   },
   signatureLabelSmall: {
-    fontSize: 7,
+    fontSize: 8.5,
     color: '#111111',
     marginTop: 2,
     textAlign: 'right',
   },
   signatureLine: {
     borderBottom: '0.5pt solid ' + BORDER,
-    width: 130,
-    marginTop: 16,
+    width: 150,
+    marginTop: 20,
   },
 
   // ── Table ─────────────────────────────────────────────────
   tableLabel: {
-    fontSize: 8.5,
+    fontSize: 11,
     fontFamily: 'Helvetica-Bold',
     color: '#111111',
     textTransform: 'uppercase',
-    letterSpacing: 0.3,
-    marginBottom: 2,
+    letterSpacing: 0.5,
+    marginBottom: 3,
   },
 
   // ── Satisfaction ──────────────────────────────────────────
@@ -184,25 +184,25 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   satCheckbox: {
-    width: 10,
-    height: 10,
+    width: 12,
+    height: 12,
     border: '1pt solid ' + BORDER,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
     marginTop: 1,
-    marginRight: 4,
+    marginRight: 5,
   },
   satCheckMark: {
-    fontSize: 8,
+    fontSize: 9,
     color: RED,
     fontFamily: 'Helvetica-Bold',
   },
   satText: {
-    fontSize: 7.5,
+    fontSize: 9,
     color: RED,
     flex: 1,
-    lineHeight: 1.35,
+    lineHeight: 1.4,
   },
   satBold: {
     fontFamily: 'Helvetica-Bold',
@@ -211,43 +211,45 @@ const styles = StyleSheet.create({
 
   // ── Footer ────────────────────────────────────────────────
   footerDateText: {
-    fontSize: 7,
+    fontSize: 8.5,
     color: '#111111',
     textAlign: 'center',
-    marginBottom: 3,
+    marginBottom: 4,
   },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    marginTop: 3,
+    marginTop: 4,
   },
   footerSigBlock: {
     alignItems: 'center',
-    width: 130,
+    width: 150,
   },
   footerSigLine: {
     borderBottom: '0.5pt solid ' + BORDER,
-    width: 130,
-    marginTop: 18,
-    marginBottom: 2,
+    width: 150,
+    marginTop: 24,
+    marginBottom: 3,
   },
   footerSigLabel: {
-    fontSize: 7,
+    fontSize: 8.5,
     color: '#111111',
     textAlign: 'center',
   },
 });
 
-// Column widths — 555pt usable (595-40)
+// Colonnes : total doit = 595 - 22 - 22 - 7×(border 0.75) = 551 - 5.25 ≈ 546pt
+// On vise 546pt total pour remplir exactement la largeur utile
 const C = {
-  num:     22,
-  date:    58,
-  prix:    58,
-  points:  48,
-  agent:   86,
-  produit: 86,
-  sig:     56,
+  num:     28,   // N°
+  date:    76,   // Date
+  prix:    70,   // PRIX
+  points:  56,   // Point cumulés
+  agent:   105,  // Nom agent
+  produit: 105,  // Produit
+  sig:     106,  // Signature agent
+  // total : 546pt ✓
 };
 
 function formatCDF(amount: number): string {
@@ -263,11 +265,11 @@ function cell(
     width,
     borderRight: '0.75pt solid ' + BORDER,
     borderBottom: '0.75pt solid ' + BORDER,
-    paddingTop: 2,
-    paddingBottom: 2,
+    paddingTop: 3,
+    paddingBottom: 3,
     paddingLeft: 3,
     paddingRight: 3,
-    fontSize: isHeader ? 6.5 : 7,
+    fontSize: isHeader ? 8 : 8.5,
     fontFamily: isHeader ? ('Helvetica-Bold' as const) : ('Helvetica' as const),
     color: isHeader ? '#FFFFFF' : '#111111',
     textAlign: align,
@@ -280,7 +282,7 @@ export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
     <Document>
       <Page size="A4" style={styles.page}>
 
-        {/* ── Watermark — painted first, stays behind all content ── */}
+        {/* ── Watermark — peint en premier, derrière tout ── */}
         <Image src={LOGO_URL} style={styles.watermark} />
 
         {/* ── Header ───────────────────────────────────────────────── */}
@@ -312,18 +314,18 @@ export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
 
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Invité par : </Text>
-          <Text style={[styles.infoUnderline, { maxWidth: 110 }]}>{data.parrainNom ?? ''}</Text>
-          <Text style={[styles.infoLabel, { marginLeft: 7 }]}>N° : </Text>
-          <Text style={[styles.infoUnderline, { maxWidth: 55 }]}>{data.parrainCode ?? ''}</Text>
-          <Text style={[styles.infoLabel, { marginLeft: 7 }]}>ou ID : </Text>
-          <Text style={[styles.infoUnderline, { maxWidth: 55 }]}>{''}</Text>
+          <Text style={[styles.infoUnderline, { maxWidth: 120 }]}>{data.parrainNom ?? ''}</Text>
+          <Text style={[styles.infoLabel, { marginLeft: 8 }]}>N° : </Text>
+          <Text style={[styles.infoUnderline, { maxWidth: 60 }]}>{data.parrainCode ?? ''}</Text>
+          <Text style={[styles.infoLabel, { marginLeft: 8 }]}>ou ID : </Text>
+          <Text style={[styles.infoUnderline, { maxWidth: 60 }]}>{''}</Text>
         </View>
 
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Adresse : </Text>
-          <Text style={[styles.infoUnderline, { maxWidth: 190 }]}>{data.adresse ?? ''}</Text>
-          <Text style={[styles.infoLabel, { marginLeft: 9 }]}>Ville </Text>
-          <Text style={[styles.infoUnderline, { maxWidth: 75 }]}>{data.ville}</Text>
+          <Text style={[styles.infoUnderline, { maxWidth: 200 }]}>{data.adresse ?? ''}</Text>
+          <Text style={[styles.infoLabel, { marginLeft: 10 }]}>Ville </Text>
+          <Text style={[styles.infoUnderline, { maxWidth: 85 }]}>{data.ville}</Text>
         </View>
 
         <View style={styles.infoRow}>
@@ -350,7 +352,7 @@ export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
         {/* ── COTATIONS DU MEMBRE ──────────────────────────────────── */}
         <Text style={styles.tableLabel}>COTATIONS DU MEMBRE</Text>
 
-        {/* Header row */}
+        {/* En-tête table */}
         <View style={{
           flexDirection: 'row',
           backgroundColor: BLUE,
