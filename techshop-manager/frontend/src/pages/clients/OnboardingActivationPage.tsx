@@ -340,11 +340,17 @@ export default function OnboardingActivationPage() {
     },
     onError: (error: any) => {
       setConfirmOpen(false);
+      const status = error?.response?.status;
       const code = error?.response?.data?.code;
+      const msg = error?.response?.data?.message;
       if (code === 'ERR_CONFLICT' || code === 'ERR_ALREADY_ACTIVE') {
         toast.error('Ce client est déjà activé.');
       } else if (code === 'ERR_STOCK_INSUFFISANT') {
-        toast.error(error?.response?.data?.message ?? 'Stock insuffisant pour ce produit.');
+        toast.error(msg ?? 'Stock insuffisant pour ce produit.');
+      } else if (status === 400) {
+        // Validation error — affiche le détail pour faciliter le debug
+        const detail = Array.isArray(msg) ? msg.join(', ') : (msg ?? 'Données invalides.');
+        toast.error(`Erreur de validation : ${detail}`);
       } else {
         toast.error(getErrorMessage(error) || "Erreur lors de l'activation.");
       }

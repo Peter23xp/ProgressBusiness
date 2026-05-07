@@ -125,8 +125,12 @@ export interface Produit {
   description?: string;
   categorie: string;
   prixVente: number;
-  prixAchat: number;
-  actif: boolean;
+  prixAchat?: number;
+  actif?: boolean;
+  // champs supplémentaires retournés par /produits/search
+  stockDisponible?: number;
+  seuilAlerte?: number;
+  statut?: string;
 }
 
 export interface StockSite {
