@@ -168,7 +168,7 @@ export default function LoginPage() {
           {/* Logo */}
           <div>
             <div className="flex items-center gap-3 mb-16">
-              <img src="/assets/Progress business logo.png" alt="Progress Business" className="h-12 w-12 rounded-xl object-contain flex-shrink-0" />
+              <img src="/assets/Progress business logo.png" alt="Progress Business" className="h-16 w-16 rounded-xl object-contain flex-shrink-0" />
               <div>
                 <p className="text-[9px] font-bold tracking-[0.25em] text-white/30 uppercase">Progress Business</p>
                 <p className="text-[15px] font-black text-white tracking-tight leading-none">MANAGER</p>
@@ -214,7 +214,7 @@ export default function LoginPage() {
 
           {/* Logo mobile */}
           <div className="lg:hidden flex items-center gap-3 mb-10 self-start">
-            <img src="/assets/Progress business logo.png" alt="Progress Business" className="h-10 w-10 rounded-xl object-contain flex-shrink-0" />
+            <img src="/assets/Progress business logo.png" alt="Progress Business" className="h-14 w-14 rounded-xl object-contain flex-shrink-0" />
             <p className="text-[14px] font-black text-white tracking-tight">PROGRESS BUSINESS</p>
           </div>
 
