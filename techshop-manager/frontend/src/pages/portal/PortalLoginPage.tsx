@@ -132,12 +132,7 @@ export default function PortalLoginPage() {
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div
-            className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center"
-            style={{ background: '#1E3A5F' }}
-          >
-            <span className="text-white font-bold text-2xl">TS</span>
-          </div>
+          <img src="/assets/Progress business logo.png" alt="Progress Business" className="w-16 h-16 rounded-2xl mx-auto mb-4 object-contain" />
           <h1 className="text-xl font-bold text-[#1E3A5F]">Progress Business</h1>
           <p className="text-sm text-neutral-500 mt-1">Espace Client — Connectez-vous</p>
         </div>

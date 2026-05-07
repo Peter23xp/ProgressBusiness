@@ -106,11 +106,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
     <aside className="sidebar flex flex-col shadow-sidebar">
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5" style={{ borderBottom: '1px solid #1e2d4a' }}>
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg flex-shrink-0"
-             style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}
-             aria-hidden>
-          <Zap size={15} className="text-white" />
-        </div>
+        <img src="/assets/Progress business logo.png" alt="Progress Business" className="h-9 w-9 rounded-md object-contain flex-shrink-0" />
         <div className="flex flex-col leading-none">
           <span className="text-[13px] font-bold tracking-tight" style={{ color: '#e8edf5' }}>Progress Business</span>
           <span className="text-[10px] font-medium" style={{ color: '#3d5478' }}>Manager v1.0</span>

@@ -168,13 +168,7 @@ export default function LoginPage() {
           {/* Logo */}
           <div>
             <div className="flex items-center gap-3 mb-16">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary-accent shadow-kpi-blue">
-                <svg width="20" height="20" viewBox="0 0 22 22" fill="none" aria-hidden>
-                  <path d="M3 5h16M11 5v12" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-                  <circle cx="17" cy="17" r="3.2" fill="white" fillOpacity="0.9" />
-                  <path d="M15.8 17l.9.9 1.7-1.7" stroke="#2563eb" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
+              <img src="/assets/Progress business logo.png" alt="Progress Business" className="h-12 w-12 rounded-xl object-contain flex-shrink-0" />
               <div>
                 <p className="text-[9px] font-bold tracking-[0.25em] text-white/30 uppercase">Progress Business</p>
                 <p className="text-[15px] font-black text-white tracking-tight leading-none">MANAGER</p>
@@ -220,13 +214,7 @@ export default function LoginPage() {
 
           {/* Logo mobile */}
           <div className="lg:hidden flex items-center gap-3 mb-10 self-start">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-accent shadow-kpi-blue">
-              <svg width="18" height="18" viewBox="0 0 22 22" fill="none" aria-hidden>
-                <path d="M3 5h16M11 5v12" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-                <circle cx="17" cy="17" r="3.2" fill="white" fillOpacity="0.9" />
-                <path d="M15.8 17l.9.9 1.7-1.7" stroke="#2563eb" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
+            <img src="/assets/Progress business logo.png" alt="Progress Business" className="h-10 w-10 rounded-xl object-contain flex-shrink-0" />
             <p className="text-[14px] font-black text-white tracking-tight">PROGRESS BUSINESS</p>
           </div>
 
