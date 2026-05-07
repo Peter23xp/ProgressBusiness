@@ -238,6 +238,19 @@ export class ClientsService {
       }
     }
 
+    // Vérifier doublon email si fourni
+    if (dto.email) {
+      const existingEmail = await this.prisma.client.findUnique({
+        where: { email: dto.email },
+      });
+      if (existingEmail) {
+        throw new ConflictException({
+          code: 'ERR_CONFLICT',
+          message: 'Un client avec cet email existe déjà',
+        });
+      }
+    }
+
     // Résoudre le parrain par code
     let parrainId: string | undefined;
     if (dto.codeParrain) {
