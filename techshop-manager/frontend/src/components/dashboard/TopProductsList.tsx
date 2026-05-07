@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { formatCDF } from '@/lib/utils';
+import { formatUSD } from '@/lib/utils';
 import type { TopProduct } from '@/hooks/useRegionalDashboard';
 
 interface TopProductsListProps {
@@ -67,7 +67,7 @@ export function TopProductsList({ data, isLoading }: TopProductsListProps) {
                 </div>
                 <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
                   <span className="text-[12px] font-bold text-text font-mono">{product.quantiteVendue} u.</span>
-                  <span className="text-[11px] text-success font-mono">{formatCDF(product.caGenere)}</span>
+                  <span className="text-[11px] text-success font-mono">{formatUSD(product.caGenere)}</span>
                 </div>
               </button>
             </li>

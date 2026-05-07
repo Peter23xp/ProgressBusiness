@@ -6,7 +6,7 @@ import { useSalesDetailReport } from '@/hooks/useSalesDetailReport';
 import { PeriodSelector } from '@/components/reports/PeriodSelector';
 import { DateRangePicker } from '@/components/reports/DateRangePicker';
 import { getDateRangeFromPreset, type PeriodPreset, type DateRange, toISODate } from '@/lib/dateRange.utils';
-import { formatCDF, formatDateTime, cn } from '@/lib/utils';
+import { formatUSD, formatDateTime, cn } from '@/lib/utils';
 import { Pagination } from '@/components/ui/Pagination';
 import type { VentesDetailParams, AgentPerformance } from '@/lib/reports.api';
 
@@ -244,14 +244,14 @@ function SalesDetailTable({
                   <td className="px-3 py-2.5 text-xs text-text-muted">{v.agent?.nom ?? '—'}</td>
                   <td className="px-3 py-2.5 text-xs text-text-muted">{v.site?.nom ?? '—'}</td>
                   <td className="px-3 py-2.5 font-mono text-xs font-bold text-primary">
-                    {formatCDF(Number(v.montantNet ?? 0))}
+                    {formatUSD(Number(v.montantNet ?? 0))}
                   </td>
                   <td className="px-3 py-2.5 text-xs">
                     <span className="badge badge-info">{v.modePaiement}</span>
                   </td>
                   <td className="px-3 py-2.5 text-xs">
                     {remise > 0
-                      ? <span className="font-semibold text-danger">-{formatCDF(remise)}</span>
+                      ? <span className="font-semibold text-danger">-{formatUSD(remise)}</span>
                       : <span className="text-text-muted">—</span>}
                   </td>
                   <td className="px-3 py-2.5 text-xs">
@@ -335,17 +335,17 @@ function AgentPerformanceTable({ data, isLoading, onAgentClick }: {
                 <td className="px-4 py-2.5 font-semibold text-primary">{a.agentNom}</td>
                 <td className="px-4 py-2.5 text-text-muted text-xs">{a.siteNom}</td>
                 <td className="px-4 py-2.5 tabular-nums">{a.nbVentes}</td>
-                <td className="px-4 py-2.5 font-bold text-success tabular-nums">{formatCDF(a.caTotal)}</td>
-                <td className="px-4 py-2.5 text-text-muted tabular-nums">{formatCDF(a.caMoyen)}</td>
-                <td className="px-4 py-2.5 tabular-nums text-danger">{a.remisesAccordees > 0 ? formatCDF(a.remisesAccordees) : '—'}</td>
+                <td className="px-4 py-2.5 font-bold text-success tabular-nums">{formatUSD(a.caTotal)}</td>
+                <td className="px-4 py-2.5 text-text-muted tabular-nums">{formatUSD(a.caMoyen)}</td>
+                <td className="px-4 py-2.5 tabular-nums text-danger">{a.remisesAccordees > 0 ? formatUSD(a.remisesAccordees) : '—'}</td>
               </tr>
             ))}
             <tr className="border-t-2 border-primary/30 bg-slate-50">
               <td className="px-4 py-2.5 font-bold text-primary" colSpan={2}>TOTAL</td>
               <td className="px-4 py-2.5 font-bold tabular-nums">{totals.nbVentes}</td>
-              <td className="px-4 py-2.5 font-bold text-success tabular-nums">{formatCDF(totals.caTotal)}</td>
+              <td className="px-4 py-2.5 font-bold text-success tabular-nums">{formatUSD(totals.caTotal)}</td>
               <td className="px-4 py-2.5 text-text-muted">—</td>
-              <td className="px-4 py-2.5 font-bold text-danger tabular-nums">{totals.remisesAccordees > 0 ? formatCDF(totals.remisesAccordees) : '—'}</td>
+              <td className="px-4 py-2.5 font-bold text-danger tabular-nums">{totals.remisesAccordees > 0 ? formatUSD(totals.remisesAccordees) : '—'}</td>
             </tr>
           </tbody>
         </table>
@@ -429,10 +429,10 @@ export default function RapportVentesPage() {
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="CA Total" value={formatCDF(resume.totalCA)} trend={resume.trends?.ca} icon={<TrendingUp size={16} />} isLoading={isLoading} />
+        <StatCard label="CA Total" value={formatUSD(resume.totalCA)} trend={resume.trends?.ca} icon={<TrendingUp size={16} />} isLoading={isLoading} />
         <StatCard label="Nb ventes" value={String(resume.nbVentes)} trend={resume.trends?.ventes} icon={<ShoppingCart size={16} />} isLoading={isLoading} />
-        <StatCard label="Remises accordées" value={formatCDF(resume.remisesAccordees)} icon={<Percent size={16} />} isLoading={isLoading} />
-        <StatCard label="Ticket moyen" value={formatCDF(resume.ticketMoyen)} icon={<Receipt size={16} />} isLoading={isLoading} />
+        <StatCard label="Remises accordées" value={formatUSD(resume.remisesAccordees)} icon={<Percent size={16} />} isLoading={isLoading} />
+        <StatCard label="Ticket moyen" value={formatUSD(resume.ticketMoyen)} icon={<Receipt size={16} />} isLoading={isLoading} />
       </div>
 
       {/* Tableau ventes */}

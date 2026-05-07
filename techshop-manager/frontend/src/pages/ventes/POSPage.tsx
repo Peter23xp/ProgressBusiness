@@ -26,7 +26,7 @@ import { ventesApi } from '@/lib/ventes.api';
 import { stocksApi } from '@/lib/stocks.api';
 import { clientsApi } from '@/lib/clients.api';
 import { savePendingVente } from '@/lib/offline';
-import { cn, formatCDF } from '@/lib/utils';
+import { cn, formatUSD } from '@/lib/utils';
 import type { CartClient } from '@/store/cart.store';
 import type { ProduitPOS } from '@/lib/ventes.api';
 import type { ClientSearchResult } from '@/lib/clients.api';
@@ -90,7 +90,7 @@ function ProduitCard({ produit, onAdd }: { produit: ProduitPOS; onAdd: (p: Produ
         <StockBadge statut={produit.statut} stock={produit.stockDisponible} />
       </div>
       <p className="text-[11px] text-text-muted font-mono">{produit.sku}</p>
-      <p className="text-[13px] font-bold text-primary-accent">{formatCDF(produit.prixVente)}</p>
+      <p className="text-[13px] font-bold text-primary-accent">{formatUSD(produit.prixVente)}</p>
       <button
         type="button"
         onClick={() => onAdd(produit)}
@@ -202,7 +202,7 @@ function SuccessModal({ result, onPrint, onNewSale }: {
         </div>
         <div className="w-full rounded-xl bg-bg border border-border px-4 py-3 text-center">
           <p className="text-[12px] text-text-muted uppercase tracking-wide font-semibold">Montant total</p>
-          <p className="text-[22px] font-bold text-primary mt-0.5">{formatCDF(result.montantNet)}</p>
+          <p className="text-[22px] font-bold text-primary mt-0.5">{formatUSD(result.montantNet)}</p>
           {result.pointsAttribues && result.pointsAttribues > 0 && (
             <p className="mt-1 text-[12px] font-semibold text-primary-accent">+{result.pointsAttribues} points fidélité</p>
           )}
@@ -493,7 +493,7 @@ export default function POSPage() {
                 <div key={item.produitId} className="flex items-center gap-2 rounded-lg border border-border bg-bg p-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-[12px] font-semibold text-text truncate">{item.nom}</p>
-                    <p className="text-[11px] text-text-muted">{formatCDF(item.prixUnitaire)}</p>
+                    <p className="text-[11px] text-text-muted">{formatUSD(item.prixUnitaire)}</p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button type="button" onClick={() => updateQuantite(item.produitId, -1)}
@@ -508,7 +508,7 @@ export default function POSPage() {
                     </button>
                   </div>
                   <p className="w-20 text-right text-[12px] font-bold text-text flex-shrink-0">
-                    {formatCDF(item.prixUnitaire * item.quantite)}
+                    {formatUSD(item.prixUnitaire * item.quantite)}
                   </p>
                   <button type="button" onClick={() => removeItem(item.produitId)}
                     className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-text-subtle hover:text-danger transition-colors">
@@ -563,17 +563,17 @@ export default function POSPage() {
             <div className="rounded-xl border border-border bg-bg p-3 flex flex-col gap-1.5 mb-3">
               <div className="flex justify-between text-[12px] text-text-muted">
                 <span>Sous-total</span>
-                <span className="font-mono">{formatCDF(brutVal)}</span>
+                <span className="font-mono">{formatUSD(brutVal)}</span>
               </div>
               {remiseVal > 0 && (
                 <div className="flex justify-between text-[12px] text-success">
                   <span>Remise fidélité</span>
-                  <span className="font-mono">−{formatCDF(remiseVal)}</span>
+                  <span className="font-mono">−{formatUSD(remiseVal)}</span>
                 </div>
               )}
               <div className="flex justify-between text-[14px] font-bold text-primary border-t border-border pt-1.5">
                 <span>Total</span>
-                <span className="font-mono">{formatCDF(netVal)}</span>
+                <span className="font-mono">{formatUSD(netVal)}</span>
               </div>
             </div>
           )}
@@ -594,7 +594,7 @@ export default function POSPage() {
 
           {modePaiement === 'CASH' && (
             <div className="flex flex-col gap-1.5 mb-3">
-              <label className="form-label">Montant reçu (CDF)</label>
+              <label className="form-label">Montant reçu ($)</label>
               <input
                 type="number" min={0} step={500}
                 placeholder={String(netVal)}
@@ -603,7 +603,7 @@ export default function POSPage() {
                 className="text-sm font-mono"
               />
               {monnaieVal > 0 && (
-                <p className="text-[12px] font-semibold text-success">Monnaie à rendre : {formatCDF(monnaieVal)}</p>
+                <p className="text-[12px] font-semibold text-success">Monnaie à rendre : {formatUSD(monnaieVal)}</p>
               )}
             </div>
           )}
@@ -617,7 +617,7 @@ export default function POSPage() {
           {isSubmitting ? (
             <><Loader2 size={15} className="animate-spin" />Enregistrement…</>
           ) : (
-            <><CheckCircle2 size={15} />Valider — {formatCDF(netVal)}</>
+            <><CheckCircle2 size={15} />Valider — {formatUSD(netVal)}</>
           )}
         </button>
         {items.length === 0 && (

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api, getErrorMessage } from '@/lib/api';
-import { cn, formatCDF, formatDateTime } from '@/lib/utils';
+import { cn, formatUSD, formatDateTime } from '@/lib/utils';
 import type { StatutVente, ModePaiement, NiveauFidelite } from '@/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -105,7 +105,7 @@ function ConfirmModal({
         </div>
         <div className="rounded-xl bg-red-50 border border-red-200 p-4 space-y-1 text-sm">
           <p className="font-semibold text-danger">
-            Retourner {nbArticles} article{nbArticles > 1 ? 's' : ''} pour {formatCDF(montant)}
+            Retourner {nbArticles} article{nbArticles > 1 ? 's' : ''} pour {formatUSD(montant)}
           </p>
           <p className="text-text-muted">Un avoir commercial numéroté sera généré automatiquement.</p>
         </div>
@@ -141,7 +141,7 @@ function AvoirSuccessPanel({ avoir, venteId }: { avoir: AvoirCreated; venteId: s
             Avoir commercial émis : <span className="font-mono font-semibold text-text">{avoir.numeroAvoir}</span>
           </p>
           <p className="text-[13px] text-text-muted">
-            Remboursement de <span className="font-semibold text-text">{formatCDF(avoir.montantRembourse)}</span> par{' '}
+            Remboursement de <span className="font-semibold text-text">{formatUSD(avoir.montantRembourse)}</span> par{' '}
             {MODE_REMBOURSEMENT_LABELS[avoir.modeRemboursement as ReturnMode] ?? avoir.modeRemboursement}
           </p>
         </div>
@@ -410,7 +410,7 @@ export default function RetoursPage() {
                         )}
                       </div>
                       <p className="text-xs text-text-muted mt-0.5">
-                        Vendu : {ligne.quantite} × {formatCDF(ligne.prixUnitaire)}
+                        Vendu : {ligne.quantite} × {formatUSD(ligne.prixUnitaire)}
                         {qtyMax < ligne.quantite && (
                           <span className="ml-1 text-primary-accent font-medium">
                             · Retournable : {qtyMax}
@@ -486,7 +486,7 @@ export default function RetoursPage() {
                   <input type="radio" name="returnMode" value="CASH" checked={returnMode === 'CASH'} onChange={() => setReturnMode('CASH')} className="mt-1 accent-primary-accent" />
                   <div>
                     <p className="font-medium text-text text-sm">Espèces</p>
-                    {returnMode === 'CASH' && <p className="text-sm text-success font-semibold mt-1">Montant à remettre : {formatCDF(montantARembourser)}</p>}
+                    {returnMode === 'CASH' && <p className="text-sm text-success font-semibold mt-1">Montant à remettre : {formatUSD(montantARembourser)}</p>}
                   </div>
                 </label>
 
@@ -550,7 +550,7 @@ export default function RetoursPage() {
                     return (
                       <div key={produitId} className="flex justify-between text-text">
                         <span>{ligne.produit.nom} × {qty}</span>
-                        <span>{formatCDF(ligne.prixUnitaire * qty)}</span>
+                        <span>{formatUSD(ligne.prixUnitaire * qty)}</span>
                       </div>
                     );
                   })}
@@ -558,7 +558,7 @@ export default function RetoursPage() {
                 <div className="border-t border-border pt-2 space-y-1">
                   <div className="flex justify-between font-semibold text-text">
                     <span>Montant à rembourser</span>
-                    <span className="text-danger">{formatCDF(montantARembourser)}</span>
+                    <span className="text-danger">{formatUSD(montantARembourser)}</span>
                   </div>
                   {vente.client && pointsADeduire > 0 && (
                     <div className="flex justify-between text-text-muted">
@@ -588,7 +588,7 @@ export default function RetoursPage() {
                 className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-danger text-white font-bold text-sm transition-colors hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {mutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <RotateCcw size={18} />}
-                VALIDER LE RETOUR ({formatCDF(montantARembourser)})
+                VALIDER LE RETOUR ({formatUSD(montantARembourser)})
               </button>
             </div>
           )}

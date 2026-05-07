@@ -12,7 +12,7 @@ import {
   MemoryStick, Zap,
 } from 'lucide-react';
 import { configApi, type AppConfig, type UpdateConfigPayload, type SystemStats } from '@/lib/settings.api';
-import { cn, formatCDF } from '@/lib/utils';
+import { cn, formatUSD } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/api';
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ function SystemeSection({ stats, loadingStats, refetchStats }: {
           <MiniStat icon={Users}       label="Agents actifs"    value={stats.utilisateurs.actifs}        sub={`${stats.utilisateurs.inactifs} inactifs`} color="bg-indigo-100 text-indigo-700" />
           <MiniStat icon={Building2}   label="Sites actifs"     value={stats.sites.actifs}               sub={`${stats.sites.total} total`}          color="bg-violet-100 text-violet-700" />
           <MiniStat icon={Package}     label="Produits"         value={stats.stocks.totalProduits}       sub={`${stats.stocks.alertes} alertes`}     color="bg-amber-100 text-amber-700" />
-          <MiniStat icon={ShoppingCart} label="Ventes aujourd'hui" value={stats.ventes.aujourdhui.count}  sub={formatCDF(stats.ventes.aujourdhui.montant)} color="bg-green-100 text-green-700" />
+          <MiniStat icon={ShoppingCart} label="Ventes aujourd'hui" value={stats.ventes.aujourdhui.count}  sub={formatUSD(stats.ventes.aujourdhui.montant)} color="bg-green-100 text-green-700" />
           <MiniStat icon={GitBranch}   label="Parrainages"      value={stats.parrainage.total}           sub={`${stats.ventes.mois.count} ventes/mois`} color="bg-rose-100 text-rose-700" />
         </div>
 
@@ -198,7 +198,7 @@ function SystemeSection({ stats, loadingStats, refetchStats }: {
             { label: 'Base de données',  value: 'PostgreSQL + Prisma ORM',                    icon: Database },
             { label: 'API endpoint',     value: import.meta.env.VITE_API_URL ?? '/api/v1',    icon: Server },
             { label: 'Auth',             value: 'JWT Bearer + httpOnly Cookie',               icon: Lock },
-            { label: 'Ventes ce mois',   value: `${stats.ventes.mois.count} ventes — ${formatCDF(stats.ventes.mois.montant)}`, icon: ShoppingCart },
+            { label: 'Ventes ce mois',   value: `${stats.ventes.mois.count} ventes — ${formatUSD(stats.ventes.mois.montant)}`, icon: ShoppingCart },
           ].map(({ label, value, icon: Icon }) => (
             <div key={label} className="flex items-center justify-between px-4 py-3 bg-white">
               <div className="flex items-center gap-2 text-[12px] text-text-muted">
@@ -484,15 +484,15 @@ function FideliteSection({ config, onSaved }: { config: AppConfig; onSaved: (msg
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="form-group">
               <label className="form-label" htmlFor="fid-ratio">
-                Ratio points / CDF
+                Ratio points / $
               </label>
               <div className="relative">
                 <input id="fid-ratio" type="number" min={100} step={100}
                   {...register('ratioPtsCDF', { valueAsNumber: true })} className="pr-16" />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-subtle font-semibold">CDF/pt</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-subtle font-semibold">$/pt</span>
               </div>
               <p className="text-[11px] text-text-subtle mt-1">
-                1 pt pour chaque {watch('ratioPtsCDF')} CDF dépensés
+                1 pt pour chaque ${watch('ratioPtsCDF')} dépensés
               </p>
               {errors.ratioPtsCDF && <p className="form-error">{errors.ratioPtsCDF.message}</p>}
             </div>

@@ -8,9 +8,9 @@ import { formatCDF, cn } from '@/lib/utils';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function abbreviateCDF(amount: number): string {
-  if (amount >= 1_000_000) return (amount / 1_000_000).toFixed(1) + ' M CDF';
-  if (amount >= 1_000) return Math.round(amount / 1_000) + ' k CDF';
-  return amount + ' CDF';
+  if (amount >= 1_000_000) return (amount / 1_000_000).toFixed(1) + ' M $';
+  if (amount >= 1_000) return Math.round(amount / 1_000) + ' k $';
+  return '$' + amount;
 }
 
 // ── Stat card stocks ──────────────────────────────────────────────────────────

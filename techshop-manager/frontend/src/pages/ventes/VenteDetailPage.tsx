@@ -13,7 +13,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api, getErrorMessage } from '@/lib/api';
-import { cn, formatCDF, formatDateTime } from '@/lib/utils';
+import { cn, formatUSD, formatDateTime } from '@/lib/utils';
 import { SaleStatusBadge } from '@/components/sales/SaleStatusBadge';
 import type { StatutVente, ModePaiement, NiveauFidelite } from '@/types';
 
@@ -277,7 +277,7 @@ export default function VenteDetailPage() {
             {vente.modePaiement === 'CASH' && vente.montantRecu != null && (
               <div className="flex justify-between">
                 <span className="text-text-muted">Montant reçu</span>
-                <span className="text-text">{formatCDF(vente.montantRecu)}</span>
+                <span className="text-text">{formatUSD(vente.montantRecu)}</span>
               </div>
             )}
             {vente.modePaiement === 'CASH' &&
@@ -286,7 +286,7 @@ export default function VenteDetailPage() {
                 <div className="flex justify-between">
                   <span className="text-text-muted">Monnaie rendue</span>
                   <span className="text-text-accent font-semibold">
-                    {formatCDF(vente.monnaieRendue)}
+                    {formatUSD(vente.monnaieRendue)}
                   </span>
                 </div>
               )}
@@ -416,7 +416,7 @@ export default function VenteDetailPage() {
                       ligne.retournee && 'line-through',
                     )}
                   >
-                    {formatCDF(ligne.prixUnitaire)}
+                    {formatUSD(ligne.prixUnitaire)}
                   </td>
                   <td
                     className={cn(
@@ -424,7 +424,7 @@ export default function VenteDetailPage() {
                       ligne.retournee && 'line-through',
                     )}
                   >
-                    {formatCDF(ligne.sousTotal)}
+                    {formatUSD(ligne.sousTotal)}
                   </td>
                 </tr>
               ))}
@@ -436,17 +436,17 @@ export default function VenteDetailPage() {
         <div className="border-t border-border pt-4 space-y-2 text-sm">
           <div className="flex justify-between text-text-muted">
             <span>Sous-total</span>
-            <span>{formatCDF(vente.montantBrut)}</span>
+            <span>{formatUSD(vente.montantBrut)}</span>
           </div>
           {vente.remiseFidelite > 0 && (
             <div className="flex justify-between text-success">
               <span>Remise fidélité</span>
-              <span>-{formatCDF(vente.remiseFidelite)}</span>
+              <span>-{formatUSD(vente.remiseFidelite)}</span>
             </div>
           )}
           <div className="flex justify-between items-center font-bold text-lg text-text border-t border-border pt-2">
             <span>Total</span>
-            <span>{formatCDF(vente.montantNet)}</span>
+            <span>{formatUSD(vente.montantNet)}</span>
           </div>
         </div>
       </div>

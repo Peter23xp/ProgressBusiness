@@ -9,7 +9,7 @@ import {
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/auth.store';
 import { stocksApi, type CreateProduitDto } from '@/lib/stocks.api';
-import { formatCDF, cn } from '@/lib/utils';
+import { formatUSD, cn } from '@/lib/utils';
 
 // ── Types locaux ──────────────────────────────────────────────────────────────
 
@@ -477,7 +477,7 @@ export default function NouveauProduitPage() {
                     <span className={cn('font-bold font-mono', marge >= 0 ? 'text-success' : 'text-danger')}>
                       {monnaie === 'USD'
                         ? `${marge >= 0 ? '+' : ''}${marge.toFixed(2)} USD`
-                        : formatCDF(marge)}
+                        : formatUSD(marge)}
                     </span>
                     {margePct !== null && (
                       <span className="text-text-muted">({margePct}%)</span>
@@ -580,7 +580,7 @@ export default function NouveauProduitPage() {
                   <p className="text-[12px] font-semibold text-primary">
                     Vente : {monnaie === 'USD'
                       ? `${Number(prixVente).toFixed(2)} USD`
-                      : formatCDF(Number(prixVente))}
+                      : formatUSD(Number(prixVente))}
                   </p>
                 )}
               </div>

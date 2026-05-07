@@ -82,11 +82,11 @@ export function LineChart({ labels, datasets, title }: LineChartProps) {
         callbacks: {
           label: (ctx: import('chart.js').TooltipItem<'line'>) => {
             const value = typeof ctx.raw === 'number' ? ctx.raw : 0;
-            const formatted = new Intl.NumberFormat('fr-CD', {
+            const formatted = new Intl.NumberFormat('en-US', {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0,
             }).format(value);
-            return ` ${ctx.dataset.label}: ${formatted} CDF`;
+            return ` ${ctx.dataset.label}: ${formatted} $`;
           },
         },
       },
@@ -101,9 +101,9 @@ export function LineChart({ labels, datasets, title }: LineChartProps) {
         ticks: {
           font: { size: 11 },
           callback: (value: number | string) =>
-            new Intl.NumberFormat('fr-CD', { notation: 'compact' }).format(
+            new Intl.NumberFormat('en-US', { notation: 'compact' }).format(
               Number(value),
-            ) + ' CDF',
+            ) + ' $',
         },
       },
     },

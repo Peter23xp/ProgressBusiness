@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Star, TrendingUp, Users, RefreshCw, Settings, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { fideliteApi, NIVEAU_COLORS, NIVEAU_LABELS, type FideliteFilters } from '@/lib/fidelite.api';
-import { formatCDF, formatDate, cn } from '@/lib/utils';
+import { formatUSD, formatDate, cn } from '@/lib/utils';
 import { useSites } from '@/hooks/useSites';
 import type { NiveauFidelite } from '@/types';
 
@@ -155,7 +155,7 @@ export default function FideliteProgrammePage() {
               </div>
               <div>
                 <p className="font-black text-[28px] leading-none text-primary">
-                  {formatCDF(stats?.remisesAccordees ?? 0)}
+                  {formatUSD(stats?.remisesAccordees ?? 0)}
                 </p>
                 <p className="text-[11px] text-text-muted font-semibold uppercase tracking-wider mt-0.5">Remises accordées</p>
                 <DeltaBadge delta={stats?.remisesAccordeesDelta ?? 0} />

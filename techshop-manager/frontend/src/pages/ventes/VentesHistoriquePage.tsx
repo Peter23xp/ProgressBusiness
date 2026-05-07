@@ -14,7 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks/useDebounce';
 import { ventesApi } from '@/lib/ventes.api';
 import { SaleStatusBadge } from '@/components/sales/SaleStatusBadge';
-import { cn, formatCDF, formatDateTime } from '@/lib/utils';
+import { cn, formatUSD, formatDateTime } from '@/lib/utils';
 import type { ModePaiement } from '@/types';
 import type { SalesListResponse } from '@/lib/ventes.api';
 
@@ -57,7 +57,7 @@ function getPeriodeDates(p: Periode): { dateDebut: string; dateFin: string } {
 
 function exportCSV(ventes: SalesListResponse['ventes']) {
   const rows = [
-    ['N° Vente', 'Date', 'Agent', 'Client', 'Montant CDF', 'Mode Paiement', 'Statut'],
+    ['N° Vente', 'Date', 'Agent', 'Client', 'Montant ($)', 'Mode Paiement', 'Statut'],
     ...ventes.map((v) => [
       v.numeroVente,
       v.createdAt,
@@ -223,7 +223,7 @@ export default function VentesHistoriquePage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard
           label="Chiffre d'affaires"
-          value={kpis ? formatCDF(kpis.totalCA) : '—'}
+          value={kpis ? formatUSD(kpis.totalCA) : '—'}
           isLoading={isLoading}
         />
         <KpiCard
@@ -233,7 +233,7 @@ export default function VentesHistoriquePage() {
         />
         <KpiCard
           label="Panier moyen"
-          value={kpis ? formatCDF(kpis.panierMoyen) : '—'}
+          value={kpis ? formatUSD(kpis.panierMoyen) : '—'}
           isLoading={isLoading}
         />
       </div>
@@ -374,7 +374,7 @@ export default function VentesHistoriquePage() {
                       )}
                     </td>
                     <td className="text-right font-mono font-semibold text-[13px]">
-                      {formatCDF(vente.montantNet)}
+                      {formatUSD(vente.montantNet)}
                     </td>
                     <td>
                       <span className="inline-flex items-center gap-1 text-[12px]">

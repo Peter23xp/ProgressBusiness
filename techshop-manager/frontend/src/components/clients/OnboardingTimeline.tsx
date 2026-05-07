@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Clock, Circle, ArrowRight } from 'lucide-react';
-import { cn, formatCDF, formatDateTime } from '@/lib/utils';
+import { cn, formatUSD, formatDateTime } from '@/lib/utils';
 import type { OnboardingEtapeDetail } from '@/lib/clients.api';
 import type { EtapeOnboarding } from '@/types';
 
@@ -105,7 +105,7 @@ export function OnboardingTimeline({ etapes, clientId }: OnboardingTimelineProps
                 {done && step.montant != null && step.montant > 0 && (
                   <div className="text-right flex-shrink-0">
                     <span className="text-[13px] font-bold text-text font-mono">
-                      {formatCDF(step.montant)}
+                      {formatUSD(step.montant)}
                     </span>
                     {step.modePaiement && (
                       <p className="text-[10px] text-text-muted capitalize">

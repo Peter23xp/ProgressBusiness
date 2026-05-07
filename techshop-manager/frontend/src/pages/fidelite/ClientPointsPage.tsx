@@ -7,7 +7,7 @@ import {
   ShoppingCart, AlertCircle, ChevronLeft, ChevronRight, Search,
 } from 'lucide-react';
 import { fideliteApi, NIVEAU_COLORS, NIVEAU_LABELS, type TypeMouvementPoints, type PointsFilters } from '@/lib/fidelite.api';
-import { formatCDF, formatDate, cn } from '@/lib/utils';
+import { formatUSD, formatDate, cn } from '@/lib/utils';
 import type { NiveauFidelite } from '@/types';
 
 const NIVEAU_ORDER: NiveauFidelite[] = ['BRONZE', 'ARGENT', 'OR', 'PLATINE'];

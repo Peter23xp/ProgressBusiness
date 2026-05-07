@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { TrendingUp, TrendingDown } from 'lucide-react';
-import { formatCDF } from '@/lib/utils';
+import { formatUSD } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui.store';
 import type { ComparisonData } from '@/hooks/useRegionalDashboard';
@@ -71,7 +71,7 @@ export function SitesComparisonTable({ data, isLoading }: SitesComparisonTablePr
                   >
                     <td className="px-5 py-3 font-semibold text-text">{site.siteNom}</td>
                     <td className="px-5 py-3 text-right font-bold text-success font-mono">
-                      {formatCDF(site.ca)}
+                      {formatUSD(site.ca)}
                     </td>
                     <td className="px-5 py-3 text-right">
                       {site.caVariation !== 0 ? (
@@ -107,7 +107,7 @@ export function SitesComparisonTable({ data, isLoading }: SitesComparisonTablePr
                   <tr className="font-bold border-t border-border bg-slate-50">
                     <td className="px-5 py-3 text-text uppercase text-[12px] tracking-wide">TOTAL</td>
                     <td className="px-5 py-3 text-right text-success font-mono">
-                      {formatCDF(data.totaux.ca)}
+                      {formatUSD(data.totaux.ca)}
                     </td>
                     <td className="px-5 py-3" />
                     <td className="px-5 py-3 text-right text-text-muted">{data.totaux.nbVentes}</td>

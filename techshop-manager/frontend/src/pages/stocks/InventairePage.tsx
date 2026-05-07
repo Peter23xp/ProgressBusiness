@@ -9,7 +9,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { useDebounce } from '@/hooks/useDebounce';
 import { stocksApi, getStockStatut } from '@/lib/stocks.api';
 import { StockStatusBadge } from '@/components/stocks/StockStatusBadge';
-import { cn, formatCDF } from '@/lib/utils';
+import { cn, formatUSD } from '@/lib/utils';
 import type { StatutStock } from '@/types';
 
 const LIMIT = 50;
@@ -308,7 +308,7 @@ export default function InventairePage() {
                       </td>
                       <td className="font-medium text-[13px]">{s.produitNom}</td>
                       <td className="text-[12px] text-text-muted">{s.categorie}</td>
-                      <td className="text-right font-mono text-[12px]">{formatCDF(s.prixVente)}</td>
+                      <td className="text-right font-mono text-[12px]">{formatUSD(s.prixVente)}</td>
                       <td className="text-center">
                         <span className={cn(
                           'font-black text-[18px] font-mono',

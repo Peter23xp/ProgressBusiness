@@ -9,7 +9,7 @@ import {
   Download,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { formatCDF, formatDateTime, cn } from '@/lib/utils';
+import { formatUSD, formatDateTime, cn } from '@/lib/utils';
 import { useSites } from '@/hooks/useSites';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -137,7 +137,7 @@ export default function JournalRetoursPage() {
           </div>
           {isLoading
             ? <div className="skeleton h-7 w-28 rounded" />
-            : <p className="text-[20px] font-black text-danger">{formatCDF(data?.kpis.totalRembourse ?? 0)}</p>}
+            : <p className="text-[20px] font-black text-danger">{formatUSD(data?.kpis.totalRembourse ?? 0)}</p>}
         </div>
         <div className="rounded-xl border border-border bg-white px-4 py-3">
           <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted mb-1">Nb retours</p>
@@ -247,7 +247,7 @@ export default function JournalRetoursPage() {
                         {MODE_LABELS[r.modeRemboursement] ?? r.modeRemboursement}
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-[13px] font-bold text-danger">
-                        {formatCDF(r.montantRembourse)}
+                        {formatUSD(r.montantRembourse)}
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell text-[12px] text-text-muted">
                         {formatDateTime(r.createdAt)}

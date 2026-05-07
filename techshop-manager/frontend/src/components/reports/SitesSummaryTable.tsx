@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
-import { formatCDF } from '@/lib/utils';
+import { formatUSD } from '@/lib/utils';
 import type { SiteCA } from '@/lib/reports.api';
 
 interface SitesSummaryTableProps {
@@ -19,7 +19,7 @@ export function SitesSummaryTable({ data, isLoading, hideTotalRow = false }: Sit
         <table className="w-full text-sm">
           <thead>
             <tr style={{ background: '#1E3A5F' }}>
-              {['Site', 'CA (CDF)', 'Ventes', 'Nvx clients', 'Alertes'].map((h) => (
+              {['Site', 'CA ($)', 'Ventes', 'Nvx clients', 'Alertes'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-white">
                   {h}
                 </th>
@@ -62,7 +62,7 @@ export function SitesSummaryTable({ data, isLoading, hideTotalRow = false }: Sit
       <table className="w-full text-sm">
         <thead>
           <tr style={{ background: '#1E3A5F' }}>
-            {['Site', 'CA (CDF)', 'Ventes', 'Nvx clients', 'Alertes stock'].map((h) => (
+            {['Site', 'CA ($)', 'Ventes', 'Nvx clients', 'Alertes stock'].map((h) => (
               <th
                 key={h}
                 className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide"
@@ -89,7 +89,7 @@ export function SitesSummaryTable({ data, isLoading, hideTotalRow = false }: Sit
                   {row.siteNom}
                 </button>
               </td>
-              <td className="px-4 py-3 font-bold text-success tabular-nums">{formatCDF(row.ca)}</td>
+              <td className="px-4 py-3 font-bold text-success tabular-nums">{formatUSD(row.ca)}</td>
               <td className="px-4 py-3 text-text tabular-nums">{row.nbVentes}</td>
               <td className="px-4 py-3 text-text tabular-nums">{row.nbNouveauxClients}</td>
               <td className="px-4 py-3">
@@ -108,7 +108,7 @@ export function SitesSummaryTable({ data, isLoading, hideTotalRow = false }: Sit
           {!hideTotalRow && (
             <tr className="border-t-2 border-primary/30 bg-slate-50">
               <td className="px-4 py-3 font-bold text-primary">TOTAL</td>
-              <td className="px-4 py-3 font-bold text-success tabular-nums">{formatCDF(totalCA)}</td>
+              <td className="px-4 py-3 font-bold text-success tabular-nums">{formatUSD(totalCA)}</td>
               <td className="px-4 py-3 font-bold text-text tabular-nums">{totalVentes}</td>
               <td className="px-4 py-3 font-bold text-text tabular-nums">{totalClients}</td>
               <td className="px-4 py-3">

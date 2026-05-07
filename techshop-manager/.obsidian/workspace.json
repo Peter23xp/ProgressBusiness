@@ -11,17 +11,14 @@
             "id": "4e94fc722953f756",
             "type": "leaf",
             "state": {
-              "type": "canvas",
+              "type": "markdown",
               "state": {
-                "file": "Sans titre.canvas",
-                "viewState": {
-                  "x": 0,
-                  "y": 0,
-                  "zoom": 0
-                }
+                "file": "[].md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "lucide-layout-dashboard",
-              "title": "Sans titre"
+              "icon": "lucide-file",
+              "title": "[]"
             }
           }
         ]
@@ -188,10 +185,15 @@
   },
   "active": "4e94fc722953f756",
   "lastOpenFiles": [
-    "Sans titre.canvas",
     "backend/node_modules/node-addon-api/README.md",
+    "[].md",
+    "Sans titre.canvas",
+    "md/TechShop_FIDELITE_PROMPTS.md",
+    "md/TechShop_CLIENTS_PROMPTS.md",
+    "md/module dashboard.md",
+    "md/TechShop_AUTH_PROMPTS.md",
+    "CLAUDE.md",
     "node_modules/date-fns/LICENSE.md",
-    "PRODUCT.md",
-    "CLAUDE.md"
+    "PRODUCT.md"
   ]
 }

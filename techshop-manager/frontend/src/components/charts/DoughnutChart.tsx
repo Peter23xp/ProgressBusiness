@@ -58,11 +58,11 @@ export function DoughnutChart({ labels, data, colors }: DoughnutChartProps) {
             const value = typeof ctx.raw === 'number' ? ctx.raw : 0;
             const total = (ctx.dataset.data as number[]).reduce((a, b) => a + b, 0);
             const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-            const formatted = new Intl.NumberFormat('fr-CD', {
+            const formatted = new Intl.NumberFormat('en-US', {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0,
             }).format(value);
-            return ` ${ctx.label}: ${formatted} CDF (${pct}%)`;
+            return ` ${ctx.label}: ${formatted} $ (${pct}%)`;
           },
         },
       },

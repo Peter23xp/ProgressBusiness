@@ -9,7 +9,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { formatCDF, truncate } from '@/lib/utils';
+import { formatUSD, truncate } from '@/lib/utils';
 import type { TopProduit } from '@/lib/reports.api';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
@@ -65,7 +65,7 @@ export function TopProductsBarChart({ data, isLoading }: TopProductsBarChartProp
             if (!produit) return '';
             return [
               ` ${produit.quantite} unités vendues`,
-              ` CA : ${formatCDF(produit.ca)}`,
+              ` CA : ${formatUSD(produit.ca)}`,
             ];
           },
         },

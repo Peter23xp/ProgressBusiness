@@ -17,7 +17,7 @@ import { KpiCard } from '@/components/dashboard/KpiCard';
 import { SalesChart } from '@/components/dashboard/SalesChart';
 import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
 import { StockAlerts } from '@/components/dashboard/StockAlerts';
-import { formatCDF, formatRelative } from '@/lib/utils';
+import { formatUSD, formatRelative } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 type Period = 'today' | 'week' | 'month';
@@ -164,7 +164,7 @@ export default function DashboardPage() {
         <KpiCard
           accent="success"
           title={ventesLabel}
-          value={stats.data?.ventesJour !== undefined ? formatCDF(stats.data.ventesJour) : '—'}
+          value={stats.data?.ventesJour !== undefined ? formatUSD(stats.data.ventesJour) : '—'}
           icon={ShoppingCart}
           iconColor="bg-green-100 text-success"
           isLoading={stats.isLoading}

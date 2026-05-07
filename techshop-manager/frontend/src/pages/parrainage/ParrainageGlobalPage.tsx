@@ -10,7 +10,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAuthStore } from '@/store/auth.store';
 import { parrainageApi } from '@/lib/parrainage.api';
-import { formatCDF, formatDate } from '@/lib/utils';
+import { formatUSD, formatDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { useSites } from '@/hooks/useSites';
 import type { ParrainageFilters, TopParrain, ParrainageItem } from '@/lib/parrainage.api';
@@ -316,7 +316,7 @@ export default function ParrainageGlobalPage() {
                           {p.recompenseValeur
                             ? p.recompenseType === 'POINTS'
                               ? `${p.recompenseValeur} pts`
-                              : formatCDF(p.recompenseValeur)
+                              : formatUSD(p.recompenseValeur)
                             : '—'}
                         </td>
                         <td className="text-[12px] text-text-muted whitespace-nowrap">

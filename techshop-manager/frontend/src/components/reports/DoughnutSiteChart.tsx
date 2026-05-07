@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
-import { formatCDF } from '@/lib/utils';
+import { formatUSD } from '@/lib/utils';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -40,8 +40,8 @@ function useCentrePlugin(totalCA: number) {
       ctx.fillStyle = '#2E86C1';
       const shortVal =
         totalCA >= 1_000_000
-          ? (totalCA / 1_000_000).toFixed(1) + ' M CDF'
-          : formatCDF(totalCA);
+          ? (totalCA / 1_000_000).toFixed(1) + ' M $'
+          : formatUSD(totalCA);
       ctx.fillText(shortVal, cx, cy + 8);
 
       ctx.restore();
@@ -105,7 +105,7 @@ export function DoughnutSiteChart({ data, totalCA, isLoading }: DoughnutSiteChar
           label: (ctx: import('chart.js').TooltipItem<'doughnut'>) => {
             const val = typeof ctx.raw === 'number' ? ctx.raw : 0;
             const pct = data[ctx.dataIndex]?.pourcentage?.toFixed(1) ?? '0';
-            return ` ${ctx.label} — ${formatCDF(val)} (${pct}%)`;
+            return ` ${ctx.label} — ${formatUSD(val)} (${pct}%)`;
           },
         },
       },
@@ -118,8 +118,8 @@ export function DoughnutSiteChart({ data, totalCA, isLoading }: DoughnutSiteChar
         <h2 className="text-sm font-bold text-primary">Répartition par site</h2>
         <p className="text-xs text-text-muted mt-0.5">
           {totalCA >= 1_000_000
-            ? (totalCA / 1_000_000).toFixed(1) + ' M CDF'
-            : formatCDF(totalCA)}
+            ? (totalCA / 1_000_000).toFixed(1) + ' M $'
+            : formatUSD(totalCA)}
         </p>
       </div>
 

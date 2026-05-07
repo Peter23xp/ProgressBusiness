@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api, getErrorMessage } from '@/lib/api';
-import { cn, formatCDF, formatDate, initials } from '@/lib/utils';
+import { cn, formatUSD, formatDate, initials } from '@/lib/utils';
 import { OnboardingStepper } from '@/components/clients/OnboardingStepper';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -421,7 +421,7 @@ export default function OnboardingActivationPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-[13px] font-bold font-mono text-text">
-                    {etape?.montant ? formatCDF(etape.montant) : '—'}
+                    {etape?.montant ? formatUSD(etape.montant) : '—'}
                   </p>
                   {etape?.completeeAt && (
                     <p className="text-[10px] text-text-muted">
@@ -434,7 +434,7 @@ export default function OnboardingActivationPage() {
             ))}
             <div className="flex items-center justify-between px-3 py-2 border-t border-border">
               <span className="text-[13px] font-bold text-text">Total payé</span>
-              <span className="text-[15px] font-extrabold font-mono text-success">{formatCDF(totalPaye)}</span>
+              <span className="text-[15px] font-extrabold font-mono text-success">{formatUSD(totalPaye)}</span>
             </div>
           </div>
 

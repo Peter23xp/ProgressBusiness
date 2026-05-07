@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { formatCDF } from '@/lib/utils';
+import { formatUSD } from '@/lib/utils';
 
 interface RecentPurchasesMiniProps {
   achats: Array<{
@@ -40,7 +40,7 @@ export function RecentPurchasesMini({ achats, onViewAll }: RecentPurchasesMiniPr
                   )}
                 </div>
                 <span className="text-sm font-semibold text-[#1E3A5F] ml-2 tabular-nums whitespace-nowrap">
-                  {formatCDF(a.montantTotal)}
+                  {formatUSD(a.montantTotal)}
                 </span>
               </div>
             );

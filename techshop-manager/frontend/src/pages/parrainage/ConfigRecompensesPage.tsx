@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAuthStore } from '@/store/auth.store';
 import { parrainageApi } from '@/lib/parrainage.api';
-import { formatCDF, cn } from '@/lib/utils';
+import { formatUSD, cn } from '@/lib/utils';
 import type { ParrainageConfig, ConfigHistoryEntry } from '@/lib/parrainage.api';
 
 // ── Types form ─────────────────────────────────────────────────────────────────
@@ -33,7 +33,7 @@ function Simulateur({ config }: { config: FormValues }) {
 
   function formatVal(v: number) {
     if (typeRecompense === 'POINTS') return `${v} pts`;
-    if (typeRecompense === 'COMMISSION_CDF') return formatCDF(v);
+    if (typeRecompense === 'COMMISSION_CDF') return formatUSD(v);
     return `${v}%`;
   }
 
@@ -69,7 +69,7 @@ function Simulateur({ config }: { config: FormValues }) {
         </div>
         {typeRecompense === 'COMMISSION_CDF' && (
           <div className="form-group flex-1 min-w-32">
-            <label className="form-label text-blue-700">Montant achat (CDF)</label>
+            <label className="form-label text-blue-700">Montant achat ($)</label>
             <input
               type="number"
               min={0}

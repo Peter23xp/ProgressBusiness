@@ -2,7 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Printer, Download, AlertTriangle } from 'lucide-react';
 import { api } from '@/lib/api';
-import { formatCDF, formatDateTime, cn } from '@/lib/utils';
+import { formatUSD, formatDateTime, cn } from '@/lib/utils';
 
 interface Ecriture {
   compte: string;
@@ -43,7 +43,7 @@ export default function EcrituresOhadaPage() {
     if (!data) return;
     const today = new Date().toISOString().slice(0, 10);
     const rows = [
-      ['Date', 'Journal', 'Compte', 'Libellé compte', 'Intitulé opération', 'Débit CDF', 'Crédit CDF'],
+      ['Date', 'Journal', 'Compte', 'Libellé compte', 'Intitulé opération', 'Débit $', 'Crédit $'],
       ...data.ecritures.map((e) => [
         new Date(data.dateEcriture).toLocaleDateString('fr-FR'),
         `${data.journalCode} - ${data.journalLabel}`,
@@ -143,8 +143,8 @@ export default function EcrituresOhadaPage() {
                   <th className="py-2 font-semibold w-16">Compte</th>
                   <th className="py-2 font-semibold">Libellé du compte</th>
                   <th className="py-2 font-semibold">Intitulé opération</th>
-                  <th className="py-2 font-semibold text-right w-28">Débit CDF</th>
-                  <th className="py-2 font-semibold text-right w-28">Crédit CDF</th>
+                  <th className="py-2 font-semibold text-right w-28">Débit $</th>
+                  <th className="py-2 font-semibold text-right w-28">Crédit $</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -154,10 +154,10 @@ export default function EcrituresOhadaPage() {
                     <td className="py-2.5 font-semibold text-text">{e.libelle}</td>
                     <td className="py-2.5 text-text-muted">{e.intitule}</td>
                     <td className={cn('py-2.5 text-right font-mono', e.debit > 0 ? 'text-text font-semibold' : 'text-text-muted')}>
-                      {e.debit > 0 ? formatCDF(e.debit) : '—'}
+                      {e.debit > 0 ? formatUSD(e.debit) : '—'}
                     </td>
                     <td className={cn('py-2.5 text-right font-mono', e.credit > 0 ? 'text-text font-semibold' : 'text-text-muted')}>
-                      {e.credit > 0 ? formatCDF(e.credit) : '—'}
+                      {e.credit > 0 ? formatUSD(e.credit) : '—'}
                     </td>
                   </tr>
                 ))}
@@ -165,8 +165,8 @@ export default function EcrituresOhadaPage() {
               <tfoot>
                 <tr className={cn('border-t-2 font-bold', balanced ? 'border-success' : 'border-danger')}>
                   <td colSpan={3} className="py-2.5 text-[11px] font-bold uppercase tracking-wide text-text-muted">Totaux</td>
-                  <td className="py-2.5 text-right font-mono text-text">{formatCDF(data.totaux.totalDebit)}</td>
-                  <td className="py-2.5 text-right font-mono text-text">{formatCDF(data.totaux.totalCredit)}</td>
+                  <td className="py-2.5 text-right font-mono text-text">{formatUSD(data.totaux.totalDebit)}</td>
+                  <td className="py-2.5 text-right font-mono text-text">{formatUSD(data.totaux.totalCredit)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -183,15 +183,15 @@ export default function EcrituresOhadaPage() {
           <p className="font-bold text-text-muted uppercase tracking-wide text-[10px] mb-2">Ventilation TVA</p>
           <div className="flex justify-between text-text-muted">
             <span>Montant HT (classe 7)</span>
-            <span className="font-semibold text-text">{formatCDF(data.totaux.montantHT)}</span>
+            <span className="font-semibold text-text">{formatUSD(data.totaux.montantHT)}</span>
           </div>
           <div className="flex justify-between text-text-muted">
             <span>TVA 16% (compte 4431)</span>
-            <span className="font-semibold text-text">{formatCDF(data.totaux.montantTVA)}</span>
+            <span className="font-semibold text-text">{formatUSD(data.totaux.montantTVA)}</span>
           </div>
           <div className="flex justify-between font-bold text-text border-t border-border pt-1 mt-1">
             <span>Montant TTC (compte 411)</span>
-            <span>{formatCDF(data.totaux.montantTTC)}</span>
+            <span>{formatUSD(data.totaux.montantTTC)}</span>
           </div>
         </div>
 

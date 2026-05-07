@@ -11,7 +11,7 @@ import { fr } from 'date-fns/locale';
 import { useAuthStore } from '@/store/auth.store';
 import { stocksApi, getStockStatut } from '@/lib/stocks.api';
 import { StockStatusBadge } from '@/components/stocks/StockStatusBadge';
-import { cn, formatCDF, formatDateTime } from '@/lib/utils';
+import { cn, formatUSD, formatDateTime } from '@/lib/utils';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { TypeMouvement } from '@/types';
 
@@ -216,11 +216,11 @@ export default function ProduitStockPage() {
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Prix vente</p>
-            <p className="font-mono font-semibold text-[13px] text-primary-accent">{formatCDF(produit.prixVente)}</p>
+            <p className="font-mono font-semibold text-[13px] text-primary-accent">{formatUSD(produit.prixVente)}</p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Prix achat</p>
-            <p className="font-mono font-semibold text-[13px] text-text-muted">{formatCDF(produit.prixAchat)}</p>
+            <p className="font-mono font-semibold text-[13px] text-text-muted">{formatUSD(produit.prixAchat)}</p>
           </div>
         </div>
         {produit.description && (

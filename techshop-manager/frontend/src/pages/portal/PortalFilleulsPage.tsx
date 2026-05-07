@@ -108,7 +108,7 @@ function ReferralStatsCards({ nbActifs, nbTotal, gainsTotaux, typeRecompense }: 
   typeRecompense?: TypeRecompense;
 }) {
   const gainsLabel = typeRecompense === 'COMMISSION_CDF'
-    ? `${gainsTotaux.toLocaleString('fr')} CDF`
+    ? `$${gainsTotaux.toLocaleString('en-US')}`
     : `${gainsTotaux.toLocaleString('fr')} pts`;
 
   return (
@@ -134,7 +134,7 @@ function HowReferralWorks({ recompenseValeur, typeRecompense }: {
   typeRecompense?: TypeRecompense;
 }) {
   const rewardText = typeRecompense === 'COMMISSION_CDF'
-    ? `vous gagnez ${recompenseValeur.toLocaleString('fr')} CDF !`
+    ? `vous gagnez $${recompenseValeur.toLocaleString('en-US')} !`
     : `vous gagnez ${recompenseValeur.toLocaleString('fr')} pts !`;
 
   const steps = [
@@ -204,8 +204,8 @@ function FilleulCard({ filleul, typeRecompense }: {
           </p>
           {filleul.statut === 'ACTIF' && filleul.recompenseGeneree > 0 && (
             <p className="text-xs text-green-600 font-medium">
-              Vous a rapporté : +{filleul.recompenseGeneree.toLocaleString('fr')}{' '}
-              {typeRecompense === 'COMMISSION_CDF' ? 'CDF' : 'pts'}
+              Vous a rapporté : +{typeRecompense === 'COMMISSION_CDF' ? '$' : ''}{filleul.recompenseGeneree.toLocaleString('en-US')}{' '}
+              {typeRecompense === 'COMMISSION_CDF' ? '' : 'pts'}
             </p>
           )}
           {filleul.statut === 'EN_COURS' && filleul.etapeEnCours && (

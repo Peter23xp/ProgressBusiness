@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { parrainageApi } from '@/lib/parrainage.api';
-import { formatDate, formatCDF, cn } from '@/lib/utils';
+import { formatDate, formatUSD, cn } from '@/lib/utils';
 import type { TreeNode, FilleulFlat } from '@/lib/parrainage.api';
 import type { TypeRecompense } from '@/types';
 
@@ -229,7 +229,7 @@ function FilleulsTable({ filleuls, typeRecompense }: { filleuls: FilleulFlat[]; 
                   {f.pointsGeneresPourParrain > 0
                     ? typeRecompense === 'POINTS'
                       ? `${f.pointsGeneresPourParrain} pts`
-                      : formatCDF(f.pointsGeneresPourParrain)
+                      : formatUSD(f.pointsGeneresPourParrain)
                     : '—'}
                 </td>
                 <td>
@@ -341,7 +341,7 @@ export default function ArbreParrainagePage() {
             </p>
             {parrainParent.recompenseRecue > 0 && (
               <p className="text-[11px] text-blue-500">
-                Récompense reçue : {stats.typeRecompense === 'POINTS' ? `${parrainParent.recompenseRecue} pts` : formatCDF(parrainParent.recompenseRecue)}
+                Récompense reçue : {stats.typeRecompense === 'POINTS' ? `${parrainParent.recompenseRecue} pts` : formatUSD(parrainParent.recompenseRecue)}
               </p>
             )}
           </div>
@@ -384,7 +384,7 @@ export default function ArbreParrainagePage() {
             </div>
             <div className="text-center">
               <p className="font-black text-[24px] text-primary leading-none">
-                {stats.typeRecompense === 'POINTS' ? `${stats.gainsTotaux} pts` : formatCDF(stats.gainsTotaux)}
+                {stats.typeRecompense === 'POINTS' ? `${stats.gainsTotaux} pts` : formatUSD(stats.gainsTotaux)}
               </p>
               <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mt-0.5">Gains totaux</p>
             </div>

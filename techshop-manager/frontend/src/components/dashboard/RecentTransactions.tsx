@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart } from 'lucide-react';
-import { formatCDF, formatRelative } from '@/lib/utils';
+import { formatUSD, formatRelative } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import type { Transaction } from '@/hooks/useDashboard';
 
@@ -94,7 +94,7 @@ export function RecentTransactions({ data, isLoading }: RecentTransactionsProps)
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
                     <span className="text-sm font-bold text-text font-mono whitespace-nowrap">
-                      {formatCDF(tx.montant)}
+                      {formatUSD(tx.montant)}
                     </span>
                     <span className={cn('text-xs font-medium px-1.5 py-0.5 rounded-full', cls)}>
                       {label}

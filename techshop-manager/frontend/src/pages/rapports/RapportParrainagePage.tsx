@@ -8,7 +8,7 @@ import { useParrainageReport } from '@/hooks/useParrainageReport';
 import { PeriodSelector } from '@/components/reports/PeriodSelector';
 import { DateRangePicker } from '@/components/reports/DateRangePicker';
 import { getDateRangeFromPreset, type PeriodPreset, type DateRange, toISODate } from '@/lib/dateRange.utils';
-import { formatCDF, cn } from '@/lib/utils';
+import { formatUSD, cn } from '@/lib/utils';
 import type { FunnelData, TopParrain, RecompenseDue } from '@/lib/reports.api';
 
 // ── Funnel SVG ────────────────────────────────────────────────────────────────
@@ -152,13 +152,13 @@ function TopParrainsTable({ parrains, isLoading }: { parrains: TopParrain[]; isL
                 <td className="px-3 py-2.5 text-xs text-text-muted">{p.siteNom}</td>
                 <td className="px-3 py-2.5 font-bold tabular-nums text-center">{p.nbFilleulsActives}</td>
                 <td className="px-3 py-2.5 font-semibold text-success tabular-nums">
-                  {p.caGenereParFilleuls > 0 ? formatCDF(p.caGenereParFilleuls) : '—'}
+                  {p.caGenereParFilleuls > 0 ? formatUSD(p.caGenereParFilleuls) : '—'}
                 </td>
                 <td className="px-3 py-2.5 text-xs tabular-nums">
                   {p.recompenseType === 'POINTS'
                     ? `${p.recompenseDue} pts`
                     : p.recompenseDue > 0
-                    ? formatCDF(p.recompenseDue)
+                    ? formatUSD(p.recompenseDue)
                     : '—'}
                 </td>
                 <td className="px-3 py-2.5">
@@ -232,7 +232,7 @@ function RecompensesDuesTable({ recompenses, isLoading }: { recompenses: Recompe
                   {r.recompenseType === 'POINTS'
                     ? `${r.recompenseValeur} pts`
                     : r.recompenseValeur > 0
-                    ? formatCDF(r.recompenseValeur)
+                    ? formatUSD(r.recompenseValeur)
                     : '—'}
                 </td>
                 <td className="px-4 py-2.5 text-xs text-text-muted">
@@ -325,7 +325,7 @@ export default function RapportParrainagePage() {
           { label: 'Parrainages actifs', value: String(summary.parrainagesActifs), icon: Users, color: '#1E3A5F' },
           { label: 'Filleuls activés (période)', value: String(summary.filleulsActives), icon: Users, color: '#1A6B3A' },
           { label: 'Récompenses dues', value: String(summary.recompensesDues), icon: Gift, color: '#E65100' },
-          { label: 'CA généré par filleuls', value: formatCDF(summary.caGenereParFilleuls), icon: DollarSign, color: '#2E86C1' },
+          { label: 'CA généré par filleuls', value: formatUSD(summary.caGenereParFilleuls), icon: DollarSign, color: '#2E86C1' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="stat-card">
             <div className="flex items-center gap-3">

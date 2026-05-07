@@ -9,7 +9,7 @@ import {
   LineElement, Filler, Tooltip, Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { formatCDF } from '@/lib/utils';
+import { formatUSD } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import {
   type PeriodPreset,
@@ -133,7 +133,7 @@ function CALineChart({
         callbacks: {
           label: (ctx: import('chart.js').TooltipItem<'line'>) => {
             const value = typeof ctx.raw === 'number' ? ctx.raw : 0;
-            return ` ${ctx.dataset.label} : ${formatCDF(value)}`;
+            return ` ${ctx.dataset.label} : ${formatUSD(value)}`;
           },
         },
       },
@@ -291,9 +291,9 @@ export default function RapportsDashboardPage() {
           label="Chiffre d'affaires total"
           value={(() => {
             const n = data?.totalCA ?? 0;
-            if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + ' M CDF';
-            if (n >= 1_000) return Math.round(n / 1_000) + ' k CDF';
-            return formatCDF(n);
+            if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + ' M $';
+            if (n >= 1_000) return Math.round(n / 1_000) + ' k $';
+            return formatUSD(n);
           })()}
           isLoading={isLoading}
           color="#2E86C1"

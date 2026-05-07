@@ -65,11 +65,11 @@ export function BarChart({ labels, datasets, title }: BarChartProps) {
         callbacks: {
           label: (ctx: import('chart.js').TooltipItem<'bar'>) => {
             const value = typeof ctx.raw === 'number' ? ctx.raw : 0;
-            const formatted = new Intl.NumberFormat('fr-CD', {
+            const formatted = new Intl.NumberFormat('en-US', {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0,
             }).format(value);
-            return ` ${ctx.dataset.label}: ${formatted} CDF`;
+            return ` ${ctx.dataset.label}: ${formatted} $`;
           },
         },
       },
@@ -84,9 +84,9 @@ export function BarChart({ labels, datasets, title }: BarChartProps) {
         ticks: {
           font: { size: 11 },
           callback: (value: number | string) =>
-            new Intl.NumberFormat('fr-CD', { notation: 'compact' }).format(
+            new Intl.NumberFormat('en-US', { notation: 'compact' }).format(
               Number(value),
-            ) + ' CDF',
+            ) + ' $',
         },
       },
     },

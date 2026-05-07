@@ -92,7 +92,7 @@ function HowToEarn({ ratioPtsCDF }: { ratioPtsCDF: number }) {
         <div>
           <p className="text-sm font-medium text-neutral-800">Achetez des produits</p>
           <p className="text-xs text-neutral-500">
-            1 point pour chaque {ratioPtsCDF.toLocaleString('fr')} CDF dépensés
+            1 point pour chaque ${ratioPtsCDF.toLocaleString('en-US')} dépensés
           </p>
         </div>
       </div>

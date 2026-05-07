@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { formatCDF } from '@/lib/utils';
+import { formatUSD } from '@/lib/utils';
 import type { TopParrain } from '@/hooks/useRegionalDashboard';
 
 interface TopParrainsListProps {
@@ -30,7 +30,7 @@ function Avatar({ nom, prenom }: { nom: string; prenom: string }) {
 function formatReward(parrain: TopParrain): string {
   if (parrain.recompenseType === 'POINTS') return `${parrain.recompenseDue} pts`;
   if (parrain.recompenseType === 'REMISE') return `${parrain.recompenseDue}%`;
-  return formatCDF(parrain.recompenseDue);
+  return formatUSD(parrain.recompenseDue);
 }
 
 export function TopParrainsList({ data, isLoading }: TopParrainsListProps) {

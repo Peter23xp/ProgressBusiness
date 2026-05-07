@@ -11,7 +11,7 @@ import { useSites } from '@/hooks/useSites';
 import { stocksApi, getStockStatut } from '@/lib/stocks.api';
 import { StockStatusBadge } from '@/components/stocks/StockStatusBadge';
 import { ProductSearchCombobox } from '@/components/stocks/ProductSearchCombobox';
-import { cn, formatCDF } from '@/lib/utils';
+import { cn, formatUSD } from '@/lib/utils';
 import type { ProduitSearchResult } from '@/lib/stocks.api';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -141,7 +141,7 @@ export default function EntreeStockPage() {
         telephoneFournisseur ? `Tél: ${telephoneFournisseur}` : '',
         notes ? `Obs: ${notes}` : '',
         typeof prixAchatHT === 'number' && prixAchatHT > 0
-          ? `PU HT: ${prixAchatHT} CDF — TVA: ${tauxTVA}%`
+          ? `PU HT: $${prixAchatHT} — TVA: ${tauxTVA}%`
           : '',
       ].filter(Boolean).join(' | ');
 
@@ -532,11 +532,11 @@ export default function EntreeStockPage() {
                 <div className="mt-2 rounded-lg bg-primary-light/20 border border-primary-light px-3 py-2.5 space-y-1">
                   <div className="flex justify-between text-[12px]">
                     <span className="text-text-muted">Prix unitaire TTC</span>
-                    <span className="font-mono font-semibold text-primary-accent">{formatCDF(prixTTC)}</span>
+                    <span className="font-mono font-semibold text-primary-accent">{formatUSD(prixTTC)}</span>
                   </div>
                   <div className="flex justify-between text-[12px]">
                     <span className="text-text-muted">Valeur totale réception ({qty} u.)</span>
-                    <span className="font-mono font-bold text-primary-accent">{formatCDF(valeurTotale)}</span>
+                    <span className="font-mono font-bold text-primary-accent">{formatUSD(valeurTotale)}</span>
                   </div>
                 </div>
               )}

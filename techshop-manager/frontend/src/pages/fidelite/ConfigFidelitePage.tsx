@@ -52,7 +52,7 @@ function NiveauPreview({ niveaux, ratioPtsCDF }: { niveaux: NiveauConfig[]; rati
         })}
       </div>
       <p className="text-[10px] text-text-muted">
-        Taux de conversion : <span className="font-bold">1 pt = {ratioPtsCDF.toLocaleString()} CDF dépensé</span>
+        Taux de conversion : <span className="font-bold">1 pt = ${ratioPtsCDF.toLocaleString('en-US')} dépensé</span>
       </p>
     </div>
   );
@@ -85,7 +85,7 @@ function Simulateur({ niveaux, ratioPtsCDF }: { niveaux: NiveauConfig[]; ratioPt
           onChange={e => setAchat(Number(e.target.value))}
           className="w-36 text-sm"
         />
-        <span className="text-[12px] text-text-muted">CDF</span>
+        <span className="text-[12px] text-text-muted">$</span>
       </div>
       <div className="grid grid-cols-3 gap-3 text-center">
         <div className="bg-white rounded-lg px-2 py-2 border border-border">
@@ -98,7 +98,7 @@ function Simulateur({ niveaux, ratioPtsCDF }: { niveaux: NiveauConfig[]; ratioPt
         </div>
         <div className="bg-white rounded-lg px-2 py-2 border border-border">
           <p className="font-black text-[18px] text-success">{economieCDF.toLocaleString()}</p>
-          <p className="text-[9px] text-text-muted uppercase font-semibold tracking-wider">CDF économisé</p>
+          <p className="text-[9px] text-text-muted uppercase font-semibold tracking-wider">$ économisé</p>
         </div>
       </div>
     </div>
@@ -454,7 +454,7 @@ export default function ConfigFidelitePage() {
                   <p className="text-[13px] font-bold text-primary">Paramètres généraux</p>
 
                   <div className="form-group">
-                    <label className="form-label">Ratio points / CDF dépensé</label>
+                    <label className="form-label">Ratio points / $ dépensé</label>
                     <div className="flex items-center gap-2">
                       <span className="text-[12px] text-text-muted">1 pt =</span>
                       <input
@@ -463,9 +463,9 @@ export default function ConfigFidelitePage() {
                         className={cn('w-28 text-sm', errors.ratioPtsCDF && 'border-danger')}
                         {...register('ratioPtsCDF', { valueAsNumber: true, min: 1 })}
                       />
-                      <span className="text-[12px] text-text-muted">CDF</span>
+                      <span className="text-[12px] text-text-muted">$</span>
                     </div>
-                    <p className="text-[10px] text-text-muted mt-1">Ex: 1 point par 1 000 CDF dépensé</p>
+                    <p className="text-[10px] text-text-muted mt-1">Ex: 1 point par $1 000 dépensé</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">

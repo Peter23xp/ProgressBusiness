@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingBag } from 'lucide-react';
-import { cn, formatCDF, formatDate } from '@/lib/utils';
+import { cn, formatUSD, formatDate } from '@/lib/utils';
 import type { ClientDetail } from '@/lib/clients.api';
 
 interface ClientAchatsTabProps {
@@ -122,11 +122,11 @@ export function ClientAchatsTab({ client }: ClientAchatsTabProps) {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <p className="text-[13px] font-bold text-text font-mono">
-                          {formatCDF(v.montantNet)}
+                          {formatUSD(v.montantNet)}
                         </p>
                         {v.remiseFidelite > 0 && (
                           <p className="text-[10px] text-warning font-mono">
-                            -{formatCDF(v.remiseFidelite)}
+                            -{formatUSD(v.remiseFidelite)}
                           </p>
                         )}
                       </td>
@@ -159,7 +159,7 @@ export function ClientAchatsTab({ client }: ClientAchatsTabProps) {
             </div>
             <div className="rounded-xl bg-bg border border-border px-4 py-3 text-center">
               <p className="text-[18px] font-extrabold font-mono text-success leading-tight">
-                {formatCDF(totalDepense)}
+                {formatUSD(totalDepense)}
               </p>
               <p className="text-[11px] text-text-muted mt-0.5">total dépensé</p>
             </div>

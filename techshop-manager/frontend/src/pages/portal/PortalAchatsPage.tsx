@@ -7,7 +7,7 @@ import { fr } from 'date-fns/locale';
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import { portalApi } from '@/lib/portal.api';
 import { usePortalPurchases, type PurchasePeriod } from '@/hooks/usePortalPurchases';
-import { formatCDF, cn } from '@/lib/utils';
+import { formatUSD, cn } from '@/lib/utils';
 
 // ── Period filter pills ───────────────────────────────────────────────────────
 
@@ -56,7 +56,7 @@ function StatsCard({ totalDepense, nbAchats, totalPointsGagnes, period }: {
       <p className="text-[10px] uppercase tracking-wider font-semibold text-neutral-400">
         Total dépensé {label}
       </p>
-      <p className="text-2xl font-bold text-[#1E3A5F] mt-1">{formatCDF(totalDepense)}</p>
+      <p className="text-2xl font-bold text-[#1E3A5F] mt-1">{formatUSD(totalDepense)}</p>
       <p className="text-sm text-neutral-500 mt-0.5">
         {nbAchats} achat{nbAchats !== 1 ? 's' : ''}
         {totalPointsGagnes > 0 && ` · +${totalPointsGagnes.toLocaleString('fr')} pts gagnés`}
@@ -100,11 +100,11 @@ function PurchaseCard({ achat, onTap }: {
       </p>
       {achat.remiseAppliquee > 0 && (
         <p className="text-xs text-green-600 mt-0.5">
-          Remise appliquée : -{formatCDF(achat.remiseAppliquee)}
+          Remise appliquée : -{formatUSD(achat.remiseAppliquee)}
         </p>
       )}
       <div className="flex items-center justify-between mt-1.5">
-        <span className="text-base font-bold text-[#1E3A5F]">{formatCDF(achat.montantTotal)}</span>
+        <span className="text-base font-bold text-[#1E3A5F]">{formatUSD(achat.montantTotal)}</span>
         <div className="flex items-center gap-1.5">
           {achat.pointsAttribues > 0 && (
             <span className="text-xs font-semibold text-green-600 bg-green-50 rounded-full px-2 py-0.5">
@@ -164,7 +164,7 @@ function PurchaseDetailPanel({ venteId, onClose }: { venteId: string; onClose: (
               {v.lignes.map((l, i) => (
                 <div key={i} className="flex justify-between text-sm">
                   <span className="text-neutral-700">{l.nom} ×{l.quantite}</span>
-                  <span className="font-medium tabular-nums">{formatCDF(l.sousTotal)}</span>
+                  <span className="font-medium tabular-nums">{formatUSD(l.sousTotal)}</span>
                 </div>
               ))}
             </div>
@@ -172,17 +172,17 @@ function PurchaseDetailPanel({ venteId, onClose }: { venteId: string; onClose: (
             <div className="border-t border-neutral-100 pt-3 space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-neutral-500">Sous-total</span>
-                <span>{formatCDF(v.montantBrut)}</span>
+                <span>{formatUSD(v.montantBrut)}</span>
               </div>
               {v.remiseFidelite > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
                   <span>Remise fidélité</span>
-                  <span>-{formatCDF(v.remiseFidelite)}</span>
+                  <span>-{formatUSD(v.remiseFidelite)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm font-bold text-[#1E3A5F] pt-1 border-t border-neutral-100">
                 <span>Total payé</span>
-                <span>{formatCDF(v.montantNet)}</span>
+                <span>{formatUSD(v.montantNet)}</span>
               </div>
             </div>
 

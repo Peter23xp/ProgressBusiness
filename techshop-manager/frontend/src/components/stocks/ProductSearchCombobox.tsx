@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 import { stocksApi, getStockStatut } from '@/lib/stocks.api';
 import { StockStatusBadge } from './StockStatusBadge';
-import { formatCDF } from '@/lib/utils';
+import { formatUSD } from '@/lib/utils';
 import type { ProduitSearchResult } from '@/lib/stocks.api';
 
 export type { ProduitSearchResult };
@@ -109,7 +109,7 @@ export function ProductSearchCombobox({
                         <span className="text-[13px] font-medium text-text truncate">{p.nom}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[11px] text-text-muted">{formatCDF(p.prixVente)}</span>
+                        <span className="text-[11px] text-text-muted">{formatUSD(p.prixVente)}</span>
                         <span className="text-[11px] text-text-subtle">· Stock : {p.stockDisponible}</span>
                       </div>
                     </div>

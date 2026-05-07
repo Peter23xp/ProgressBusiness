@@ -15,6 +15,13 @@ export function formatCDF(amount: number): string {
   }).format(amount) + ' CDF';
 }
 
+export function formatUSD(amount: number): string {
+  return '$' + new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 export function formatDate(date: string | Date | null | undefined): string {
   if (!date) return '—';
   const d = new Date(date);
