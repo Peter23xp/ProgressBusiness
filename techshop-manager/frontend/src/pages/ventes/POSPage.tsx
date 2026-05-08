@@ -594,9 +594,9 @@ export default function POSPage() {
 
           {modePaiement === 'CASH' && (
             <div className="flex flex-col gap-1.5 mb-3">
-              <label className="form-label">Montant reçu ($)</label>
+              <label className="form-label">Montant reçu (USD)</label>
               <input
-                type="number" min={0} step={500}
+                type="number" min={0} step={0.01}
                 placeholder={String(netVal)}
                 value={montantRecu || ''}
                 onChange={(e) => setMontantRecu(Number(e.target.value))}
