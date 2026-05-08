@@ -289,7 +289,6 @@ export interface CreateProduitDto {
   description?: string;
   prixVente: number;
   prixAchat: number;
-  monnaie: 'CDF' | 'USD';
   seuilsParSite: SeuilSiteInput[];
 }
 
@@ -301,7 +300,6 @@ export interface CreateProduitResponse {
     categorie: string;
     prixVente: number;
     prixAchat: number;
-    monnaie: 'CDF' | 'USD';
     sitesEnregistres: number;
   };
 }
