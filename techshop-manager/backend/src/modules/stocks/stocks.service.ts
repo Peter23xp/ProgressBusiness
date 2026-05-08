@@ -763,11 +763,6 @@ export class StocksService {
       }
     }
 
-    // Convertir prix en CDF si monnaie USD (taux fixe 2800 — configurable plus tard)
-    const TAUX_USD_CDF = 2800;
-    const prixVenteCDF = dto.monnaie === 'USD' ? dto.prixVente * TAUX_USD_CDF : dto.prixVente;
-    const prixAchatCDF = dto.monnaie === 'USD' ? dto.prixAchat * TAUX_USD_CDF : dto.prixAchat;
-
     const produit = await this.prisma.$transaction(async (tx) => {
       // SKU atomique : compter dans la transaction
       const count = await tx.produit.count({ where: { categorie: dto.categorie } });
@@ -780,8 +775,8 @@ export class StocksService {
           nom: dto.nom,
           categorie: dto.categorie,
           description: dto.description ?? null,
-          prixVente: prixVenteCDF,
-          prixAchat: prixAchatCDF,
+          prixVente: dto.prixVente,
+          prixAchat: dto.prixAchat,
           actif: true,
         },
       });
@@ -810,7 +805,6 @@ export class StocksService {
         categorie: produit.categorie,
         prixVente: Number(produit.prixVente),
         prixAchat: Number(produit.prixAchat),
-        monnaie: dto.monnaie,
         sitesEnregistres: siteIds.length,
       },
     };

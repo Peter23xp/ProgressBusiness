@@ -10,7 +10,6 @@ import {
   IsDateString,
   IsNotEmpty,
   IsNumber,
-  IsEnum,
   IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -48,9 +47,6 @@ export class CreateProduitDto {
   @Min(0)
   @Type(() => Number)
   prixAchat: number;
-
-  @IsEnum(['CDF', 'USD'])
-  monnaie: 'CDF' | 'USD';
 
   @IsArray()
   @ArrayMinSize(1)
