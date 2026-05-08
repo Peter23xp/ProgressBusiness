@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Package, MapPin, BarChart2, AlertTriangle, Download, RefreshCw } from 'lucide-react';
 import { useStocksReport } from '@/hooks/useStocksReport';
 import { useDebounce } from '@/hooks/useDebounce';
-import { formatCDF, cn } from '@/lib/utils';
+import { formatUSD, cn } from '@/lib/utils';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -183,7 +183,7 @@ function ConsolidatedStockTable({ rawData, search, categorie, isLoading }: {
                   </p>
                 </td>
                 <td className="px-3 py-2.5 text-xs text-text-muted">{p.categorie}</td>
-                <td className="px-3 py-2.5 text-xs tabular-nums">{formatCDF(Number(p.prixAchat ?? 0))}</td>
+                <td className="px-3 py-2.5 text-xs tabular-nums">{formatUSD(Number(p.prixAchat ?? 0))}</td>
                 {sites.map((s) => {
                   const qty = p.stockParSite[s.id] ?? 0;
                   return (

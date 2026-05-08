@@ -8,7 +8,7 @@ import {
 import toast from 'react-hot-toast';
 import { pdf } from '@react-pdf/renderer';
 import { api, getErrorMessage } from '@/lib/api';
-import { cn, formatCDF, formatDate, initials } from '@/lib/utils';
+import { cn, formatCDF, formatUSD, formatDate, initials } from '@/lib/utils';
 import { OnboardingStepper } from '@/components/clients/OnboardingStepper';
 import { ProduitSearchInput } from '@/components/clients/ProduitSearchInput';
 import { FicheAdhesionPDF, FicheAdhesionData } from '@/components/clients/FicheAdhesionPDF';
