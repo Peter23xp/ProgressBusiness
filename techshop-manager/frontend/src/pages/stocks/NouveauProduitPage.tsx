@@ -19,7 +19,6 @@ interface FormValues {
   description: string;
   prixVente: number | '';
   prixAchat: number | '';
-  monnaie: 'CDF' | 'USD';
   seuilsParSite: { siteId: string; siteNom: string; seuilAlerte: number }[];
 }
 
@@ -167,12 +166,10 @@ export default function NouveauProduitPage() {
       description: '',
       prixVente: '',
       prixAchat: '',
-      monnaie: 'CDF',
       seuilsParSite: [],
     },
   });
 
-  const monnaie = useWatch({ control, name: 'monnaie' });
   const categorie = useWatch({ control, name: 'categorie' });
   const nomValue = useWatch({ control, name: 'nom' });
   const prixVente = useWatch({ control, name: 'prixVente' });
@@ -234,7 +231,6 @@ export default function NouveauProduitPage() {
       description: values.description?.trim() || undefined,
       prixVente: Number(values.prixVente),
       prixAchat: Number(values.prixAchat),
-      monnaie: values.monnaie,
       seuilsParSite: values.seuilsParSite.map(s => ({
         siteId: s.siteId,
         seuilAlerte: s.seuilAlerte,
@@ -255,7 +251,7 @@ export default function NouveauProduitPage() {
       ? ((marge / Number(prixAchat)) * 100).toFixed(1)
       : null;
 
-  const prixLabel = monnaie === 'USD' ? 'USD' : 'CDF';
+  const prixLabel = 'USD';
 
   return (
     <div className="space-y-0">
@@ -390,26 +386,7 @@ export default function NouveauProduitPage() {
 
             {/* Prix */}
             <div className="card space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Prix</p>
-                {/* Toggle CDF / USD */}
-                <div className="period-toggle">
-                  <button
-                    type="button"
-                    className={cn('period-btn', monnaie === 'CDF' && 'active')}
-                    onClick={() => setValue('monnaie', 'CDF')}
-                  >
-                    CDF
-                  </button>
-                  <button
-                    type="button"
-                    className={cn('period-btn', monnaie === 'USD' && 'active')}
-                    onClick={() => setValue('monnaie', 'USD')}
-                  >
-                    USD
-                  </button>
-                </div>
-              </div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Prix</p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="form-group">
@@ -421,7 +398,7 @@ export default function NouveauProduitPage() {
                       id="prixVente"
                       type="number"
                       min={0}
-                      step={monnaie === 'USD' ? '0.01' : '100'}
+                      step="0.01"
                       placeholder="0"
                       className={cn('pr-14', errors.prixVente && 'border-danger')}
                       {...register('prixVente', {
@@ -446,7 +423,7 @@ export default function NouveauProduitPage() {
                       id="prixAchat"
                       type="number"
                       min={0}
-                      step={monnaie === 'USD' ? '0.01' : '100'}
+                      step="0.01"
                       placeholder="0"
                       className={cn('pr-14', errors.prixAchat && 'border-danger')}
                       {...register('prixAchat', {
@@ -475,21 +452,13 @@ export default function NouveauProduitPage() {
                   <div className="flex items-center gap-2">
                     {marge < 0 && <AlertCircle size={13} className="text-danger" />}
                     <span className={cn('font-bold font-mono', marge >= 0 ? 'text-success' : 'text-danger')}>
-                      {monnaie === 'USD'
-                        ? `${marge >= 0 ? '+' : ''}${marge.toFixed(2)} USD`
-                        : `${marge >= 0 ? '+' : ''}${new Intl.NumberFormat('fr-CD').format(marge)} CDF`}
+                      {`${marge >= 0 ? '+' : ''}${marge.toFixed(2)} USD`}
                     </span>
                     {margePct !== null && (
                       <span className="text-text-muted">({margePct}%)</span>
                     )}
                   </div>
                 </div>
-              )}
-
-              {monnaie === 'USD' && (
-                <p className="text-[10px] text-text-muted">
-                  Les prix seront convertis en CDF au taux de 2 800 CDF/USD lors de l'enregistrement.
-                </p>
               )}
             </div>
           </div>
@@ -578,9 +547,7 @@ export default function NouveauProduitPage() {
                 <p className="text-[11px] text-text-muted">{categorie} · {skuPreview}</p>
                 {prixVente && (
                   <p className="text-[12px] font-semibold text-primary">
-                    Vente : {monnaie === 'USD'
-                      ? `${Number(prixVente).toFixed(2)} USD`
-                      : `${new Intl.NumberFormat('fr-CD').format(Number(prixVente))} CDF`}
+                    Vente : {`${Number(prixVente).toFixed(2)} USD`}
                   </p>
                 )}
               </div>
