@@ -47,7 +47,8 @@
       "Bash(ls -la dist/modules/clients/clients.service.js)",
       "Bash(stat -c \"%y\" dist/modules/clients/clients.service.js)",
       "Bash(tasklist)",
-      "Bash(wmic process *)"
+      "Bash(wmic process *)",
+      "WebFetch(domain:sandbox.safaricom.co.ke)"
     ]
   }
 }

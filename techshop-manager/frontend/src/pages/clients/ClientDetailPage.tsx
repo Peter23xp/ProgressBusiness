@@ -1,10 +1,13 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit2, Phone, MapPin, Calendar, CreditCard,
   Users, ShoppingBag, Star, Clock, AlertCircle, RefreshCw,
+  FileText, Loader2,
   type LucideIcon,
 } from 'lucide-react';
+import { pdf } from '@react-pdf/renderer';
+import toast from 'react-hot-toast';
 import { cn, formatDate, initials } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { useClientDetail } from '@/hooks/useClientDetail';
@@ -15,8 +18,8 @@ import { ClientInfoTab } from '@/components/clients/tabs/ClientInfoTab';
 import { ClientParrainageTab } from '@/components/clients/tabs/ClientParrainageTab';
 import { ClientAchatsTab } from '@/components/clients/tabs/ClientAchatsTab';
 import { ClientPointsTab } from '@/components/clients/tabs/ClientPointsTab';
+import { FicheAdhesionPDF, type FicheAdhesionData } from '@/components/clients/FicheAdhesionPDF';
 import type { UpdateClientDto } from '@/lib/clients.api';
-import { useState } from 'react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -82,7 +85,7 @@ export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { hasRole } = useAuthStore();
+  const { hasRole, user } = useAuthStore();
   const [editOpen, setEditOpen] = useState(false);
 
   const rawTab = searchParams.get('tab') as Tab | null;
@@ -102,6 +105,60 @@ export default function ClientDetailPage() {
   } = useClientDetail(id ?? '');
 
   const canEdit = hasRole('GERANT');
+  const [generatingPDF, setGeneratingPDF] = useState(false);
+
+  async function handleGenerateFiche() {
+    if (!client) return;
+    setGeneratingPDF(true);
+    try {
+      const activation = client.onboardingEtapes?.find(e => e.etape === 'ACTIVATION');
+      const dateStr = activation?.completeeAt
+        ? new Date(activation.completeeAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        : client.dateActivation
+          ? new Date(client.dateActivation).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+          : formatDate(client.dateInscription);
+
+      const numeroFiche = client.id.slice(-4).toUpperCase();
+      const siteVille = client.site?.nom?.split(' ').pop() ?? 'Goma';
+
+      // Récupère le produit depuis la première vente (vente d'activation)
+      const premiereVente = client.ventes?.[0];
+      const produitNom = premiereVente?.lignes?.[0]?.produitNom ?? 'Produit Progress Business';
+      const produitPrix = Number(activation?.montant ?? premiereVente?.montantNet ?? 0);
+
+      const ficheData: FicheAdhesionData = {
+        nomComplet: `${client.prenom} ${client.nom}`.toUpperCase(),
+        telephone: client.telephone,
+        email: client.email ?? undefined,
+        adresse: (client as any).adresse ?? undefined,
+        ville: siteVille,
+        numeroFiche,
+        dateActivation: dateStr,
+        parrainNom: client.parrain
+          ? `${client.parrain.prenom} ${client.parrain.nom}`
+          : undefined,
+        parrainCode: client.parrain?.codeParrain ?? undefined,
+        agentNom: activation?.agentNom ?? user?.nom ?? user?.name ?? 'Agent',
+        produitNom,
+        produitPrix,
+        pointsCumules: client.pointsCumules,
+      };
+
+      const blob = await pdf(<FicheAdhesionPDF data={ficheData} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fiche-${client.prenom}-${client.nom}-${numeroFiche}.pdf`
+        .toLowerCase().replace(/\s+/g, '-');
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Fiche générée avec succès !');
+    } catch {
+      toast.error('Erreur lors de la génération du PDF.');
+    } finally {
+      setGeneratingPDF(false);
+    }
+  }
 
   // Close modal on successful save (updateError becomes null after reset)
   useEffect(() => {
@@ -261,16 +318,32 @@ export default function ClientDetailPage() {
             </div>
 
             {/* Actions */}
-            {canEdit && (
-              <button
-                type="button"
-                onClick={() => { resetUpdateError(); setEditOpen(true); }}
-                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-[13px] font-medium text-text-muted hover:border-primary-accent hover:text-primary-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent"
-              >
-                <Edit2 size={14} aria-hidden />
-                Modifier
-              </button>
-            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              {client.statut === 'ACTIF' && (
+                <button
+                  type="button"
+                  onClick={handleGenerateFiche}
+                  disabled={generatingPDF}
+                  className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-[13px] font-medium text-text-muted hover:border-green-500 hover:text-green-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {generatingPDF
+                    ? <Loader2 size={14} className="animate-spin" aria-hidden />
+                    : <FileText size={14} aria-hidden />
+                  }
+                  {generatingPDF ? 'Génération…' : 'Fiche PDF'}
+                </button>
+              )}
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => { resetUpdateError(); setEditOpen(true); }}
+                  className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-[13px] font-medium text-text-muted hover:border-primary-accent hover:text-primary-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent"
+                >
+                  <Edit2 size={14} aria-hidden />
+                  Modifier
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
