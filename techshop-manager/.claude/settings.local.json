@@ -40,7 +40,14 @@
       "Bash(npm audit *)",
       "Bash(npm view *)",
       "Bash(xargs grep -l \"interface Produit\\\\|type Produit\")",
-      "Bash(npm test *)"
+      "Bash(npm test *)",
+      "Bash(xargs grep -l \"search.*produit\\\\|produits.*search\\\\|/produits/search\")",
+      "Bash(npx ts-node -e ' *)",
+      "Bash(gh pr *)",
+      "Bash(ls -la dist/modules/clients/clients.service.js)",
+      "Bash(stat -c \"%y\" dist/modules/clients/clients.service.js)",
+      "Bash(tasklist)",
+      "Bash(wmic process *)"
     ]
   }
 }

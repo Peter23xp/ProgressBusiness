@@ -114,7 +114,7 @@ function ConfirmModal({
         {/* Récap produit */}
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-[12px] space-y-1">
           <p className="font-bold text-text">Produit acheté</p>
-          <p className="text-text-muted">{produit.nom} — <span className="font-mono font-bold text-text">{new Intl.NumberFormat('fr-CD').format(produit.prixVente)} CDF</span></p>
+          <p className="text-text-muted">{produit.nom} — <span className="font-mono font-bold text-text">{formatUSD(produit.prixVente)}</span></p>
           <p className="text-text-muted">Mode de paiement : <span className="font-semibold text-text">{MODE_LABEL[modePaiement] ?? modePaiement}</span></p>
           <p className="text-orange-600 text-[11px] font-medium mt-1">⚠ 1 unité sera retirée du stock.</p>
         </div>
@@ -243,7 +243,7 @@ function SuccessScreen({
       <div className="w-full max-w-sm rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-left space-y-1">
         <p className="text-[11px] font-bold uppercase tracking-widest text-success">Produit vendu · Stock mis à jour</p>
         <p className="text-[13px] font-semibold text-text">{activationProduit.nom}</p>
-        <p className="text-[12px] text-text-muted font-mono">{new Intl.NumberFormat('fr-CD').format(activationProduit.prixVente)} CDF · 1 unité retirée du stock</p>
+        <p className="text-[12px] text-text-muted font-mono">{formatUSD(activationProduit.prixVente)} · 1 unité retirée du stock</p>
       </div>
 
       {/* Génération fiche PDF */}
@@ -589,7 +589,7 @@ export default function OnboardingActivationPage() {
             {selectedProduit && (
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-text-muted">
                 Prix : <span className="font-mono font-bold text-text">
-                  {new Intl.NumberFormat('fr-CD').format(selectedProduit.prixVente)} CDF
+                  {formatUSD(selectedProduit.prixVente)}
                 </span>
                 {' · '}Points : <span className="font-bold text-primary">40P</span>
                 {' · '}Stock : <span className="font-bold text-orange-600">−1 unité après activation</span>

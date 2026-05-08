@@ -9,18 +9,51 @@ import { paginate } from '../../common/dto/pagination.dto';
 import { CreateVenteDto, RetourDto } from './dto/vente.dto';
 import { NiveauFidelite, TypeMouvement } from '@prisma/client';
 
-const REMISE_FIDELITE: Record<NiveauFidelite, number> = {
-  BRONZE: 0,
-  ARGENT: 3,
-  OR: 5,
-  PLATINE: 8,
-};
-
-const POINTS_PAR_CDF = 1000; // 1 point par 1000 CDF
-
 @Injectable()
 export class VentesService {
   constructor(private prisma: PrismaService) {}
+
+  /** Charge la config fidélité depuis la DB. Fallback : 1 pt = $10, remises par défaut. */
+  private async getFideliteConfig(): Promise<{
+    ratioPts: number;
+    remiseParNiveau: Record<NiveauFidelite, number>;
+    seuilsNiveaux: { seuilPts: number; nom: NiveauFidelite }[];
+  }> {
+    const config = await this.prisma.configFidelite.findFirst({
+      include: { niveaux: { orderBy: { seuilPts: 'asc' } } },
+    });
+
+    const ratioPts = config?.ratioPtsCDF ?? 10;
+
+    // Remises: lire depuis niveaux_config si disponibles
+    const defaultRemises: Record<NiveauFidelite, number> = {
+      BRONZE: 0, ARGENT: 3, OR: 5, PLATINE: 8,
+    };
+    const remiseParNiveau: Record<NiveauFidelite, number> = { ...defaultRemises };
+    const seuilsNiveaux: { seuilPts: number; nom: NiveauFidelite }[] = [
+      { seuilPts: 500, nom: NiveauFidelite.ARGENT },
+      { seuilPts: 2000, nom: NiveauFidelite.OR },
+      { seuilPts: 5000, nom: NiveauFidelite.PLATINE },
+    ];
+
+    if (config?.niveaux?.length) {
+      for (const n of config.niveaux) {
+        // Normalise "Bronze" → "BRONZE", "Argent" → "ARGENT", etc.
+        const niveau = n.nom.toUpperCase() as NiveauFidelite;
+        if (niveau in defaultRemises) {
+          remiseParNiveau[niveau] = Number(n.remisePct);
+        }
+      }
+      // Reconstruire les seuils depuis la config DB (exclure BRONZE qui est toujours 0)
+      const dynamicSeuils = config.niveaux
+        .filter(n => n.nom.toUpperCase() !== 'BRONZE' && n.seuilPts > 0)
+        .map(n => ({ seuilPts: n.seuilPts, nom: n.nom.toUpperCase() as NiveauFidelite }))
+        .sort((a, b) => a.seuilPts - b.seuilPts);
+      if (dynamicSeuils.length) seuilsNiveaux.splice(0, seuilsNiveaux.length, ...dynamicSeuils);
+    }
+
+    return { ratioPts, remiseParNiveau, seuilsNiveaux };
+  }
 
   async createVente(dto: CreateVenteDto, agentId: string) {
     // Vérifier que le site existe
@@ -95,10 +128,13 @@ export class VentesService {
       };
     });
 
+    // Charger la config fidélité depuis la DB
+    const fideliteConfig = await this.getFideliteConfig();
+
     // Calculer la remise fidélité
     let remiseFidelite = 0;
     if (client && dto.appliquerRemiseFidelite) {
-      const pct = REMISE_FIDELITE[client.niveauFidelite as NiveauFidelite] ?? 0;
+      const pct = fideliteConfig.remiseParNiveau[client.niveauFidelite as NiveauFidelite] ?? 0;
       remiseFidelite = montantBrut * (pct / 100);
     }
 
@@ -116,9 +152,9 @@ export class VentesService {
       }
     }
 
-    // Calculer points fidélité (1 pt par 1000 CDF, arrondi inférieur)
+    // 1 point par ratioPts $ dépensé (ex: $10 = 1 pt)
     const pointsAttribues = client
-      ? Math.floor(montantNet / POINTS_PAR_CDF)
+      ? Math.floor(montantNet / fideliteConfig.ratioPts)
       : 0;
 
     // Générer le numéro de vente
@@ -252,10 +288,15 @@ export class VentesService {
     clientId: string,
     pointsCumules: number,
   ) {
+    const { seuilsNiveaux } = await this.getFideliteConfig();
+
     let niveau: NiveauFidelite = NiveauFidelite.BRONZE;
-    if (pointsCumules >= 5000) niveau = NiveauFidelite.PLATINE;
-    else if (pointsCumules >= 2000) niveau = NiveauFidelite.OR;
-    else if (pointsCumules >= 500) niveau = NiveauFidelite.ARGENT;
+    for (const seuil of [...seuilsNiveaux].sort((a, b) => b.seuilPts - a.seuilPts)) {
+      if (pointsCumules >= seuil.seuilPts) {
+        niveau = seuil.nom;
+        break;
+      }
+    }
 
     await tx.client.update({
       where: { id: clientId },

@@ -329,29 +329,28 @@ export class FideliteService {
   }
 
   async updateConfig(dto: ConfigFideliteDto) {
+    // Normalise les champs frontend (niveau/seuilMin) vers backend (nom/seuilPts)
+    // Conserve la casse telle qu'envoyée par le frontend (ex: "BRONZE")
+    const niveaux = dto.niveaux.map((n) => ({
+      nom: (n.nom ?? n.niveau ?? 'BRONZE'),
+      seuilPts: n.seuilPts ?? n.seuilMin ?? 0,
+      remisePct: n.remisePct,
+    }));
+
     const existing = await this.prisma.configFidelite.findFirst({
       include: { niveaux: true },
     });
 
     if (existing) {
-      // Supprimer les anciens niveaux
-      await this.prisma.niveauConfig.deleteMany({
-        where: { configId: existing.id },
-      });
+      await this.prisma.niveauConfig.deleteMany({ where: { configId: existing.id } });
 
       return this.prisma.configFidelite.update({
         where: { id: existing.id },
         data: {
           ratioPtsCDF: dto.ratioPtsCDF,
-          dureeValiditeMois: dto.dureeValiditeMois ?? 0,
-          cumulRemises: dto.cumulRemises,
-          niveaux: {
-            create: dto.niveaux.map((n) => ({
-              nom: n.nom,
-              seuilPts: n.seuilPts,
-              remisePct: n.remisePct,
-            })),
-          },
+          dureeValiditeMois: dto.dureeValiditeMois ?? existing.dureeValiditeMois,
+          cumulRemises: dto.cumulRemises ?? existing.cumulRemises,
+          niveaux: { create: niveaux },
         },
         include: { niveaux: true },
       });
@@ -361,14 +360,8 @@ export class FideliteService {
       data: {
         ratioPtsCDF: dto.ratioPtsCDF,
         dureeValiditeMois: dto.dureeValiditeMois ?? 0,
-        cumulRemises: dto.cumulRemises,
-        niveaux: {
-          create: dto.niveaux.map((n) => ({
-            nom: n.nom,
-            seuilPts: n.seuilPts,
-            remisePct: n.remisePct,
-          })),
-        },
+        cumulRemises: dto.cumulRemises ?? false,
+        niveaux: { create: niveaux },
       },
       include: { niveaux: true },
     });

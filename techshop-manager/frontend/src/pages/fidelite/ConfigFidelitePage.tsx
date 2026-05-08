@@ -52,7 +52,7 @@ function NiveauPreview({ niveaux, ratioPtsCDF }: { niveaux: NiveauConfig[]; rati
         })}
       </div>
       <p className="text-[10px] text-text-muted">
-        Taux de conversion : <span className="font-bold">1 pt = ${ratioPtsCDF.toLocaleString('en-US')} dépensé</span>
+        Taux de conversion : <span className="font-bold">1 pt = ${ratioPtsCDF.toLocaleString('fr-FR')} dépensé</span>
       </p>
     </div>
   );
@@ -61,7 +61,7 @@ function NiveauPreview({ niveaux, ratioPtsCDF }: { niveaux: NiveauConfig[]; rati
 // ── Simulateur ────────────────────────────────────────────────────────────────
 
 function Simulateur({ niveaux, ratioPtsCDF }: { niveaux: NiveauConfig[]; ratioPtsCDF: number }) {
-  const [achat, setAchat] = useState(50000);
+  const [achat, setAchat] = useState(100);
   const ptsGagnes = Math.floor(achat / ratioPtsCDF);
   const ptsTotal = ptsGagnes;
 
@@ -97,8 +97,8 @@ function Simulateur({ niveaux, ratioPtsCDF }: { niveaux: NiveauConfig[]; ratioPt
           <p className="text-[9px] text-text-muted uppercase font-semibold tracking-wider">remise</p>
         </div>
         <div className="bg-white rounded-lg px-2 py-2 border border-border">
-          <p className="font-black text-[18px] text-success">{economieCDF.toLocaleString()}</p>
-          <p className="text-[9px] text-text-muted uppercase font-semibold tracking-wider">$ économisé</p>
+          <p className="font-black text-[18px] text-success">${economieCDF.toFixed(2)}</p>
+          <p className="text-[9px] text-text-muted uppercase font-semibold tracking-wider">économisé</p>
         </div>
       </div>
     </div>
@@ -465,7 +465,7 @@ export default function ConfigFidelitePage() {
                       />
                       <span className="text-[12px] text-text-muted">$</span>
                     </div>
-                    <p className="text-[10px] text-text-muted mt-1">Ex: 1 point par $1 000 dépensé</p>
+                    <p className="text-[10px] text-text-muted mt-1">Ex: ratio = 10 → 1 pt par $10 dépensé</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">

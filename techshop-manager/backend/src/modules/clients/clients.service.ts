@@ -551,8 +551,9 @@ export class ClientsService {
         },
       });
 
-      // Créer la vente pour le produit d'activation
-      await tx.vente.create({
+      // Créer la vente pour le produit d'activation (40 points fixes à l'activation)
+      const POINTS_ACTIVATION = 40;
+      const newVente = await tx.vente.create({
         data: {
           numeroVente,
           siteId: client.siteInscriptionId,
@@ -563,7 +564,7 @@ export class ClientsService {
           montantBrut: prixVente,
           remiseFidelite: 0,
           montantNet: prixVente,
-          pointsAttribues: 0,
+          pointsAttribues: POINTS_ACTIVATION,
           lignes: {
             create: [{
               produitId: dto.produitId,
@@ -572,6 +573,27 @@ export class ClientsService {
               sousTotal: prixVente,
             }],
           },
+        },
+      });
+
+      // Attribuer les 40 points au client
+      const updatedClient = await tx.client.update({
+        where: { id: clientId },
+        data: {
+          pointsFidelite: { increment: POINTS_ACTIVATION },
+          pointsCumules: { increment: POINTS_ACTIVATION },
+        },
+        select: { pointsFidelite: true },
+      });
+
+      await tx.mouvementPoints.create({
+        data: {
+          type: 'GAIN_VENTE',
+          delta: POINTS_ACTIVATION,
+          soldeApres: updatedClient.pointsFidelite,
+          description: `Points offerts à l'activation — ${numeroVente}`,
+          clientId,
+          venteId: newVente.id,
         },
       });
 

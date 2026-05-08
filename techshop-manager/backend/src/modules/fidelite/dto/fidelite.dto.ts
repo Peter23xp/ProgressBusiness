@@ -11,12 +11,25 @@ import {
 import { Type } from 'class-transformer';
 
 export class NiveauConfigDto {
+  // Frontend envoie "niveau" (ex: "ARGENT"), backend stocke "nom"
   @IsString()
-  nom: string;
+  @IsOptional()
+  nom?: string;
+
+  @IsString()
+  @IsOptional()
+  niveau?: string;
+
+  // Frontend envoie "seuilMin", backend stocke "seuilPts"
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  seuilPts?: number;
 
   @IsNumber()
   @Min(0)
-  seuilPts: number;
+  @IsOptional()
+  seuilMin?: number;
 
   @IsNumber()
   @Min(0)
@@ -39,6 +52,7 @@ export class ConfigFideliteDto {
   @Min(0)
   dureeValiditeMois?: number;
 
+  @IsOptional()
   @IsBoolean()
-  cumulRemises: boolean;
+  cumulRemises?: boolean;
 }
