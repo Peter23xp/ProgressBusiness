@@ -7,6 +7,7 @@ import {
   Font,
   Image,
 } from '@react-pdf/renderer';
+import { formatUSD } from '@/lib/utils';
 
 Font.registerHyphenationCallback((word) => [word]);
 
@@ -26,28 +27,30 @@ export interface FicheAdhesionData {
   pointsCumules: number;
 }
 
+// ── Couleurs fidèles au formulaire papier ────────────────────────────────────
 const BLUE = '#1E3A5F';
-const RED = '#CC0000';
-const BORDER = '#444444';
-const DOT_BORDER = '#999999';
+const RED  = '#CC0000';
+const BLACK = '#000000';
+const BORDER = '#000000';
+const DOT_BORDER = '#666666';
 const LOGO_URL = '/assets/Progress business logo.png';
 
-// A4 = 595×842pt — watermark centré sur la page entière
-const WM = 300;
+// A4 = 595×842pt — watermark centré
+const WM = 340;
 const WM_LEFT = (595 - WM) / 2;
-const WM_TOP  = (842 - WM) / 2;
+const WM_TOP  = (842 - WM) / 2 + 40; // légèrement décalé vers le bas comme sur le papier
 
 const styles = StyleSheet.create({
   page: {
     fontFamily: 'Helvetica',
     fontSize: 9,
-    paddingTop: 16,
-    paddingBottom: 16,
-    paddingLeft: 22,
-    paddingRight: 22,
-    color: '#111111',
+    paddingTop: 20,
+    paddingBottom: 24,
+    paddingLeft: 28,
+    paddingRight: 28,
+    color: BLACK,
     backgroundColor: '#FFFFFF',
-    lineHeight: 1.2,
+    lineHeight: 1.3,
   },
 
   watermark: {
@@ -56,7 +59,7 @@ const styles = StyleSheet.create({
     left: WM_LEFT,
     width: WM,
     height: WM,
-    opacity: 0.07,
+    opacity: 0.08,
   },
 
   // ── Header ────────────────────────────────────────────────
@@ -64,137 +67,142 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   logo: {
-    width: 62,
-    height: 62,
+    width: 65,
+    height: 65,
   },
   companyBlock: {
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
   },
   companyName: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Helvetica-Bold',
     color: BLUE,
-    letterSpacing: 2,
+    letterSpacing: 2.5,
     textTransform: 'uppercase',
   },
   companyNameAccent: {
+    fontFamily: 'Helvetica-Bold',
     color: RED,
   },
   companyMeta: {
     fontSize: 7.5,
     color: '#333333',
     textAlign: 'center',
-    marginTop: 3,
+    marginTop: 2,
     lineHeight: 1.5,
   },
 
-  // ── Title ─────────────────────────────────────────────────
+  // ── Title (séparateur simple comme sur le papier) ─────────
+  titleSeparator: {
+    borderBottom: '1.5pt solid ' + BLACK,
+    marginTop: 8,
+    marginBottom: 6,
+  },
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
-    marginBottom: 7,
-    borderTop: '2pt solid ' + BLUE,
-    borderBottom: '2pt solid ' + BLUE,
-    paddingTop: 4,
-    paddingBottom: 4,
+    marginBottom: 10,
   },
   titleText: {
     fontSize: 13,
     fontFamily: 'Helvetica-Bold',
-    color: BLUE,
-    letterSpacing: 0.5,
+    color: BLACK,
+    letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
   ficheNumLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: 'Helvetica-Bold',
-    color: '#111111',
+    color: BLACK,
   },
 
   // ── Info fields ───────────────────────────────────────────
   infoRow: {
     flexDirection: 'row',
-    marginBottom: 5,
+    marginBottom: 6,
     alignItems: 'flex-end',
   },
   infoLabel: {
-    fontSize: 9,
+    fontSize: 9.5,
     fontFamily: 'Helvetica-Bold',
-    color: '#111111',
+    color: BLACK,
     flexShrink: 0,
   },
-  infoUnderline: {
+  infoValue: {
     flex: 1,
-    fontSize: 9,
-    color: '#111111',
+    fontSize: 9.5,
+    color: BLACK,
     borderBottom: '0.75pt dotted ' + DOT_BORDER,
     paddingBottom: 1,
-    marginLeft: 2,
+    marginLeft: 3,
+  },
+  // Variante pour les champs multi-segments (Invité par, Adresse)
+  infoValueFixed: {
+    fontSize: 9.5,
+    color: BLACK,
+    borderBottom: '0.75pt dotted ' + DOT_BORDER,
+    paddingBottom: 1,
+    marginLeft: 3,
   },
 
-  // ── Date + signature ──────────────────────────────────────
+  // ── Date + signature (section membre) ─────────────────────
   dateSignRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 6,
-    marginBottom: 8,
+    marginTop: 10,
+    marginBottom: 12,
   },
   dateSignBlock: {
     alignItems: 'flex-end',
   },
   dateSignText: {
-    fontSize: 8.5,
-    color: '#111111',
+    fontSize: 9,
+    color: BLACK,
     textAlign: 'right',
   },
   signatureLabelSmall: {
-    fontSize: 8.5,
-    color: '#111111',
-    marginTop: 2,
+    fontSize: 9,
+    color: BLACK,
+    marginTop: 3,
     textAlign: 'right',
-  },
-  signatureLine: {
-    borderBottom: '0.5pt solid ' + BORDER,
-    width: 150,
-    marginTop: 20,
   },
 
   // ── Table ─────────────────────────────────────────────────
   tableLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: 'Helvetica-Bold',
-    color: '#111111',
+    color: BLACK,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 3,
+    marginBottom: 4,
+    marginTop: 4,
   },
 
   // ── Satisfaction ──────────────────────────────────────────
   satRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 8,
+    marginTop: 10,
     marginBottom: 10,
   },
   satCheckbox: {
-    width: 12,
-    height: 12,
-    border: '1pt solid ' + BORDER,
+    width: 14,
+    height: 14,
+    border: '1pt solid ' + BLACK,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
     marginTop: 1,
-    marginRight: 5,
+    marginRight: 6,
   },
   satCheckMark: {
-    fontSize: 9,
+    fontSize: 10,
     color: RED,
     fontFamily: 'Helvetica-Bold',
   },
@@ -202,7 +210,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: RED,
     flex: 1,
-    lineHeight: 1.4,
+    lineHeight: 1.5,
   },
   satBold: {
     fontFamily: 'Helvetica-Bold',
@@ -211,50 +219,48 @@ const styles = StyleSheet.create({
 
   // ── Footer ────────────────────────────────────────────────
   footerDateText: {
-    fontSize: 8.5,
-    color: '#111111',
+    fontSize: 9,
+    color: BLACK,
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
+    marginTop: 4,
   },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    marginTop: 4,
+    marginTop: 6,
+    paddingHorizontal: 10,
   },
   footerSigBlock: {
     alignItems: 'center',
-    width: 150,
+    width: 170,
   },
   footerSigLine: {
-    borderBottom: '0.5pt solid ' + BORDER,
-    width: 150,
-    marginTop: 24,
+    borderBottom: '0.5pt solid ' + BLACK,
+    width: 170,
+    marginTop: 30,
     marginBottom: 3,
   },
   footerSigLabel: {
-    fontSize: 8.5,
-    color: '#111111',
+    fontSize: 9,
+    color: BLACK,
     textAlign: 'center',
   },
 });
 
-// Colonnes : total doit = 595 - 22 - 22 - 7×(border 0.75) = 551 - 5.25 ≈ 546pt
-// On vise 546pt total pour remplir exactement la largeur utile
+// ── Colonnes du tableau (avec colonne Produit ajoutée) ──────────────────────
+// Largeur utile A4 = 595 - 28 - 28 = 539pt
 const C = {
-  num:     28,   // N°
-  date:    76,   // Date
-  prix:    70,   // PRIX
-  points:  56,   // Point cumulés
-  agent:   105,  // Nom agent
-  produit: 105,  // Produit
-  sig:     106,  // Signature agent
-  // total : 546pt ✓
+  num:     25,   // N°
+  date:    68,   // Date
+  prix:    65,   // PRIX
+  points:  52,   // Point cumulés
+  agent:   100,  // Nom agent
+  produit: 100,  // Produit
+  sig:     100,  // Signature agent
+  // total : 510pt (avec marges internes des bordures)
 };
-
-function formatCDF(amount: number): string {
-  return new Intl.NumberFormat('fr-CD').format(amount) + ' CDF';
-}
 
 function cell(
   width: number,
@@ -263,15 +269,15 @@ function cell(
 ) {
   return {
     width,
-    borderRight: '0.75pt solid ' + BORDER,
-    borderBottom: '0.75pt solid ' + BORDER,
-    paddingTop: 3,
-    paddingBottom: 3,
+    borderRight: '0.75pt solid ' + BLACK,
+    borderBottom: '0.75pt solid ' + BLACK,
+    paddingTop: isHeader ? 4 : 6,
+    paddingBottom: isHeader ? 4 : 6,
     paddingLeft: 3,
     paddingRight: 3,
     fontSize: isHeader ? 8 : 8.5,
     fontFamily: isHeader ? ('Helvetica-Bold' as const) : ('Helvetica' as const),
-    color: isHeader ? '#FFFFFF' : '#111111',
+    color: BLACK,
     textAlign: align,
     flexShrink: 0,
   };
@@ -300,6 +306,9 @@ export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
           <Image src={LOGO_URL} style={styles.logo} />
         </View>
 
+        {/* ── Ligne de séparation (comme sur le papier) ─────────────── */}
+        <View style={styles.titleSeparator} />
+
         {/* ── Title ────────────────────────────────────────────────── */}
         <View style={styles.titleRow}>
           <Text style={styles.titleText}>Fiche d'Adhésion Progressive</Text>
@@ -307,45 +316,49 @@ export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
         </View>
 
         {/* ── Client info ──────────────────────────────────────────── */}
+        {/* Nom & Post-nom */}
         <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Nom &amp; Post-nom : </Text>
-          <Text style={styles.infoUnderline}>{data.nomComplet}</Text>
+          <Text style={styles.infoLabel}>Nom & Post-nom : </Text>
+          <Text style={styles.infoValue}>{data.nomComplet}</Text>
         </View>
 
+        {/* Inviter par : ........... N° ........... ou ID ........... */}
         <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Invité par : </Text>
-          <Text style={[styles.infoUnderline, { maxWidth: 120 }]}>{data.parrainNom ?? ''}</Text>
-          <Text style={[styles.infoLabel, { marginLeft: 8 }]}>N° : </Text>
-          <Text style={[styles.infoUnderline, { maxWidth: 60 }]}>{data.parrainCode ?? ''}</Text>
-          <Text style={[styles.infoLabel, { marginLeft: 8 }]}>ou ID : </Text>
-          <Text style={[styles.infoUnderline, { maxWidth: 60 }]}>{''}</Text>
+          <Text style={styles.infoLabel}>Inviter par : </Text>
+          <Text style={[styles.infoValueFixed, { flex: 1 }]}>{data.parrainNom ?? ''}</Text>
+          <Text style={[styles.infoLabel, { marginLeft: 6 }]}>N° </Text>
+          <Text style={[styles.infoValueFixed, { width: 60, flexShrink: 0 }]}>{data.parrainCode ?? ''}</Text>
+          <Text style={[styles.infoLabel, { marginLeft: 6 }]}>ou ID </Text>
+          <Text style={[styles.infoValueFixed, { width: 60, flexShrink: 0 }]}>{''}</Text>
         </View>
 
+        {/* Adresse : ........................ Ville ........... */}
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Adresse : </Text>
-          <Text style={[styles.infoUnderline, { maxWidth: 200 }]}>{data.adresse ?? ''}</Text>
-          <Text style={[styles.infoLabel, { marginLeft: 10 }]}>Ville </Text>
-          <Text style={[styles.infoUnderline, { maxWidth: 85 }]}>{data.ville}</Text>
+          <Text style={[styles.infoValueFixed, { flex: 1 }]}>{data.adresse ?? ''}</Text>
+          <Text style={[styles.infoLabel, { marginLeft: 6 }]}>Ville </Text>
+          <Text style={[styles.infoValueFixed, { width: 100, flexShrink: 0 }]}>{data.ville}</Text>
         </View>
 
+        {/* Téléphone */}
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Téléphone : </Text>
-          <Text style={styles.infoUnderline}>{data.telephone}</Text>
+          <Text style={styles.infoValue}>{data.telephone}</Text>
         </View>
 
+        {/* E-mail */}
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>E-mail : </Text>
-          <Text style={styles.infoUnderline}>{data.email ?? ''}</Text>
+          <Text style={styles.infoValue}>{data.email ?? ''}</Text>
         </View>
 
-        {/* Date + Signature nouveau membre */}
+        {/* Date + Signature nouveau membre (aligné à droite) */}
         <View style={styles.dateSignRow}>
           <View style={styles.dateSignBlock}>
             <Text style={styles.dateSignText}>
               Fait à {data.ville}, le {data.dateActivation}
             </Text>
             <Text style={styles.signatureLabelSmall}>Signature du nouveau membre</Text>
-            <View style={styles.signatureLine} />
           </View>
         </View>
 
@@ -355,9 +368,9 @@ export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
         {/* En-tête table */}
         <View style={{
           flexDirection: 'row',
-          backgroundColor: BLUE,
-          borderTop: '0.75pt solid ' + BORDER,
-          borderLeft: '0.75pt solid ' + BORDER,
+          backgroundColor: '#FFFFFF',
+          borderTop: '0.75pt solid ' + BLACK,
+          borderLeft: '0.75pt solid ' + BLACK,
         }}>
           <Text style={cell(C.num, true)}>N°</Text>
           <Text style={cell(C.date, true)}>Date</Text>
@@ -369,10 +382,10 @@ export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
         </View>
 
         {/* Ligne 1 — données réelles */}
-        <View style={{ flexDirection: 'row', borderLeft: '0.75pt solid ' + BORDER }}>
+        <View style={{ flexDirection: 'row', borderLeft: '0.75pt solid ' + BLACK }}>
           <Text style={cell(C.num)}>1.</Text>
           <Text style={cell(C.date, false, 'left')}>le {data.dateActivation}</Text>
-          <Text style={cell(C.prix, false, 'right')}>{formatCDF(data.produitPrix)}</Text>
+          <Text style={cell(C.prix, false, 'right')}>{formatUSD(data.produitPrix)}</Text>
           <Text style={cell(C.points)}>{data.pointsCumules}P</Text>
           <Text style={cell(C.agent, false, 'left')}>{data.agentNom.toUpperCase()}</Text>
           <Text style={cell(C.produit, false, 'left')}>{data.produitNom}</Text>
@@ -381,7 +394,7 @@ export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
 
         {/* Lignes vides 2–5 */}
         {[2, 3, 4, 5].map((n) => (
-          <View key={n} style={{ flexDirection: 'row', borderLeft: '0.75pt solid ' + BORDER }}>
+          <View key={n} style={{ flexDirection: 'row', borderLeft: '0.75pt solid ' + BLACK }}>
             <Text style={cell(C.num)}>{n}.</Text>
             <Text style={cell(C.date)}>{' '}</Text>
             <Text style={cell(C.prix)}>{' '}</Text>
@@ -392,24 +405,23 @@ export function FicheAdhesionPDF({ data }: { data: FicheAdhesionData }) {
           </View>
         ))}
 
-        {/* Ligne Points Total */}
+        {/* Ligne Points Total (pas de fond coloré, comme le papier) */}
         <View style={{
           flexDirection: 'row',
-          borderLeft: '0.75pt solid ' + BORDER,
-          backgroundColor: '#EEF2F7',
+          borderLeft: '0.75pt solid ' + BLACK,
         }}>
           <Text style={{
             ...cell(C.num + C.date, false, 'left'),
             fontFamily: 'Helvetica-Bold',
           }}>Points Total</Text>
-          <Text style={cell(C.prix, false, 'right')}>{formatCDF(data.produitPrix)}</Text>
+          <Text style={cell(C.prix, false, 'right')}>{formatUSD(data.produitPrix)}</Text>
           <Text style={cell(C.points)}>{data.pointsCumules}P</Text>
           <Text style={cell(C.agent, false, 'left')}>{data.agentNom.toUpperCase()}</Text>
           <Text style={cell(C.produit)}>{' '}</Text>
           <Text style={cell(C.sig)}>{' '}</Text>
         </View>
 
-        {/* ── Satisfaction ─────────────────────────────────────────── */}
+        {/* ── Satisfaction (texte noir comme le papier) ─────────────── */}
         <View style={styles.satRow}>
           <View style={styles.satCheckbox}>
             <Text style={styles.satCheckMark}>✓</Text>
