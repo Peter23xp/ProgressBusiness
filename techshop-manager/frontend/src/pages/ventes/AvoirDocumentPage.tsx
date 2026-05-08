@@ -2,7 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Printer, AlertTriangle } from 'lucide-react';
 import { api } from '@/lib/api';
-import { formatCDF, formatDateTime } from '@/lib/utils';
+import { formatUSD, formatDateTime } from '@/lib/utils';
 
 interface LigneAvoir {
   produit: { id: string; nom: string; sku: string; categorie: string };
@@ -170,8 +170,8 @@ export default function AvoirDocumentPage() {
                       <p className="text-text-subtle font-mono text-[10px]">{l.produit.sku}</p>
                     </td>
                     <td className="py-2 text-center text-text">{l.quantite}</td>
-                    <td className="py-2 text-right text-text">{formatCDF(Math.round(puHT))}</td>
-                    <td className="py-2 text-right font-semibold text-text">{formatCDF(Math.round(stHT))}</td>
+                    <td className="py-2 text-right text-text">{formatUSD(Math.round(puHT))}</td>
+                    <td className="py-2 text-right font-semibold text-text">{formatUSD(Math.round(stHT))}</td>
                   </tr>
                 );
               })}
@@ -183,15 +183,15 @@ export default function AvoirDocumentPage() {
         <div className="border-t border-border pt-4 space-y-1 text-[12px]">
           <div className="flex justify-between text-text-muted">
             <span>Montant HT</span>
-            <span className="font-semibold text-text">{formatCDF(avoir.montantHT)}</span>
+            <span className="font-semibold text-text">{formatUSD(avoir.montantHT)}</span>
           </div>
           <div className="flex justify-between text-text-muted">
             <span>TVA {avoir.tauxTVA}%</span>
-            <span className="font-semibold text-text">{formatCDF(avoir.montantTVA)}</span>
+            <span className="font-semibold text-text">{formatUSD(avoir.montantTVA)}</span>
           </div>
           <div className="flex justify-between text-[14px] font-bold text-primary border-t border-border pt-2">
             <span>Montant TTC à rembourser</span>
-            <span className="text-danger">{formatCDF(avoir.montantRembourse)}</span>
+            <span className="text-danger">{formatUSD(avoir.montantRembourse)}</span>
           </div>
           <div className="flex justify-between text-text-muted mt-1">
             <span>Mode de remboursement</span>

@@ -4,7 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Printer, MessageSquare, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api, getErrorMessage } from '@/lib/api';
-import { cn, formatCDF, formatDateTime } from '@/lib/utils';
+import { cn, formatUSD, formatDateTime } from '@/lib/utils';
 import type { ModePaiement, NiveauFidelite, StatutVente } from '@/types';
 
 // ── Types locaux ──────────────────────────────────────────────────────────────
@@ -334,10 +334,10 @@ export default function RecuPage() {
                   <p className="truncate">{ligne.produit.nom}</p>
                   <div className="flex justify-between">
                     <span>
-                      {ligne.quantite}×{formatCDF(ligne.prixUnitaire)}
+                      {ligne.quantite}×{formatUSD(ligne.prixUnitaire)}
                     </span>
                     <span className="font-semibold">
-                      {formatCDF(ligne.sousTotal)}
+                      {formatUSD(ligne.sousTotal)}
                     </span>
                   </div>
                 </div>
@@ -349,14 +349,14 @@ export default function RecuPage() {
             <div className="mb-1">
               <div className="flex justify-between">
                 <span>Sous-total :</span>
-                <span>{formatCDF(vente.montantBrut)}</span>
+                <span>{formatUSD(vente.montantBrut)}</span>
               </div>
               {vente.remiseFidelite > 0 && (
                 <div className="flex justify-between">
                   <span>
                     Remise {vente.client?.niveauFidelite ?? ''}({remisePct}%) :
                   </span>
-                  <span>-{formatCDF(vente.remiseFidelite)}</span>
+                  <span>-{formatUSD(vente.remiseFidelite)}</span>
                 </div>
               )}
             </div>
@@ -365,7 +365,7 @@ export default function RecuPage() {
             <div className="mb-1">
               <div className="flex justify-between font-bold text-[14px]">
                 <span>TOTAL :</span>
-                <span>{formatCDF(vente.montantNet)}</span>
+                <span>{formatUSD(vente.montantNet)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Payé  :</span>
@@ -374,7 +374,7 @@ export default function RecuPage() {
               {vente.modePaiement === 'CASH' && vente.montantRecu != null && (
                 <div className="flex justify-between">
                   <span>Reçu  :</span>
-                  <span>{formatCDF(vente.montantRecu)}</span>
+                  <span>{formatUSD(vente.montantRecu)}</span>
                 </div>
               )}
               {vente.modePaiement === 'CASH' &&
@@ -382,7 +382,7 @@ export default function RecuPage() {
                 vente.monnaieRendue > 0 && (
                   <div className="flex justify-between">
                     <span>Monnaie :</span>
-                    <span>{formatCDF(vente.monnaieRendue)}</span>
+                    <span>{formatUSD(vente.monnaieRendue)}</span>
                   </div>
                 )}
             </div>
