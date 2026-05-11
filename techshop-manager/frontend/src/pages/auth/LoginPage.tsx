@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Loader2, Wifi, WifiOff, ShoppingCart, Users, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -22,35 +22,35 @@ function detectFormat(value: string): 'phone' | 'email' | 'unknown' | 'empty' {
 function getRoleRedirect(role: Role): string {
   switch (role) {
     case 'SUPER_ADMIN':
-    case 'GERANT':       return '/dashboard';
+    case 'GERANT':              return '/dashboard';
     case 'DIRECTEUR_REGIONAL': return '/dashboard/regional';
-    case 'AGENT':        return '/sales/pos';
-    case 'FORMATEUR':    return '/clients';
-    case 'CLIENT':       return '/portal/home';
-    default:             return '/dashboard';
+    case 'AGENT':              return '/sales/pos';
+    case 'FORMATEUR':          return '/clients';
+    case 'CLIENT':             return '/portal/home';
+    default:                   return '/dashboard';
   }
 }
 
 export default function LoginPage() {
-  const navigate      = useNavigate();
+  const navigate       = useNavigate();
   const [searchParams] = useSearchParams();
-  const isOnline      = useOnlineStatus();
+  const isOnline       = useOnlineStatus();
   const { setAuth, loginAttempts, lockedUntil, incrementAttempts, resetAttempts, setLockedUntil } =
     useAuthStore();
 
-  const [identifier,    setIdentifier]    = useState('');
-  const [password,      setPassword]      = useState('');
-  const [rememberMe,    setRememberMe]     = useState(false);
-  const [showPassword,  setShowPassword]  = useState(false);
-  const [isLoading,     setIsLoading]     = useState(false);
-  const [errorMsg,      setErrorMsg]      = useState('');
+  const [identifier,    setIdentifier]   = useState('');
+  const [password,      setPassword]     = useState('');
+  const [rememberMe,    setRememberMe]   = useState(false);
+  const [showPassword,  setShowPassword] = useState(false);
+  const [isLoading,     setIsLoading]    = useState(false);
+  const [errorMsg,      setErrorMsg]     = useState('');
   const [lockCountdown, setLockCountdown] = useState('');
 
-  const identifierRef  = useRef<HTMLInputElement>(null);
+  const identifierRef   = useRef<HTMLInputElement>(null);
   const lockIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const identifierFormat = detectFormat(identifier);
-  const isLocked  = lockedUntil !== null && lockedUntil > new Date();
+  const isLocked   = lockedUntil !== null && lockedUntil > new Date();
   const isDisabled = isLoading || isLocked;
   const canSubmit  = identifier.trim().length > 0 && password.length > 0 && !isDisabled;
 
@@ -111,45 +111,12 @@ export default function LoginPage() {
     } finally { setIsLoading(false); }
   };
 
-  // Input glass — posé directement sur fond sombre
-  const glassInput = (hasErr = false) => cn(
-    'w-full bg-white/[0.07] border rounded-xl px-4 py-3.5 text-[14px] text-white',
-    'placeholder:text-white/25 caret-primary-accent',
-    'focus:outline-none focus:bg-white/[0.11] transition duration-150',
-    hasErr
-      ? 'border-red-500/60 focus:border-red-400 focus:ring-2 focus:ring-red-500/15'
-      : 'border-white/[0.10] focus:border-primary-accent/70 focus:ring-2 focus:ring-primary-accent/15',
-    'disabled:opacity-40 disabled:cursor-not-allowed',
-  );
-
   const identifierHasErr = identifier.length > 3 && identifierFormat === 'unknown';
 
   return (
-    <div
-      className="min-h-screen flex"
-      style={{ background: '#0A1628' }}
-    >
-      {/* Fond texturé — grille de points subtile */}
-      <div
-        className="fixed inset-0 pointer-events-none"
-        style={{
-          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.055) 1px, transparent 1px)',
-          backgroundSize: '28px 28px',
-        }}
-        aria-hidden
-      />
-      {/* Halo bleu bas-gauche */}
-      <div
-        className="fixed bottom-0 left-0 pointer-events-none"
-        style={{
-          width: 600, height: 600,
-          background: 'radial-gradient(circle, rgba(37,99,235,0.10) 0%, transparent 65%)',
-          transform: 'translate(-30%, 30%)',
-        }}
-        aria-hidden
-      />
+    <div className="min-h-screen flex bg-bg">
 
-      {/* ── Bandeau hors-ligne ─────────────────────────────────────── */}
+      {/* ── Bandeau hors-ligne ── */}
       {!isOnline && (
         <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2 bg-warning py-2 text-white text-[12px] font-bold">
           <WifiOff size={12} aria-hidden />
@@ -157,86 +124,97 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════════
-          Layout 2 colonnes sur desktop, empilement sur mobile
-      ════════════════════════════════════════════════════════════ */}
-      <div className="relative z-10 flex flex-col lg:flex-row w-full">
+      <div className="flex flex-col lg:flex-row w-full">
 
-        {/* ── Colonne gauche : identité ──────────────────────────── */}
-        <div className="hidden lg:flex flex-col justify-between w-[400px] xl:w-[460px] flex-shrink-0 px-12 py-14 border-r border-white/[0.06]">
+        {/* ── Colonne gauche : identité ── */}
+        <div className="hidden lg:flex flex-col justify-between w-[400px] xl:w-[460px] flex-shrink-0 px-12 py-14 bg-white border-r border-border">
 
-          {/* Logo */}
+          {/* Logo + nom */}
           <div>
-            <div className="flex items-center gap-3 mb-16">
-              <img src="/assets/Progress business logo.png" alt="Progress Business" className="h-24 w-24 rounded-xl object-contain flex-shrink-0" />
+            <div className="flex items-center gap-3 mb-14">
+              <img
+                src="/assets/Progress business logo.png"
+                alt="Progress Business"
+                className="h-16 w-16 rounded-xl object-contain flex-shrink-0"
+              />
               <div>
-                <p className="text-[9px] font-bold tracking-[0.25em] text-white/30 uppercase">Progress Business</p>
-                <p className="text-[15px] font-black text-white tracking-tight leading-none">MANAGER</p>
+                <p className="text-[9px] font-bold tracking-[0.25em] text-text-subtle uppercase">
+                  Progress Business
+                </p>
+                <p className="text-[16px] font-black text-primary tracking-tight leading-none mt-0.5">
+                  MANAGER
+                </p>
               </div>
             </div>
 
             {/* Accroche */}
-            <h2 className="text-[40px] xl:text-[46px] font-black text-white leading-[1.08] tracking-[-0.03em]">
+            <h2 className="text-[38px] xl:text-[44px] font-black text-primary leading-[1.05] tracking-[-0.03em]">
               Gestion<br />commerciale<br />
               <span className="text-primary-accent">centralisée.</span>
             </h2>
-            <p className="mt-4 text-[13px] text-white/40 leading-relaxed max-w-[280px]">
+            <p className="mt-4 text-[13px] text-text-muted leading-relaxed max-w-[280px]">
               Caisse, clients, stocks et parrainage —
               en un seul outil, même sans réseau.
             </p>
           </div>
 
           {/* Capacités */}
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {([
-              { Icon: ShoppingCart, label: 'Caisse POS offline-first',           sub: 'Vente en < 90 secondes' },
-              { Icon: Users,        label: 'Onboarding clients en 4 étapes',      sub: 'Récit · Formation · Fiche · Activation' },
-              { Icon: BarChart3,    label: 'Rapports multi-sites',                sub: 'Goma · Bukavu · Kinshasa' },
+              { Icon: ShoppingCart, label: 'Caisse POS offline-first',       sub: 'Vente en < 90 secondes' },
+              { Icon: Users,        label: 'Onboarding clients en 4 étapes', sub: 'Récit · Formation · Fiche · Activation' },
+              { Icon: BarChart3,    label: 'Rapports multi-sites',            sub: 'Goma · Bukavu · Kinshasa' },
             ] as const).map(({ Icon, label, sub }) => (
-              <div key={label} className="flex items-center gap-3.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3">
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-primary-accent/15">
+              <div key={label} className="flex items-center gap-3.5 rounded-xl border border-border bg-bg px-4 py-3">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-primary-accent/10">
                   <Icon size={14} className="text-primary-accent" aria-hidden />
                 </div>
                 <div>
-                  <p className="text-[12px] font-semibold text-white/80">{label}</p>
-                  <p className="text-[11px] text-white/30">{sub}</p>
+                  <p className="text-[12px] font-semibold text-text">{label}</p>
+                  <p className="text-[11px] text-text-subtle">{sub}</p>
                 </div>
               </div>
             ))}
           </div>
 
           {/* Pied */}
-          <p className="text-[11px] text-white/20">v1.0 · Progress Business RDC © 2025</p>
+          <p className="text-[11px] text-text-subtle">v1.0 · Progress Business RDC © 2025</p>
         </div>
 
-        {/* ── Colonne droite : formulaire ────────────────────────── */}
-        <div className="flex-1 flex flex-col items-center justify-center px-6 py-14 lg:px-16 xl:px-24">
+        {/* ── Colonne droite : formulaire ── */}
+        <div className="flex-1 flex flex-col items-center justify-center px-6 py-14 lg:px-16 xl:px-24 bg-bg">
 
           {/* Logo mobile */}
           <div className="lg:hidden flex items-center gap-3 mb-10 self-start">
-            <img src="/assets/Progress business logo.png" alt="Progress Business" className="h-20 w-20 rounded-xl object-contain flex-shrink-0" />
-            <p className="text-[14px] font-black text-white tracking-tight">PROGRESS BUSINESS</p>
+            <img
+              src="/assets/Progress business logo.png"
+              alt="Progress Business"
+              className="h-14 w-14 rounded-xl object-contain flex-shrink-0"
+            />
+            <p className="text-[14px] font-black text-primary tracking-tight">PROGRESS BUSINESS</p>
           </div>
 
           <div className="w-full max-w-[400px]">
 
-            {/* Titre section */}
+            {/* Titre */}
             <div className="flex items-start justify-between mb-8">
               <div>
-                <h1 className="text-[28px] font-black text-white tracking-tight leading-tight">Connexion</h1>
-                <p className="text-[13px] text-white/35 mt-1">
+                <h1 className="text-[28px] font-black text-primary tracking-tight leading-tight">
+                  Connexion
+                </h1>
+                <p className="text-[13px] text-text-muted mt-1">
                   Entrez vos identifiants pour continuer.
                 </p>
               </div>
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ml-3 mt-1',
-                  isOnline
-                    ? 'bg-green-500/15 text-green-400 border border-green-500/20'
-                    : 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
-                )}
-              >
-                {isOnline ? <Wifi size={10} aria-hidden /> : <WifiOff size={10} aria-hidden />}
+              <span className={cn(
+                'inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ml-3 mt-1 border',
+                isOnline
+                  ? 'bg-green-50 text-success border-green-200'
+                  : 'bg-amber-50 text-warning border-amber-200',
+              )}>
+                {isOnline
+                  ? <Wifi size={10} aria-hidden />
+                  : <WifiOff size={10} aria-hidden />}
                 {isOnline ? 'En ligne' : 'Hors-ligne'}
               </span>
             </div>
@@ -247,7 +225,7 @@ export default function LoginPage() {
               <div className="space-y-1.5">
                 <label
                   htmlFor="identifier"
-                  className="block text-[10px] font-bold uppercase tracking-[0.14em] text-white/40"
+                  className="block text-[10px] font-bold uppercase tracking-[0.14em] text-text-muted"
                 >
                   Téléphone ou Email
                 </label>
@@ -260,12 +238,20 @@ export default function LoginPage() {
                   disabled={isDisabled}
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  className={glassInput(identifierHasErr)}
+                  className={cn(
+                    'w-full bg-white border rounded-xl px-4 py-3.5 text-[14px] text-text',
+                    'placeholder:text-text-subtle caret-primary-accent',
+                    'focus:outline-none transition duration-150',
+                    identifierHasErr
+                      ? 'border-danger focus:border-danger focus:ring-2 focus:ring-danger/15'
+                      : 'border-border focus:border-primary-accent focus:ring-2 focus:ring-primary-accent/20',
+                    'disabled:opacity-50 disabled:cursor-not-allowed',
+                  )}
                 />
                 {identifier.length > 3 && identifierFormat !== 'empty' && (
                   <p className={cn(
                     'text-[11px] font-medium',
-                    identifierFormat === 'unknown' ? 'text-red-400' : 'text-green-400',
+                    identifierFormat === 'unknown' ? 'text-danger' : 'text-success',
                   )}>
                     {identifierFormat === 'unknown'
                       ? '✗ Format non reconnu'
@@ -279,13 +265,13 @@ export default function LoginPage() {
                 <div className="flex items-center justify-between">
                   <label
                     htmlFor="password"
-                    className="block text-[10px] font-bold uppercase tracking-[0.14em] text-white/40"
+                    className="block text-[10px] font-bold uppercase tracking-[0.14em] text-text-muted"
                   >
                     Mot de passe
                   </label>
                   <a
                     href="/reset-password"
-                    className="text-[12px] font-semibold text-primary-accent hover:text-blue-400 transition-colors"
+                    className="text-[12px] font-semibold text-primary-accent hover:text-blue-700 transition-colors"
                   >
                     Oublié ?
                   </a>
@@ -299,12 +285,17 @@ export default function LoginPage() {
                     disabled={isDisabled}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={cn(glassInput(), 'pr-12')}
+                    className={cn(
+                      'w-full bg-white border border-border rounded-xl px-4 py-3.5 pr-12 text-[14px] text-text',
+                      'placeholder:text-text-subtle caret-primary-accent',
+                      'focus:outline-none focus:border-primary-accent focus:ring-2 focus:ring-primary-accent/20 transition duration-150',
+                      'disabled:opacity-50 disabled:cursor-not-allowed',
+                    )}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-text-subtle hover:text-text transition-colors"
                     aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                   >
                     {showPassword ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
@@ -326,7 +317,7 @@ export default function LoginPage() {
                     'w-4 h-4 rounded border transition-colors',
                     rememberMe
                       ? 'bg-primary-accent border-primary-accent'
-                      : 'bg-white/[0.07] border-white/[0.15] group-hover:border-white/30',
+                      : 'bg-white border-border group-hover:border-border-strong',
                   )} />
                   {rememberMe && (
                     <svg
@@ -337,7 +328,7 @@ export default function LoginPage() {
                     </svg>
                   )}
                 </div>
-                <span className="text-[13px] text-white/35 group-hover:text-white/55 transition-colors select-none">
+                <span className="text-[13px] text-text-muted group-hover:text-text transition-colors select-none">
                   Se souvenir de moi
                 </span>
               </label>
@@ -345,12 +336,12 @@ export default function LoginPage() {
               {/* Erreur */}
               {errorMsg && (
                 <div
-                  className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3.5"
+                  className="rounded-xl border border-red-200 bg-red-50 px-4 py-3.5"
                   role="alert"
                 >
-                  <p className="text-[13px] font-semibold text-red-400">{errorMsg}</p>
+                  <p className="text-[13px] font-semibold text-danger">{errorMsg}</p>
                   {isLocked && lockCountdown && (
-                    <p className="mt-2 text-[24px] font-black font-mono text-red-400 tabular-nums">
+                    <p className="mt-2 text-[24px] font-black font-mono text-danger tabular-nums">
                       {lockCountdown}
                     </p>
                   )}
@@ -364,12 +355,12 @@ export default function LoginPage() {
                 className={cn(
                   'w-full py-3.5 rounded-xl text-[14px] font-bold tracking-wide mt-1',
                   'bg-primary-accent text-white',
-                  'shadow-[0_0_32px_rgba(37,99,235,0.35)]',
-                  'hover:bg-blue-500 hover:shadow-[0_0_40px_rgba(37,99,235,0.50)]',
+                  'hover:bg-blue-700',
                   'active:scale-[0.99] transition-all duration-150',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A1628]',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent focus-visible:ring-offset-2',
                   'flex items-center justify-center gap-2',
-                  'disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none disabled:scale-100',
+                  'disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100',
+                  'shadow-kpi-blue',
                 )}
               >
                 {isLoading
@@ -381,10 +372,10 @@ export default function LoginPage() {
 
             {/* Continuer hors-ligne */}
             {!isOnline && (
-              <div className="mt-6 pt-5 border-t border-white/[0.07] text-center">
+              <div className="mt-6 pt-5 border-t border-border text-center">
                 <button
                   type="button"
-                  className="text-[12px] font-semibold text-primary-accent hover:text-blue-400 transition-colors"
+                  className="text-[12px] font-semibold text-primary-accent hover:text-blue-700 transition-colors"
                   onClick={() => toast.error('Aucune session locale disponible.')}
                 >
                   Continuer sans connexion →
@@ -393,7 +384,7 @@ export default function LoginPage() {
             )}
 
             {/* Version mobile */}
-            <p className="lg:hidden text-center text-[11px] text-white/15 mt-8">
+            <p className="lg:hidden text-center text-[11px] text-text-subtle mt-8">
               v1.0 · Progress Business RDC © 2025
             </p>
           </div>

@@ -16,6 +16,7 @@ import { UsersModule } from './modules/users/users.module';
 import { SitesModule } from './modules/sites/sites.module';
 import { ConfigAppModule } from './modules/config-app/config-app.module';
 import { SupportModule } from './modules/support/support.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { SupportModule } from './modules/support/support.module';
     SitesModule,
     ConfigAppModule,
     SupportModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

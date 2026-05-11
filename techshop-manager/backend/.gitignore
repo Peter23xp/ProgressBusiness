@@ -1,0 +1,19 @@
+# Env — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Build
+dist/
+node_modules/
+
+# Prisma generated client
+generated/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
