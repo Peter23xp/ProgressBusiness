@@ -32,22 +32,24 @@ export class MailerService {
         port: config.get<number>('MAIL_PORT') ?? 587,
         secure: config.get<string>('MAIL_SECURE') === 'true',
         auth: { user, pass: config.get<string>('MAIL_PASS') ?? '' },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 10000,
       });
     }
   }
 
-  // ── Méthode interne d'envoi ────────────────────────────────────────
-  private async send(to: string, subject: string, html: string): Promise<void> {
+  // ── Méthode interne d'envoi (fire-and-forget — ne bloque pas la requête HTTP) ──
+  private send(to: string, subject: string, html: string): void {
     if (!this.transporter) {
       this.logger.warn(`SMTP non configuré — email non envoyé à ${to} | ${subject}`);
       return;
     }
-    try {
-      await this.transporter.sendMail({ from: this.from, to, subject, html });
+    this.transporter.sendMail({ from: this.from, to, subject, html }).then(() => {
       this.logger.log(`Email envoyé à ${to} | ${subject}`);
-    } catch (err) {
-      this.logger.error(`Échec envoi email à ${to}: ${(err as Error).message}`);
-    }
+    }).catch((err: Error) => {
+      this.logger.error(`Échec envoi email à ${to}: ${err.message}`);
+    });
   }
 
   // ── Template de base ───────────────────────────────────────────────
@@ -86,7 +88,7 @@ export class MailerService {
         Si vous n'avez pas fait cette demande, ignorez cet email. Votre compte reste sécurisé.
       </p>
     `);
-    await this.send(to, 'Votre code de réinitialisation — Progress Business', html);
+    this.send(to, 'Votre code de réinitialisation — Progress Business', html);
   }
 
   // ── 2. Mot de passe temporaire (reset admin) ──────────────────────
@@ -115,7 +117,7 @@ export class MailerService {
         Si vous n'attendiez pas cette action, contactez immédiatement votre responsable.
       </p>
     `);
-    await this.send(to, 'Votre mot de passe a été réinitialisé — Progress Business', html);
+    this.send(to, 'Votre mot de passe a été réinitialisé — Progress Business', html);
   }
 
   // ── 3. Activation compte client (onboarding) ──────────────────────
@@ -141,7 +143,7 @@ export class MailerService {
         Chaque achat vous rapporte des points et des remises exclusives.
       </p>
     `);
-    await this.send(to, 'Bienvenue — Votre compte Progress Business est actif', html);
+    this.send(to, 'Bienvenue — Votre compte Progress Business est actif', html);
   }
 
   // ── Support ticket (existant — inchangé) ──────────────────────────
@@ -176,6 +178,6 @@ export class MailerService {
       ${data.hasScreenshot ? '<p style="font-size:13px;color:#2E86C1;margin:12px 0 0">📎 Une capture d\'écran a été jointe.</p>' : ''}
     `);
 
-    await this.send(to, subject, html);
+    this.send(to, subject, html);
   }
 }
