@@ -74,6 +74,9 @@ const PortalFilleulsPage = lazy(() => import('@/pages/portal/PortalFilleulsPage'
 // Support
 const SupportPage       = lazy(() => import('@/pages/support/SupportPage'));
 
+// Home
+const HomePage          = lazy(() => import('@/pages/home/HomePage'));
+
 // Parametres
 const UsersPage         = lazy(() => import('@/pages/parametres/UsersPage'));
 const SitesPage         = lazy(() => import('@/pages/parametres/SitesPage'));
@@ -109,6 +112,7 @@ export default function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public routes */}
+          <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/portal/login" element={<PortalLoginPage />} />
@@ -120,9 +124,7 @@ export default function App() {
           <Route path="/portal/referrals" element={<AuthGuard><RoleGuard minRole="CLIENT"><PortalFilleulsPage /></RoleGuard></AuthGuard>} />
 
           {/* App routes — role AGENT+ */}
-          <Route path="/" element={<AuthGuard><RoleGuard minRole="AGENT"><AppLayout /></RoleGuard></AuthGuard>}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-
+          <Route element={<AuthGuard><RoleGuard minRole="AGENT"><AppLayout /></RoleGuard></AuthGuard>}>
             {/* Dashboard */}
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="dashboard/regional" element={<RoleGuard minRole="DIRECTEUR_REGIONAL"><DashboardRegionalPage /></RoleGuard>} />
@@ -185,7 +187,7 @@ export default function App() {
             <Route path="settings/general" element={<RoleGuard minRole="SUPER_ADMIN"><ConfigGeneralePage /></RoleGuard>} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
