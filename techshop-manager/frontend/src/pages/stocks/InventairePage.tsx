@@ -124,9 +124,10 @@ export default function InventairePage() {
             onClick={() => refetch()}
             disabled={isFetching}
             className="btn-secondary"
+            title="Rafraîchir"
           >
             <RefreshCw size={14} className={cn(isFetching && 'animate-spin')} />
-            Rafraîchir
+            <span className="hidden sm:inline">Rafraîchir</span>
           </button>
           {canWrite && (
             <>
@@ -134,25 +135,28 @@ export default function InventairePage() {
                 type="button"
                 onClick={() => navigate('/stocks/new')}
                 className="btn-secondary"
+                title="Nouveau produit"
               >
                 <PackagePlus size={14} />
-                Nouveau produit
+                <span className="hidden sm:inline">Nouveau produit</span>
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/stocks/entry')}
                 className="btn-secondary"
+                title="Entrée stock"
               >
                 <Plus size={14} />
-                Entrée
+                <span className="hidden sm:inline">Entrée</span>
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/stocks/transfer')}
                 className="btn-primary"
+                title="Transfert"
               >
                 <ArrowRightLeft size={14} />
-                Transfert
+                <span className="hidden sm:inline">Transfert</span>
               </button>
             </>
           )}
@@ -257,7 +261,7 @@ export default function InventairePage() {
         <table>
           <thead>
             <tr>
-              <th>SKU</th>
+              <th className="hidden lg:table-cell">SKU</th>
               <th>
                 <button
                   type="button"
@@ -267,8 +271,8 @@ export default function InventairePage() {
                   Produit <SortIcon field="nom" />
                 </button>
               </th>
-              <th>Catégorie</th>
-              <th className="text-right">Prix vente</th>
+              <th className="hidden sm:table-cell">Catégorie</th>
+              <th className="text-right hidden sm:table-cell">Prix vente</th>
               <th className="text-center">
                 <button
                   type="button"
@@ -278,7 +282,7 @@ export default function InventairePage() {
                   Stock <SortIcon field="quantite" />
                 </button>
               </th>
-              <th className="text-center">Seuil</th>
+              <th className="text-center hidden lg:table-cell">Seuil</th>
               <th>Statut</th>
             </tr>
           </thead>
@@ -286,9 +290,13 @@ export default function InventairePage() {
             {isLoading
               ? Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: 7 }).map((__, j) => (
-                      <td key={j}><div className="skeleton h-3 rounded w-full" /></td>
-                    ))}
+                    <td className="hidden lg:table-cell"><div className="skeleton h-3 rounded w-full" /></td>
+                    <td><div className="skeleton h-3 rounded w-full" /></td>
+                    <td className="hidden sm:table-cell"><div className="skeleton h-3 rounded w-full" /></td>
+                    <td className="hidden sm:table-cell"><div className="skeleton h-3 rounded w-full" /></td>
+                    <td><div className="skeleton h-3 rounded w-full" /></td>
+                    <td className="hidden lg:table-cell"><div className="skeleton h-3 rounded w-full" /></td>
+                    <td><div className="skeleton h-3 rounded w-full" /></td>
                   </tr>
                 ))
               : stocks.map(s => {
@@ -303,12 +311,12 @@ export default function InventairePage() {
                         statut === 'ALERTE' && 'bg-amber-50/70',
                       )}
                     >
-                      <td>
+                      <td className="hidden lg:table-cell">
                         <span className="font-mono text-[11px] text-text-muted">{s.sku}</span>
                       </td>
                       <td className="font-medium text-[13px]">{s.produitNom}</td>
-                      <td className="text-[12px] text-text-muted">{s.categorie}</td>
-                      <td className="text-right font-mono text-[12px]">{formatUSD(s.prixVente)}</td>
+                      <td className="text-[12px] text-text-muted hidden sm:table-cell">{s.categorie}</td>
+                      <td className="text-right font-mono text-[12px] hidden sm:table-cell">{formatUSD(s.prixVente)}</td>
                       <td className="text-center">
                         <span className={cn(
                           'font-black text-[18px] font-mono',
@@ -319,7 +327,7 @@ export default function InventairePage() {
                           {s.quantite}
                         </span>
                       </td>
-                      <td className="text-center font-mono text-[12px] text-text-muted">
+                      <td className="text-center font-mono text-[12px] text-text-muted hidden lg:table-cell">
                         {s.seuilAlerte}
                       </td>
                       <td>

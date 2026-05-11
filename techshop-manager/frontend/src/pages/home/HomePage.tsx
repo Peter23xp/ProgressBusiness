@@ -520,12 +520,12 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Image hero — remplacer lp-hero-placeholder par <img className="lp-hero-img"> quand Higgsfield est configuré */}
-          <div className="lp-hero-img-wrap lp-a4" aria-hidden>
-            <div className="lp-hero-placeholder" />
-            <div className="lp-img-label">
-              Visuels Higgsfield · Clé API UUID requise
-            </div>
+          <div className="lp-hero-img-wrap lp-a4">
+            <img
+              src="/assets/hero-banner.jpg"
+              alt="Progress Business — commerce en RDC"
+              className="lp-hero-img"
+            />
             <div className="lp-img-badge">
               <span className="lp-badge-dot" />
               Hors-ligne natif

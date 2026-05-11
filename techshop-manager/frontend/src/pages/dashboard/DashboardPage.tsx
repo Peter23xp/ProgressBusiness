@@ -85,10 +85,10 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {canSeeRegionalLink && (
             <button
-              className="text-sm font-medium text-primary-accent hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent rounded"
+              className="text-sm font-medium text-primary-accent hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent rounded whitespace-nowrap"
               onClick={() => navigate('/dashboard/regional')}
             >
               Vue régionale →
@@ -104,7 +104,7 @@ export default function DashboardPage() {
                   type="button"
                   className={cn('period-btn', period === p && 'active')}
                 >
-                  {p === 'today' ? "Aujourd'hui" : p === 'week' ? 'Semaine' : 'Mois'}
+                  {p === 'today' ? "Auj." : p === 'week' ? 'Semaine' : 'Mois'}
                 </button>
               ))}
             </div>
@@ -116,7 +116,7 @@ export default function DashboardPage() {
             type="button"
             aria-label="Actualiser"
             className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-white text-text-muted',
+              'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-white text-text-muted',
               'hover:border-primary-accent hover:text-primary-accent hover:bg-blue-50 transition-colors duration-150',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-accent',
               'disabled:opacity-40 disabled:cursor-not-allowed',

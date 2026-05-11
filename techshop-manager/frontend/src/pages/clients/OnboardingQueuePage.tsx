@@ -162,36 +162,36 @@ export default function OnboardingQueuePage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {[
-          { label: 'Total en attente',     value: data?.stats.total ?? 0,               color: 'text-primary' },
-          { label: 'Fiche à payer',         value: data?.stats.ficheEnAttente ?? 0,      color: 'text-blue-700' },
-          { label: 'Prêts à activer',       value: data?.stats.activationEnAttente ?? 0, color: 'text-green-700' },
+          { label: 'Total',          value: data?.stats.total ?? 0,               color: 'text-primary' },
+          { label: 'Fiche à payer',  value: data?.stats.ficheEnAttente ?? 0,      color: 'text-blue-700' },
+          { label: 'À activer',      value: data?.stats.activationEnAttente ?? 0, color: 'text-green-700' },
         ].map(({ label, value, color }) => (
-          <div key={label} className="rounded-xl border border-border bg-white px-4 py-3 text-center">
-            <p className={cn('text-[24px] font-black leading-none', color)}>{value}</p>
-            <p className="text-[11px] text-text-muted font-medium mt-1">{label}</p>
+          <div key={label} className="rounded-xl border border-border bg-white px-2 sm:px-4 py-3 text-center min-w-0">
+            <p className={cn('text-[22px] sm:text-[24px] font-black leading-none', color)}>{value}</p>
+            <p className="text-[10px] sm:text-[11px] text-text-muted font-medium mt-1 truncate">{label}</p>
           </div>
         ))}
       </div>
 
       {/* Filtres */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2.5">
         {!isAgent && (
           <select
             value={siteId}
             onChange={e => setSiteId(e.target.value)}
-            className="text-[13px] px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary-accent/30"
+            className="text-[13px] px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary-accent/30 w-full sm:w-auto"
           >
             <option value="">Tous les sites</option>
             {sites.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
           </select>
         )}
 
-        <div className="flex rounded-lg border border-border overflow-hidden">
+        <div className="flex rounded-lg border border-border overflow-hidden flex-shrink-0">
           {[
             { key: '',           label: 'Tous' },
-            { key: 'FICHE',      label: 'Fiche à payer' },
+            { key: 'FICHE',      label: 'Fiche' },
             { key: 'ACTIVATION', label: 'À activer' },
           ].map(opt => (
             <button
@@ -199,7 +199,7 @@ export default function OnboardingQueuePage() {
               type="button"
               onClick={() => setFilterEtape(opt.key)}
               className={cn(
-                'px-3 py-1.5 text-[12px] font-semibold transition-colors',
+                'px-3 py-1.5 text-[12px] font-semibold transition-colors whitespace-nowrap',
                 filterEtape === opt.key
                   ? 'bg-primary text-white'
                   : 'bg-white text-text-muted hover:bg-slate-50',

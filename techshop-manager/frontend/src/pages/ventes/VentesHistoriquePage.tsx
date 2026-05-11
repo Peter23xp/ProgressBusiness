@@ -239,53 +239,55 @@ export default function VentesHistoriquePage() {
       </div>
 
       {/* ── Filtres ───────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Toggle période */}
-        <div className="period-toggle">
+      <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2.5">
+        {/* Toggle période — scrollable horizontalement sur mobile */}
+        <div className="period-toggle overflow-x-auto max-w-full flex-shrink-0">
           {PERIODES.map((p) => (
             <button
               key={p.value}
               type="button"
               onClick={() => handleChangePeriode(p.value)}
-              className={cn('period-btn', periode === p.value && 'active')}
+              className={cn('period-btn whitespace-nowrap', periode === p.value && 'active')}
             >
               {p.label}
             </button>
           ))}
         </div>
 
-        {/* Recherche */}
-        <div className="relative min-w-[200px]">
-          <Search
-            size={13}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-subtle"
-          />
-          <input
-            type="text"
-            placeholder="N° vente, client, agent..."
-            value={search}
-            onChange={(e) => handleChangeSearch(e.target.value)}
-            className="pl-8 text-sm"
-          />
-        </div>
+        <div className="flex items-center gap-2.5 w-full sm:w-auto flex-wrap">
+          {/* Recherche */}
+          <div className="relative flex-1 min-w-[160px]">
+            <Search
+              size={13}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-subtle"
+            />
+            <input
+              type="text"
+              placeholder="N° vente, client..."
+              value={search}
+              onChange={(e) => handleChangeSearch(e.target.value)}
+              className="pl-8 text-sm"
+            />
+          </div>
 
-        {/* Mode paiement */}
-        <div className="relative">
-          <select
-            value={modePaiement}
-            onChange={(e) => handleChangeMode(e.target.value)}
-            className="text-sm pr-8"
-          >
-            {MODES_OPTIONS.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            size={13}
-            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-subtle"
-          />
+          {/* Mode paiement */}
+          <div className="relative flex-shrink-0">
+            <select
+              value={modePaiement}
+              onChange={(e) => handleChangeMode(e.target.value)}
+              className="text-sm pr-8"
+            >
+              {MODES_OPTIONS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={13}
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-subtle"
+            />
+          </div>
         </div>
       </div>
 
@@ -324,10 +326,10 @@ export default function VentesHistoriquePage() {
                   )}
                 </button>
               </th>
-              <th>Agent</th>
-              <th>Client</th>
+              <th className="hidden md:table-cell">Agent</th>
+              <th className="hidden sm:table-cell">Client</th>
               <th className="text-right">Montant</th>
-              <th>Paiement</th>
+              <th className="hidden sm:table-cell">Paiement</th>
               <th>Statut</th>
               <th />
             </tr>
@@ -336,11 +338,14 @@ export default function VentesHistoriquePage() {
             {isLoading
               ? Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: 8 }).map((__, j) => (
-                      <td key={j}>
-                        <div className="skeleton h-3 rounded w-full" />
-                      </td>
-                    ))}
+                    <td><div className="skeleton h-3 rounded w-full" /></td>
+                    <td><div className="skeleton h-3 rounded w-full" /></td>
+                    <td className="hidden md:table-cell"><div className="skeleton h-3 rounded w-full" /></td>
+                    <td className="hidden sm:table-cell"><div className="skeleton h-3 rounded w-full" /></td>
+                    <td><div className="skeleton h-3 rounded w-full" /></td>
+                    <td className="hidden sm:table-cell"><div className="skeleton h-3 rounded w-full" /></td>
+                    <td><div className="skeleton h-3 rounded w-full" /></td>
+                    <td><div className="skeleton h-3 rounded w-full" /></td>
                   </tr>
                 ))
               : ventes.map((vente) => (
@@ -361,12 +366,12 @@ export default function VentesHistoriquePage() {
                     <td className="text-[12px] text-text-muted whitespace-nowrap">
                       {formatDateTime(vente.createdAt)}
                     </td>
-                    <td className="text-[13px]">
+                    <td className="text-[13px] hidden md:table-cell">
                       {vente.agent.prenom
                         ? `${vente.agent.prenom} ${vente.agent.nom}`
                         : vente.agent.nom}
                     </td>
-                    <td className="text-[13px]">
+                    <td className="text-[13px] hidden sm:table-cell">
                       {vente.client ? (
                         `${vente.client.prenom} ${vente.client.nom}`
                       ) : (
@@ -376,7 +381,7 @@ export default function VentesHistoriquePage() {
                     <td className="text-right font-mono font-semibold text-[13px]">
                       {formatUSD(vente.montantNet)}
                     </td>
-                    <td>
+                    <td className="hidden sm:table-cell">
                       <span className="inline-flex items-center gap-1 text-[12px]">
                         <span aria-hidden>{MODE_ICONS[vente.modePaiement]}</span>
                         {MODE_LABELS[vente.modePaiement]}

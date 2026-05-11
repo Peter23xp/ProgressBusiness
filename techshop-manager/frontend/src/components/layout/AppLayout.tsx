@@ -384,15 +384,17 @@ export function AppLayout() {
         )}
 
         {/* Main content area */}
-        <div className="flex-1 flex flex-col overflow-hidden"
-          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
-        >
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Notch/status-bar filler — same white as header */}
+          <div className="flex-shrink-0 bg-white" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
           <Header onMenuClick={() => setMobileSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto p-5 sm:p-7 bg-bg"
             style={{ paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom, 0px))' }}
           >
             <Outlet />
           </main>
+          {/* Home-bar filler — same color as page background */}
+          <div className="flex-shrink-0 bg-bg" style={{ height: 'env(safe-area-inset-bottom, 0px)' }} />
         </div>
       </div>
     </>
