@@ -173,6 +173,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen bg-bg-default flex items-center justify-center p-4 safe-page">
+      <div className="safe-top-bar bg-bg-default" />
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">

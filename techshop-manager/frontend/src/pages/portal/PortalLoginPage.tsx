@@ -130,6 +130,7 @@ export default function PortalLoginPage() {
 
   return (
     <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4 safe-page">
+      <div className="safe-top-bar bg-neutral-100" />
       <PageSEO title="Portail Client — Connexion" noindex />
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
         {/* Logo */}

@@ -130,9 +130,6 @@
     width: 240px;
     height: 100%;
     background-color: #0A1628;
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    padding-left: env(safe-area-inset-left, 0px);
     @apply text-white flex flex-col flex-shrink-0;
   }
 
@@ -161,12 +158,20 @@
   /* ── Layout ──────────────────────────────────────────────────── */
   .main-content { @apply p-5 sm:p-7 bg-bg; }
 
-  /* Safe area pour les pages sans AppLayout (login, reset-password, portail) */
+  /* Safe area pour les pages sans AppLayout — étend la couleur de fond edge-to-edge */
   .safe-page {
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
     padding-left: env(safe-area-inset-left, 0px);
     padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  /* Barre de statut colorée (à placer avant le contenu des pages auth) */
+  .safe-top-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: env(safe-area-inset-top, 0px);
+    z-index: 100;
   }
 
   .page-header {

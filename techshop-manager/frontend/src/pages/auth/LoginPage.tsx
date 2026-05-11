@@ -116,6 +116,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex bg-bg safe-page">
+      {/* Étend la couleur du panneau gauche derrière l'encoche et la barre home */}
+      <div className="safe-top-bar" style={{ background: '#0A1628' }} />
       <PageSEO title="Connexion" noindex />
 
       {/* ── Bandeau hors-ligne ── */}
