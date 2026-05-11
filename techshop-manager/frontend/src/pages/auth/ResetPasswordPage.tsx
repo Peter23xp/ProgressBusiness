@@ -27,6 +27,7 @@ export default function ResetPasswordPage() {
   const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [maskedPhone, setMaskedPhone] = useState('');
+  const [maskedEmail, setMaskedEmail] = useState('');
   const [otpValue, setOtpValue] = useState('');
   const [otpError, setOtpError] = useState('');
   const [otpShake, setOtpShake] = useState(false);
@@ -62,13 +63,17 @@ export default function ResetPasswordPage() {
     try {
       const { data } = await authApi.forgotPassword(normalized);
       setMaskedPhone(data.maskedPhone ?? normalized);
+      setMaskedEmail(data.maskedEmail ?? '');
       setPhone(normalized);
-      toast.success(`Code envoyé au ${data.maskedPhone}`);
+      toast.success(`Code envoyé à ${data.maskedEmail ?? data.maskedPhone}`);
       setStep(2);
     } catch (error: unknown) {
-      const axiosError = error as { response?: { status?: number } };
+      const axiosError = error as { response?: { status?: number; data?: { error?: { code?: string } } } };
+      const code = axiosError.response?.data?.error?.code;
       if (axiosError.response?.status === 404) {
         setGeneralError('Aucun compte trouvé pour ce numéro de téléphone.');
+      } else if (code === 'NO_EMAIL') {
+        setGeneralError('Aucun email associé à ce compte. Contactez votre administrateur pour en ajouter un.');
       } else if (axiosError.response?.status === 429) {
         setGeneralError('Trop de demandes. Attendez quelques minutes avant de réessayer.');
       } else {
@@ -237,7 +242,7 @@ export default function ResetPasswordPage() {
             <form onSubmit={handleSendOtp} className="space-y-5">
               <div>
                 <h2 className="text-base font-bold text-text-default mb-1">Entrez votre numéro</h2>
-                <p className="text-sm text-text-muted">Vous recevrez un code par SMS.</p>
+                <p className="text-sm text-text-muted">Vous recevrez un code sur l'email lié à votre compte.</p>
               </div>
               <div>
                 <label className="form-label" htmlFor="phone">Numéro de téléphone</label>
@@ -259,7 +264,7 @@ export default function ResetPasswordPage() {
               >
                 {isLoading ? (
                   <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Envoi en cours...</>
-                ) : 'ENVOYER LE CODE SMS'}
+                ) : 'ENVOYER LE CODE PAR EMAIL'}
               </button>
             </form>
           )}
@@ -270,7 +275,7 @@ export default function ResetPasswordPage() {
               <div>
                 <h2 className="text-base font-bold text-text-default mb-1">Code de vérification</h2>
                 <p className="text-sm text-text-muted">
-                  Code envoyé au <span className="font-medium">{maskedPhone}</span> — valable 10 minutes.
+                  Code envoyé à <span className="font-medium">{maskedEmail || maskedPhone}</span> — valable 10 minutes.
                 </p>
               </div>
 

@@ -14,12 +14,14 @@ import {
 } from './dto/client.dto';
 import { EtapeOnboarding, ModePaiement, Role, StatutClient, StatutEtape, TypeMouvement } from '@prisma/client';
 import { PortalAuthService } from '../portal/portal-auth.service';
+import { MailerService } from '../mailer/mailer.service';
 
 @Injectable()
 export class ClientsService {
   constructor(
     private prisma: PrismaService,
     private portalAuthService: PortalAuthService,
+    private mailer: MailerService,
   ) {}
 
   async findAll(
@@ -645,6 +647,15 @@ export class ClientsService {
 
     if (process.env.NODE_ENV !== 'production') {
       console.log(`[PORTAL PIN] Client ${activatedClient.telephone} → PIN par défaut: ${defaultPin}`);
+    }
+
+    if (activatedClient.email) {
+      await this.mailer.sendActivationBienvenue(
+        activatedClient.email,
+        `${activatedClient.prenom} ${activatedClient.nom}`,
+        codeParrain,
+        siteCodeRaw,
+      );
     }
 
     return this.findOne(activatedClient.id);
