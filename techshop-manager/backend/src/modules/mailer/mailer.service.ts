@@ -1,7 +1,6 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
-import * as dns from 'dns/promises';
+import { Resend } from 'resend';
 
 export interface SupportTicketMailData {
   ticketRef: string;
@@ -17,80 +16,55 @@ export interface SupportTicketMailData {
 }
 
 @Injectable()
-export class MailerService implements OnModuleInit {
+export class MailerService {
   private readonly logger = new Logger(MailerService.name);
-  private transporter: nodemailer.Transporter | null = null;
+  private resend: Resend | null = null;
   private from: string;
-  private resolvedHost: string | null = null;
 
   constructor(private readonly config: ConfigService) {
-    this.from = config.get<string>('MAIL_FROM') ?? 'Progress Business <noreply@progressbusiness.cd>';
-  }
+    const apiKey = config.get<string>('RESEND_API_KEY');
+    this.from = config.get<string>('MAIL_FROM') ?? 'Progress Business <onboarding@resend.dev>';
 
-  async onModuleInit() {
-    const host = this.config.get<string>('MAIL_HOST');
-    const user = this.config.get<string>('MAIL_USER');
-    if (!host || !user) {
-      this.logger.warn('SMTP non configuré — MAIL_HOST ou MAIL_USER manquant');
-      return;
+    if (apiKey) {
+      this.resend = new Resend(apiKey);
+      this.logger.log('Resend initialisé');
+    } else {
+      this.logger.warn('RESEND_API_KEY non défini — emails désactivés');
     }
-
-    // Résoudre en IPv4 explicitement pour éviter ENETUNREACH IPv6 sur Render
-    try {
-      const [ipv4] = await dns.resolve4(host);
-      this.resolvedHost = ipv4;
-      this.logger.log(`SMTP: ${host} → ${ipv4} (IPv4 forcé)`);
-    } catch {
-      this.resolvedHost = host;
-      this.logger.warn(`DNS resolve4 échoué pour ${host}, utilisation du hostname`);
-    }
-
-    this.transporter = nodemailer.createTransport({
-      host: this.resolvedHost,
-      port: this.config.get<number>('MAIL_PORT') ?? 587,
-      secure: this.config.get<string>('MAIL_SECURE') === 'true',
-      auth: { user, pass: this.config.get<string>('MAIL_PASS') ?? '' },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-    });
   }
 
   // ── Méthode interne d'envoi (fire-and-forget) ──────────────────────
   private send(to: string, subject: string, html: string): void {
-    if (!this.transporter) {
-      this.logger.warn(`SMTP non configuré — email non envoyé à ${to} | ${subject}`);
+    if (!this.resend) {
+      this.logger.warn(`Resend non configuré — email non envoyé à ${to}`);
       return;
     }
-    this.transporter.sendMail({ from: this.from, to, subject, html }).then(() => {
+    this.resend.emails.send({ from: this.from, to, subject, html }).then(() => {
       this.logger.log(`Email envoyé à ${to} | ${subject}`);
     }).catch((err: Error) => {
       this.logger.error(`Échec envoi email à ${to}: ${err.message}`);
     });
   }
 
-  // ── Diagnostic SMTP synchrone ──────────────────────────────────────
+  // ── Diagnostic synchrone ───────────────────────────────────────────
   async testSmtp(to: string): Promise<{ ok: boolean; info?: string; error?: string; config: Record<string, string> }> {
     const diagConfig = {
-      host: this.config.get<string>('MAIL_HOST') ?? '(non défini)',
-      resolvedHost: this.resolvedHost ?? '(non résolu)',
-      port: String(this.config.get<number>('MAIL_PORT') ?? 587),
-      secure: this.config.get<string>('MAIL_SECURE') ?? 'false',
-      user: this.config.get<string>('MAIL_USER') ?? '(non défini)',
-      pass: this.config.get<string>('MAIL_PASS') ? '***défini***' : '(non défini)',
+      provider: 'Resend API',
+      apiKey: this.config.get<string>('RESEND_API_KEY') ? '***défini***' : '(non défini)',
       from: this.from,
     };
-    if (!this.transporter) {
-      return { ok: false, error: 'Transporter non initialisé', config: diagConfig };
+    if (!this.resend) {
+      return { ok: false, error: 'RESEND_API_KEY non défini', config: diagConfig };
     }
     try {
-      const info = await this.transporter.sendMail({
+      const { data, error } = await this.resend.emails.send({
         from: this.from,
         to,
-        subject: 'Test SMTP — Progress Business',
-        html: '<p>Test de configuration SMTP. Si vous recevez cet email, la configuration est correcte.</p>',
+        subject: 'Test Resend — Progress Business',
+        html: '<p>Test de configuration email. Si vous recevez cet email, la configuration est correcte.</p>',
       });
-      return { ok: true, info: (info as any).messageId, config: diagConfig };
+      if (error) return { ok: false, error: error.message, config: diagConfig };
+      return { ok: true, info: data?.id, config: diagConfig };
     } catch (err) {
       return { ok: false, error: (err as Error).message, config: diagConfig };
     }
