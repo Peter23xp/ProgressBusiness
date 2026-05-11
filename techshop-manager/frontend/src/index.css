@@ -5,6 +5,14 @@
 @layer base {
   * { box-sizing: border-box; }
 
+  /* Masquer l'icône œil natif du navigateur sur les champs password */
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear,
+  input[type="password"]::-webkit-contacts-auto-fill-button,
+  input[type="password"]::-webkit-credentials-auto-fill-button { display: none !important; }
+  input[type="text"]::-webkit-contacts-auto-fill-button,
+  input[type="text"]::-webkit-credentials-auto-fill-button { display: none !important; }
+
   html, body, #root {
     height: 100%;
     overflow: hidden;
