@@ -688,7 +688,9 @@ export default function POSPage() {
       </div>
 
       {/* Tab bar mobile */}
-      <nav className="flex md:hidden flex-shrink-0 border-t border-border bg-white">
+      <nav className="flex md:hidden flex-shrink-0 border-t border-border bg-white"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
         <button
           type="button"
           onClick={() => setMobileView('products')}
