@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useRef } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { PageSEO } from '@/components/seo/PageSEO';
 
 function usePageScroll() {
   useEffect(() => {
@@ -81,6 +83,28 @@ export default function HomePage() {
 
   return (
     <>
+      <PageSEO canonical="/" ogType="website" />
+      <Helmet>
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Organization',
+          'name': 'Progress Business',
+          'url': 'https://progressbusiness.onrender.com',
+          'logo': 'https://progressbusiness.onrender.com/assets/Progress business logo.png',
+          'description': 'Système de gestion commerciale multi-sites pour Progress Business — Goma, Bukavu, Kinshasa (RDC).',
+          'address': {
+            '@type': 'PostalAddress',
+            'addressCountry': 'CD',
+            'addressLocality': 'Goma',
+          },
+          'areaServed': ['Goma', 'Bukavu', 'Kinshasa'],
+          'contactPoint': {
+            '@type': 'ContactPoint',
+            'contactType': 'customer service',
+            'availableLanguage': ['French'],
+          },
+        })}</script>
+      </Helmet>
       <style dangerouslySetInnerHTML={{ __html: `
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap');
 
