@@ -16,7 +16,7 @@ const processQueue = (error: unknown, token: string | null = null) => {
 
 export const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: 60000, // 60s pour absorber le cold start Render (free tier)
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });

@@ -44,6 +44,7 @@ export default function LoginPage() {
   const [rememberMe,    setRememberMe]   = useState(false);
   const [showPassword,  setShowPassword] = useState(false);
   const [isLoading,     setIsLoading]    = useState(false);
+  const [slowServer,    setSlowServer]   = useState(false);
   const [errorMsg,      setErrorMsg]     = useState('');
   const [lockCountdown, setLockCountdown] = useState('');
 
@@ -80,7 +81,8 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
-    setIsLoading(true); setErrorMsg('');
+    setIsLoading(true); setErrorMsg(''); setSlowServer(false);
+    const slowTimer = setTimeout(() => setSlowServer(true), 8000);
     try {
       const { data } = await authApi.login({ identifier, password, rememberMe });
       const { user, accessToken } = data;
@@ -109,7 +111,11 @@ export default function LoginPage() {
       } else {
         toast.error(getErrorMessage(error) || 'Serveur inaccessible. Vérifiez votre connexion.');
       }
-    } finally { setIsLoading(false); }
+    } finally {
+      clearTimeout(slowTimer);
+      setIsLoading(false);
+      setSlowServer(false);
+    }
   };
 
   const identifierHasErr = identifier.length > 3 && identifierFormat === 'unknown';
@@ -367,10 +373,19 @@ export default function LoginPage() {
                   'shadow-kpi-blue',
                 )}
               >
-                {isLoading
-                  ? <><Loader2 size={16} className="animate-spin" aria-hidden />Connexion en cours…</>
-                  : 'Se connecter'
-                }
+                {isLoading ? (
+                  <span className="flex flex-col items-center gap-0.5">
+                    <span className="flex items-center gap-2">
+                      <Loader2 size={16} className="animate-spin" aria-hidden />
+                      {slowServer ? 'Démarrage du serveur…' : 'Connexion en cours…'}
+                    </span>
+                    {slowServer && (
+                      <span className="text-[11px] font-normal opacity-80">
+                        Première connexion du jour, patientez 30 s
+                      </span>
+                    )}
+                  </span>
+                ) : 'Se connecter'}
               </button>
             </form>
 
