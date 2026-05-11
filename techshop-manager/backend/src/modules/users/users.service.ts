@@ -5,13 +5,17 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailerService } from '../mailer/mailer.service';
 import * as bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
 import { CreateUserDto, UpdateProfileDto, ChangePasswordDto, UpdateUserDto } from './dto/user.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mailer: MailerService,
+  ) {}
 
   async findAll(query: {
     role?: string;
@@ -202,26 +206,25 @@ export class UsersService {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Utilisateur introuvable' });
     }
 
-    // Générer un mot de passe temporaire
     const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
     const passwordHash = await bcrypt.hash(tempPassword, 10);
 
     await this.prisma.utilisateur.update({
       where: { id },
-      data: {
-        passwordHash,
-        tentativesConnexion: 0,
-        bloqueJusquA: null,
-      },
+      data: { passwordHash, tentativesConnexion: 0, bloqueJusquA: null },
     });
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[RESET PASSWORD] User ${user.telephone}: ${tempPassword}`);
+    if (user.email) {
+      await this.mailer.sendTempPassword(user.email, user.nom, user.telephone, tempPassword);
+    } else {
+      console.log(`[RESET PASSWORD — pas d'email] ${user.telephone}: ${tempPassword}`);
     }
 
     return {
       success: true,
-      message: 'Mot de passe temporaire généré et envoyé par SMS',
+      message: user.email
+        ? 'Mot de passe temporaire envoyé par email'
+        : 'Mot de passe temporaire généré (utilisateur sans email — voir logs)',
       ...(process.env.NODE_ENV !== 'production' && { tempPassword }),
     };
   }
