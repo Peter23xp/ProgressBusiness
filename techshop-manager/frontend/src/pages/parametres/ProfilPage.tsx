@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
+import type { UseFormRegister, FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -282,34 +283,21 @@ function ProfileInfoForm({ me }: { me: any }) {
   );
 }
 
-// ── ChangePasswordForm ─────────────────────────────────────────────
-function ChangePasswordForm() {
-  const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<PasswordForm>({
-    resolver: zodResolver(passwordSchema),
-  });
-
-  const newPwd = watch('newPassword', '');
-
-  const mutation = useMutation({
-    mutationFn: (data: PasswordForm) =>
-      usersApi.changePassword({ currentPassword: data.currentPassword, newPassword: data.newPassword }),
-    onSuccess: () => {
-      reset();
-      setFeedback({ msg: 'Mot de passe modifié avec succès', ok: true });
-    },
-    onError: (e) => setFeedback({ msg: getErrorMessage(e), ok: false }),
-  });
-
-  const PwdField = ({
-    id, label, regKey, show, onToggle, autoComplete, hint,
-  }: {
-    id: string; label: string; regKey: 'currentPassword' | 'newPassword' | 'confirmPassword';
-    show: boolean; onToggle: () => void; autoComplete: string; hint?: React.ReactNode;
-  }) => (
+// ── PwdField — défini au niveau module pour éviter la recréation à chaque render
+function PwdField({
+  id, label, regKey, show, onToggle, autoComplete, hint, register, errors,
+}: {
+  id: string;
+  label: string;
+  regKey: 'currentPassword' | 'newPassword' | 'confirmPassword';
+  show: boolean;
+  onToggle: () => void;
+  autoComplete: string;
+  hint?: React.ReactNode;
+  register: UseFormRegister<PasswordForm>;
+  errors: FieldErrors<PasswordForm>;
+}) {
+  return (
     <div className="form-group">
       <label className="form-label" htmlFor={id}>{label}</label>
       <div className="relative">
@@ -335,6 +323,29 @@ function ChangePasswordForm() {
       {hint}
     </div>
   );
+}
+
+// ── ChangePasswordForm ─────────────────────────────────────────────
+function ChangePasswordForm() {
+  const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<PasswordForm>({
+    resolver: zodResolver(passwordSchema),
+  });
+
+  const newPwd = watch('newPassword', '');
+
+  const mutation = useMutation({
+    mutationFn: (data: PasswordForm) =>
+      usersApi.changePassword({ currentPassword: data.currentPassword, newPassword: data.newPassword }),
+    onSuccess: () => {
+      reset();
+      setFeedback({ msg: 'Mot de passe modifié avec succès', ok: true });
+    },
+    onError: (e) => setFeedback({ msg: getErrorMessage(e), ok: false }),
+  });
 
   return (
     <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-5">
@@ -354,6 +365,8 @@ function ChangePasswordForm() {
         show={showCurrent}
         onToggle={() => setShowCurrent(v => !v)}
         autoComplete="current-password"
+        register={register}
+        errors={errors}
       />
 
       <PwdField
@@ -364,6 +377,8 @@ function ChangePasswordForm() {
         onToggle={() => setShowNew(v => !v)}
         autoComplete="new-password"
         hint={<PasswordStrength pwd={newPwd} />}
+        register={register}
+        errors={errors}
       />
 
       <PwdField
@@ -373,6 +388,8 @@ function ChangePasswordForm() {
         show={false}
         onToggle={() => {}}
         autoComplete="new-password"
+        register={register}
+        errors={errors}
       />
 
       {feedback && (
