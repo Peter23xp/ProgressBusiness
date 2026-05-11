@@ -56,11 +56,11 @@ async function main() {
   // ============================================
   console.log('👤 Création du Super Admin...');
 
-  const passwordHash = await bcrypt.hash('1234567890', 10);
+  const passwordHash = await bcrypt.hash('Admin@2025', 10);
 
   const superAdmin = await prisma.utilisateur.upsert({
     where: { telephone: '+243902238740' },
-    update: {},
+    update: { passwordHash },
     create: {
       nom: 'Peter AKILIMALI',
       telephone: '+243902238740',
