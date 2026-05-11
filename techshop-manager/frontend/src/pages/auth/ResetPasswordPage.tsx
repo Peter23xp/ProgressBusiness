@@ -172,7 +172,7 @@ export default function ResetPasswordPage() {
   const stepIndex = step === 'done' ? 3 : (step as number) - 1;
 
   return (
-    <div className="min-h-screen bg-bg-default flex items-center justify-center p-4">
+    <div className="min-h-screen bg-bg-default flex items-center justify-center p-4 safe-page">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">

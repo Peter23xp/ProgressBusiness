@@ -279,7 +279,14 @@ function Header({ onMenuClick }: { onMenuClick: () => void }) {
   const initials = user?.name?.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase() ?? '';
 
   return (
-    <header className="flex h-14 items-center justify-between gap-4 bg-white border-b border-border px-5 flex-shrink-0">
+    <header className="flex items-center justify-between gap-4 bg-white border-b border-border px-5 flex-shrink-0"
+      style={{
+        minHeight: '3.5rem',
+        paddingTop: `max(0.5rem, env(safe-area-inset-top, 0px))`,
+        paddingLeft: `max(1.25rem, env(safe-area-inset-left, 0px))`,
+        paddingRight: `max(1.25rem, env(safe-area-inset-right, 0px))`,
+      }}
+    >
       {/* Left */}
       <div className="flex items-center gap-3 min-w-0">
         <button
@@ -386,7 +393,13 @@ export function AppLayout() {
         {/* Main content area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header onMenuClick={() => setMobileSidebarOpen(true)} />
-          <main className="flex-1 overflow-y-auto p-5 sm:p-7 bg-bg">
+          <main className="flex-1 overflow-y-auto p-5 sm:p-7 bg-bg"
+            style={{
+              paddingBottom: `max(1.75rem, env(safe-area-inset-bottom, 0px))`,
+              paddingLeft: `max(1.25rem, env(safe-area-inset-left, 0px))`,
+              paddingRight: `max(1.25rem, env(safe-area-inset-right, 0px))`,
+            }}
+          >
             <Outlet />
           </main>
         </div>

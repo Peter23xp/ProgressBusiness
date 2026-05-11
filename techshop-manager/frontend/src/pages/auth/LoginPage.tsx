@@ -115,7 +115,7 @@ export default function LoginPage() {
   const identifierHasErr = identifier.length > 3 && identifierFormat === 'unknown';
 
   return (
-    <div className="min-h-screen flex bg-bg">
+    <div className="min-h-screen flex bg-bg safe-page">
       <PageSEO title="Connexion" noindex />
 
       {/* ── Bandeau hors-ligne ── */}
