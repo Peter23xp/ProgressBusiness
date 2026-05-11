@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailerService } from '../mailer/mailer.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { LoginDto, ForgotPasswordDto, VerifyOtpDto, ResetPasswordDto } from './dto/login.dto';
@@ -16,7 +17,6 @@ const LOCKOUT_MINUTES = 15;
 
 @Injectable()
 export class AuthService {
-  // In-memory stores (use Redis in production)
   private otpStore = new Map<string, { otpHash: string; expiresAt: Date; attempts: number }>();
   private resetTokenStore = new Map<string, { phone: string; expiresAt: Date }>();
 
@@ -24,6 +24,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private config: ConfigService,
+    private mailer: MailerService,
   ) {}
 
   async login(dto: LoginDto) {
@@ -56,7 +57,7 @@ export class AuthService {
         attempts >= MAX_ATTEMPTS ? new Date(Date.now() + LOCKOUT_MINUTES * 60000) : null;
       await this.prisma.utilisateur.update({
         where: { id: user.id },
-        data: { tentativesConnexion: attempts, bloqueJusquA: bloqueJusquA },
+        data: { tentativesConnexion: attempts, bloqueJusquA },
       });
       throw new UnauthorizedException({
         error: {
@@ -83,7 +84,7 @@ export class AuthService {
 
     return {
       accessToken,
-      refreshToken, // stripped from response body in controller; set as httpOnly cookie
+      refreshToken,
       user: {
         id: user.id,
         role: user.role,
@@ -127,19 +128,26 @@ export class AuthService {
       });
     }
 
+    if (!user.email) {
+      throw new BadRequestException({
+        error: {
+          code: 'NO_EMAIL',
+          message: 'Aucun email associé à ce compte. Contactez votre administrateur pour en ajouter un.',
+        },
+      });
+    }
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await bcrypt.hash(otp, 10);
     const expiresAt = new Date(Date.now() + 10 * 60000);
     this.otpStore.set(dto.phone, { otpHash, expiresAt, attempts: 0 });
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[DEV SMS OTP] ${dto.phone}: ${otp}`);
-    }
+    const maskedPhone = dto.phone.slice(0, 7) + ' *** ' + dto.phone.slice(-4);
+    const maskedEmail = user.email.replace(/(.{2}).+(@.+)/, '$1***$2');
 
-    const maskedPhone =
-      dto.phone.slice(0, 7) + ' *** ' + dto.phone.slice(-4);
+    await this.mailer.sendOtpResetPassword(user.email, user.nom, otp, maskedPhone);
 
-    return { success: true, maskedPhone, expiresIn: 600, retryAfter: 120 };
+    return { success: true, maskedPhone, maskedEmail, expiresIn: 600, retryAfter: 120 };
   }
 
   async verifyOtp(dto: VerifyOtpDto) {
