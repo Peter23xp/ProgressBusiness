@@ -32,10 +32,11 @@ export class MailerService {
         port: config.get<number>('MAIL_PORT') ?? 587,
         secure: config.get<string>('MAIL_SECURE') === 'true',
         auth: { user, pass: config.get<string>('MAIL_PASS') ?? '' },
-        connectionTimeout: 5000,
-        greetingTimeout: 5000,
-        socketTimeout: 10000,
-      });
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
+        tls: { family: 4 }, // forcer IPv4 (Render bloque IPv6 vers Gmail)
+      } as nodemailer.TransportOptions);
     }
   }
 
