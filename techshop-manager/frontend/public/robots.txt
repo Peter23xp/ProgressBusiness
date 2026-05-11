@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /portal/login
+Disallow: /portal/home
+Disallow: /portal/purchases
+Disallow: /portal/points
+Disallow: /portal/referrals
+Disallow: /dashboard
+Disallow: /clients
+Disallow: /sales
+Disallow: /stocks
+Disallow: /parrainage
+Disallow: /fidelite
+Disallow: /reports
+Disallow: /settings
+Disallow: /support
+
+Sitemap: https://progressbusiness.onrender.com/sitemap.xml
