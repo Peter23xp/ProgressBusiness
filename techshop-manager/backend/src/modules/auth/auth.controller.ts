@@ -1,13 +1,17 @@
-import { Controller, Post, Body, HttpCode, Res, Req } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, Res, Req, Get, Query } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { AuthService } from './auth.service';
+import { MailerService } from '../mailer/mailer.service';
 import { LoginDto, ForgotPasswordDto, VerifyOtpDto, ResetPasswordDto } from './dto/login.dto';
 
 const REFRESH_COOKIE = 'refreshToken';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private mailer: MailerService,
+  ) {}
 
   @Post('login')
   @HttpCode(200)
@@ -49,6 +53,12 @@ export class AuthController {
   logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie(REFRESH_COOKIE, { path: '/' });
     return { success: true };
+  }
+
+  @Get('test-smtp')
+  async testSmtp(@Query('to') to: string) {
+    if (!to) return { error: 'Paramètre ?to=email requis' };
+    return this.mailer.testSmtp(to);
   }
 
   @Post('forgot-password')

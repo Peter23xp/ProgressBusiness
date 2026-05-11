@@ -52,6 +52,32 @@ export class MailerService {
     });
   }
 
+  // ── Méthode de diagnostic SMTP (synchrone, retourne l'erreur exacte) ──
+  async testSmtp(to: string): Promise<{ ok: boolean; info?: string; error?: string; config: Record<string, string> }> {
+    const config = {
+      host: this.config.get<string>('MAIL_HOST') ?? '(non défini)',
+      port: String(this.config.get<number>('MAIL_PORT') ?? 587),
+      secure: this.config.get<string>('MAIL_SECURE') ?? 'false',
+      user: this.config.get<string>('MAIL_USER') ?? '(non défini)',
+      pass: this.config.get<string>('MAIL_PASS') ? '***défini***' : '(non défini)',
+      from: this.from,
+    };
+    if (!this.transporter) {
+      return { ok: false, error: 'Transporter non initialisé — MAIL_HOST ou MAIL_USER manquant', config };
+    }
+    try {
+      const info = await this.transporter.sendMail({
+        from: this.from,
+        to,
+        subject: 'Test SMTP — Progress Business',
+        html: '<p>Test de configuration SMTP. Si vous recevez cet email, la configuration est correcte.</p>',
+      });
+      return { ok: true, info: (info as any).messageId, config };
+    } catch (err) {
+      return { ok: false, error: (err as Error).message, config };
+    }
+  }
+
   // ── Template de base ───────────────────────────────────────────────
   private wrap(content: string): string {
     return `
