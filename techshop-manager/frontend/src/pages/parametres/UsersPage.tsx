@@ -135,6 +135,17 @@ function CreateUserDialog({ open, onClose, onCreated }: {
     },
   });
 
+  const onSubmit = (data: CreateForm) => {
+    const payload: CreateUserPayload = {
+      nom: data.nom,
+      telephone: data.telephone,
+      role: data.role,
+      passwordTemp: data.passwordTemp,
+      ...(needsSite && data.siteId ? { siteId: data.siteId } : {}),
+    };
+    mutation.mutate(payload);
+  };
+
   if (!open) return null;
 
   return (
@@ -154,7 +165,7 @@ function CreateUserDialog({ open, onClose, onCreated }: {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit((d) => mutation.mutate(d as CreateUserPayload))} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
           <div className="grid grid-cols-1 gap-4">
             <div className="form-group">
               <label className="form-label" htmlFor="cu-nom">Nom complet</label>

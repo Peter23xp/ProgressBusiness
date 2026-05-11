@@ -75,7 +75,7 @@ export class UsersService {
         nom: dto.nom,
         telephone: dto.telephone,
         role: dto.role,
-        siteId: dto.siteId ?? null,
+        siteId: dto.siteId || null,
         passwordHash,
       },
       select: {
@@ -141,7 +141,7 @@ export class UsersService {
         ...(dto.nom !== undefined && { nom: dto.nom }),
         ...(dto.email !== undefined && { email: dto.email }),
         ...(dto.role !== undefined && { role: dto.role }),
-        ...(dto.siteId !== undefined && { siteId: dto.siteId }),
+        ...(dto.siteId !== undefined && { siteId: dto.siteId || null }),
       },
       select: {
         id: true,
