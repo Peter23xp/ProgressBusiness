@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { PageSEO } from '@/components/seo/PageSEO';
 import { Eye, EyeOff, Loader2, Wifi, WifiOff, ShoppingCart, Users, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { authApi, getErrorMessage } from '@/lib/api';
@@ -115,6 +116,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex bg-bg">
+      <PageSEO title="Connexion" noindex />
 
       {/* ── Bandeau hors-ligne ── */}
       {!isOnline && (

@@ -1,5 +1,6 @@
 ﻿import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PageSEO } from '@/components/seo/PageSEO';
 import { Loader2 } from 'lucide-react';
 import { api, authApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
@@ -129,6 +130,7 @@ export default function PortalLoginPage() {
 
   return (
     <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4">
+      <PageSEO title="Portail Client — Connexion" noindex />
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
