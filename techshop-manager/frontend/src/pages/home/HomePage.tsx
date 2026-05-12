@@ -632,7 +632,7 @@ export default function HomePage() {
             <span className="lp-badge-dot" style={{ width: 5, height: 5 }} aria-hidden />
             Hors-ligne natif · Sync automatique
           </div>
-          <span className="lp-footer-copy">v1.0 · Progress Business RDC © 2025</span>
+          <span className="lp-footer-copy">v1.0 · Progress Business RDC © {new Date().getFullYear()}</span>
         </footer>
 
       </div>
